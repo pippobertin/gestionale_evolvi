@@ -85,8 +85,20 @@ export default function CalendarioScadenze({ scadenze, mesiDaVisualizzare = 3, o
     const grouped: { [key: string]: Scadenza[] } = {}
 
     scadenze.forEach(scadenza => {
-      const scadenzaDate = new Date(scadenza.data_scadenza)
-      const dateKey = formatDateKey(scadenzaDate)
+      // Gestisci correttamente le date evitando problemi di fuso orario
+      const dateStr = scadenza.data_scadenza
+
+      // Se la data è solo YYYY-MM-DD, aggiungilo in formato locale
+      let dateKey: string
+      if (dateStr.includes('T')) {
+        // Data con orario - usa la data così com'è
+        const scadenzaDate = new Date(dateStr)
+        dateKey = formatDateKey(scadenzaDate)
+      } else {
+        // Data senza orario - usa direttamente la stringa per evitare conversioni UTC
+        dateKey = dateStr
+      }
+
       if (!grouped[dateKey]) {
         grouped[dateKey] = []
       }
@@ -200,14 +212,23 @@ export default function CalendarioScadenze({ scadenze, mesiDaVisualizzare = 3, o
                   const normali = scadenzeGiorno.filter(s => s.urgenza === 'NORMALE' && s.stato !== 'completata').length
                   const totaleScadenze = scadenzeGiorno.length
 
+                  // Determina lo stile enfatizzato per giorni con molte scadenze
+                  const getIntensityStyle = (count: number) => {
+                    if (count === 0) return ''
+                    if (count === 1) return 'ring-1 ring-blue-200'
+                    if (count <= 3) return 'ring-2 ring-blue-300 bg-blue-50'
+                    if (count <= 5) return 'ring-2 ring-orange-300 bg-orange-50'
+                    return 'ring-2 ring-red-300 bg-red-50'
+                  }
+
                   return (
                     <div
                       key={index}
                       className={`aspect-square p-1 border-r border-b border-gray-100 last:border-r-0 relative group ${
                         scadenzeGiorno.length > 0 && onDayClick ? 'cursor-pointer' : ''
                       } ${!isCurrentMonthDay ? 'bg-gray-50' : ''} ${
-                        isTodayDay ? 'bg-blue-50 ring-1 ring-blue-200' : ''
-                      } hover:bg-blue-50 transition-colors`}
+                        isTodayDay ? 'bg-blue-50 ring-2 ring-blue-400' : getIntensityStyle(totaleScadenze)
+                      } hover:bg-blue-50 transition-all duration-200`}
                       title={scadenzeGiorno.length > 0 ? scadenzeGiorno.map(s => `${s.titolo} - ${s.cliente_nome}`).join('\n') : ''}
                       onClick={scadenzeGiorno.length > 0 && onDayClick ? () => onDayClick(date) : undefined}
                     >
@@ -245,9 +266,18 @@ export default function CalendarioScadenze({ scadenze, mesiDaVisualizzare = 3, o
                             )}
                           </div>
 
-                          {/* Numero totale se molte scadenze */}
+                          {/* Numero totale enfatizzato per molte scadenze */}
                           {totaleScadenze > 3 && (
-                            <span className="text-xs text-gray-600 font-medium">
+                            <div className={`text-xs font-bold px-1 py-0.5 rounded ${
+                              totaleScadenze <= 5
+                                ? 'bg-orange-500 text-white'
+                                : 'bg-red-500 text-white animate-pulse'
+                            }`}>
+                              {totaleScadenze}
+                            </div>
+                          )}
+                          {totaleScadenze > 0 && totaleScadenze <= 3 && (
+                            <span className="text-xs text-gray-700 font-semibold">
                               {totaleScadenze}
                             </span>
                           )}

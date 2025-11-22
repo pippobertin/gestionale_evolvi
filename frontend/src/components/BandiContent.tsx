@@ -1,11 +1,10 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Search, Plus, Filter, Calendar, Euro, Building, FileText, ExternalLink, Upload, Eye, Edit, Rocket, Trash2, CheckSquare, Square, Settings } from 'lucide-react'
+import { Search, Plus, Filter, Calendar, Euro, Building, FileText, ExternalLink, Upload, Edit, Rocket, Trash2, CheckSquare, Square } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import BandoForm from './BandoForm'
 import ProgettoForm from './ProgettoForm'
-import DocumentTemplateEditor from './DocumentTemplateEditor'
 
 interface Bando {
   id: string
@@ -23,7 +22,7 @@ interface Bando {
   tempo_valutazione_giorni: number
   tipo_valutazione: 'A_PUNTEGGIO' | 'JUST_IN_TIME'
   stato_bando: string
-  stato_calcolato: string
+  stato_calcolato: string | null
   link_bando_ufficiale: string
   settori_ammessi: string[]
   dimensioni_aziendali_ammesse: string[]
@@ -40,17 +39,16 @@ interface Bando {
   updated_at: string
 }
 
-export default function BandiContent() {
+export default function BandiContent({ initialFilter }: { initialFilter?: string } = {}) {
   const [bandi, setBandi] = useState<Bando[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState(initialFilter || '')
   const [filtroStato, setFiltroStato] = useState<string>('tutti')
   const [filtroTipo, setFiltroTipo] = useState<string>('tutti')
   const [showNewBandoModal, setShowNewBandoModal] = useState(false)
   const [showEditBandoModal, setShowEditBandoModal] = useState(false)
   const [showProgettoModal, setShowProgettoModal] = useState(false)
-  const [selectedBando, setSelectedBando] = useState<Bando | null>(null)
   const [editingBando, setEditingBando] = useState<Bando | null>(null)
   const [progettoFromBando, setProgettoFromBando] = useState<Bando | null>(null)
   const [selectedBandiForDelete, setSelectedBandiForDelete] = useState<Set<string>>(new Set())
@@ -58,24 +56,71 @@ export default function BandiContent() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [bandoToDelete, setBandoToDelete] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [activeTab, setActiveTab] = useState<'info' | 'template'>('info')
 
   // Carica bandi
   useEffect(() => {
     fetchBandi()
   }, [])
 
+  // Aggiorna il filtro di ricerca quando viene passato un filtro iniziale
+  useEffect(() => {
+    if (initialFilter) {
+      setSearchTerm(initialFilter)
+    }
+  }, [initialFilter])
+
   const fetchBandi = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('scadenze_bandi_bandi_view')
+
+      // Prima ottieni tutti i bandi
+      const { data: bandiData, error: bandiError } = await supabase
+        .from('scadenze_bandi_bandi')
         .select('*')
         .order('data_chiusura_presentazione', { ascending: true })
 
-      if (error) throw error
+      if (bandiError) throw bandiError
 
-      setBandi(data || [])
+      // Poi aggiorna il conteggio progetti e calcola lo stato per ogni bando
+      const bandiWithProgetti = await Promise.all(
+        (bandiData || []).map(async (bando) => {
+          // Conta progetti totali collegati a questo bando
+          const { count: progettiCollegati, error: errorTotali } = await supabase
+            .from('scadenze_bandi_progetti')
+            .select('*', { count: 'exact', head: true })
+            .eq('bando_id', bando.id)
+
+          // Per semplicità, consideriamo tutti i progetti come attivi per ora
+          // Finché non implementiamo correttamente la gestione degli stati progetti
+          const progettiAttivi = progettiCollegati;
+
+          // Debug: logga i risultati per vedere cosa succede
+          console.log(`Bando ${bando.nome}: Progetti totali: ${progettiCollegati}, Progetti attivi: ${progettiAttivi}`)
+
+          // Calcola lo stato automaticamente basato sulle date
+          const oggi = new Date()
+          const dataApertura = new Date(bando.data_apertura_presentazione)
+          const dataChiusura = new Date(bando.data_chiusura_presentazione)
+
+          let statoCalcolato: string
+          if (oggi < dataApertura) {
+            statoCalcolato = 'IN_ARRIVO'
+          } else if (oggi >= dataApertura && oggi <= dataChiusura) {
+            statoCalcolato = 'APERTO'
+          } else {
+            statoCalcolato = 'SCADUTO'
+          }
+
+          return {
+            ...bando,
+            progetti_collegati: progettiCollegati || 0,
+            progetti_attivi: progettiAttivi || 0,
+            stato_calcolato: statoCalcolato
+          }
+        })
+      )
+
+      setBandi(bandiWithProgetti)
     } catch (err: any) {
       console.error('Errore nel caricamento bandi:', err)
       setError('Errore nel caricamento dei bandi')
@@ -83,6 +128,12 @@ export default function BandiContent() {
       setLoading(false)
     }
   }
+
+  // Calcola le statistiche dei bandi basate sui nuovi stati
+  const bandiAperti = bandi.filter(bando => bando.stato_calcolato === 'APERTO')
+  const bandiInArrivo = bandi.filter(bando => bando.stato_calcolato === 'IN_ARRIVO')
+  const bandiScaduti = bandi.filter(bando => bando.stato_calcolato === 'SCADUTO')
+  const totalProgettiAttivi = bandi.reduce((sum, bando) => sum + (bando.progetti_attivi || 0), 0)
 
   // Filtra bandi
   const bandiFiltrati = bandi.filter(bando => {
@@ -100,21 +151,17 @@ export default function BandiContent() {
     return true
   })
 
-  // Raggruppa bandi per stato
-  const bandiAperti = bandiFiltrati.filter(b => b.stato_calcolato === 'APERTO')
-  const bandiProssimi = bandiFiltrati.filter(b => b.stato_calcolato === 'PROSSIMA_APERTURA')
-  const bandiInValutazione = bandiFiltrati.filter(b => b.stato_calcolato === 'IN_VALUTAZIONE')
-  const bandiChiusi = bandiFiltrati.filter(b => b.stato_calcolato === 'CHIUSO')
 
   // Tipi di bando unici per filtro
-  const tipiBando = [...new Set(bandi.map(b => b.tipologia_bando).filter(Boolean))]
+  const tipiBando = Array.from(new Set(bandi.map(b => b.tipologia_bando).filter(Boolean)))
 
-  const getStatoColor = (stato: string) => {
+  const getStatoColor = (stato: string | null | undefined) => {
+    if (!stato) return 'bg-gray-100 text-gray-600 border-gray-200'
+
     switch (stato) {
       case 'APERTO': return 'bg-green-100 text-green-800 border-green-200'
-      case 'PROSSIMA_APERTURA': return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'IN_VALUTAZIONE': return 'bg-orange-100 text-orange-800 border-orange-200'
-      case 'CHIUSO': return 'bg-gray-100 text-gray-800 border-gray-200'
+      case 'IN_ARRIVO': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'SCADUTO': return 'bg-red-100 text-red-800 border-red-200'
       default: return 'bg-gray-100 text-gray-600 border-gray-200'
     }
   }
@@ -159,60 +206,7 @@ export default function BandiContent() {
     setProgettoFromBando(null)
   }
 
-  const handleTemplateSelect = (bando: Bando) => {
-    setSelectedBando(bando)
-    setActiveTab('template')
-  }
 
-  const saveDocumentTemplate = async (templateData: any) => {
-    try {
-      console.log('💾 Salvando template documento per bando:', templateData.bando_id)
-
-      // Sistema template multipli per bando
-      const templateId = `${templateData.bando_id}_${Date.now()}_${templateData.file_name.replace(/[^a-zA-Z0-9]/g, '_')}`
-
-      // Salva il singolo template con ID univoco
-      const templateWithId = {
-        ...templateData,
-        template_id: templateId,
-        saved_at: new Date().toISOString()
-      }
-      localStorage.setItem(`template_${templateId}`, JSON.stringify(templateWithId))
-
-      // Mantieni lista dei template per questo bando
-      const templatesListKey = `templates_list_${templateData.bando_id}`
-      const existingTemplates = JSON.parse(localStorage.getItem(templatesListKey) || '[]')
-
-      // Aggiungi nuovo template alla lista (sostituisci se stesso nome file)
-      const newTemplateRef = {
-        template_id: templateId,
-        file_name: templateData.file_name,
-        saved_at: new Date().toISOString(),
-        placeholders_count: templateData.placeholders_used?.length || 0
-      }
-
-      const filteredTemplates = existingTemplates.filter(t => t.file_name !== templateData.file_name)
-      filteredTemplates.push(newTemplateRef)
-
-      localStorage.setItem(templatesListKey, JSON.stringify(filteredTemplates))
-
-      // Mantieni compatibilità: salva anche con chiave vecchia (ultimo template)
-      localStorage.setItem(`template_${templateData.bando_id}`, JSON.stringify(templateData))
-
-      console.log('✅ Template salvato con ID:', templateId)
-      console.log('📋 Templates totali per bando:', filteredTemplates.length)
-
-      // ⚠️ La tabella scadenze_bandi_documento_templates non esiste
-      // Per ora usiamo solo localStorage fino a quando non viene creata la struttura DB
-
-      console.log('✅ Template salvato con successo!')
-      alert('✅ Template documento salvato!\n\nIl template sarà disponibile quando crei un progetto da questo bando.')
-
-    } catch (err) {
-      console.error('❌ Errore nel salvataggio template:', err)
-      alert('❌ Errore nel salvataggio del template. Riprova.')
-    }
-  }
 
   const handleDeleteBando = (bandoId: string) => {
     setBandoToDelete(bandoId)
@@ -230,10 +224,36 @@ export default function BandiContent() {
     try {
       const bandiIds = bandoToDelete ? [bandoToDelete] : Array.from(selectedBandiForDelete)
 
-      console.log('Eliminando bandi con cascade:', bandiIds)
-
-      // Per ogni bando, elimina prima tutti i progetti collegati (con le loro scadenze)
+      // Per ogni bando, elimina prima le cartelle Google Drive e poi i dati dal database
       for (const bandoId of bandiIds) {
+        // 0. Recupera i dati del bando per eliminazione Drive
+        const { data: bandoData } = await supabase
+          .from('scadenze_bandi_bandi')
+          .select('nome, drive_folder_id')
+          .eq('id', bandoId)
+          .single()
+
+        // Elimina cartella Google Drive se esiste
+        if (bandoData && (bandoData.drive_folder_id || bandoData.nome)) {
+          try {
+            const driveResponse = await fetch('/api/drive/delete-bando', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                bandoName: bandoData.nome,
+                driveFolderId: bandoData.drive_folder_id
+              })
+            })
+
+            if (driveResponse.ok) {
+              console.log(`✅ Cartella Drive bando "${bandoData.nome}" eliminata`)
+            } else {
+              console.warn(`⚠️ Impossibile eliminare cartella Drive bando "${bandoData.nome}":`, await driveResponse.text())
+            }
+          } catch (driveError) {
+            console.warn('⚠️ Errore eliminazione cartella Drive (continuo comunque):', driveError)
+          }
+        }
         // 1. Trova tutti i progetti collegati a questo bando
         const { data: progetti, error: progettiError } = await supabase
           .from('scadenze_bandi_progetti')
@@ -305,7 +325,6 @@ export default function BandiContent() {
       setShowDeleteConfirm(false)
       fetchBandi() // Ricarica la lista
 
-      console.log(`✅ Eliminati con successo ${bandiIds.length} bandi e tutti i progetti collegati`)
     } catch (error: any) {
       console.error('Errore nell\'eliminazione:', error)
       alert(`Errore: ${error.message || 'Impossibile eliminare il bando'}`)
@@ -340,128 +359,6 @@ export default function BandiContent() {
     )
   }
 
-  // Componente per visualizzare documenti del bando
-  const BandoDocumentsTab: React.FC<{
-    bandoId: string
-    onTemplateSelect: (template: any) => void
-  }> = ({ bandoId, onTemplateSelect }) => {
-    const [documentiEsistenti, setDocumentiEsistenti] = useState<any[]>([])
-    const [templateSalvati, setTemplateSalvati] = useState<any[]>([])
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-      caricaDocumenti()
-    }, [bandoId])
-
-    const caricaDocumenti = async () => {
-      setLoading(true)
-      try {
-        // Carica documenti esistenti dal database (per ora skip perché la tabella è vuota)
-        // La tabella scadenze_bandi_documenti_progetto è per documenti di progetto, non di bando
-        setDocumentiEsistenti([])
-
-        console.log('🔍 Skipping documenti database - tabella vuota secondo documentazione')
-
-        // Carica template salvati da localStorage
-        const templateKey = `template_${bandoId}`
-        const templateData = localStorage.getItem(templateKey)
-        if (templateData) {
-          const template = JSON.parse(templateData)
-          console.log('🔍 Template trovato per bando', bandoId, ':', template)
-          setTemplateSalvati([{
-            id: 'template_' + bandoId,
-            nome: template.fileName || 'Template Documento',
-            contenuto: template.content,
-            tipo: 'template',
-            data_creazione: new Date().toISOString(),
-            ...template
-          }])
-        } else {
-          setTemplateSalvati([])
-        }
-      } catch (error) {
-        console.error('Errore generale caricamento documenti:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (loading) {
-      return (
-        <div className="flex justify-center items-center h-32">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      )
-    }
-
-    const totaleDocumenti = templateSalvati.length  // Solo template per ora
-
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Documenti Bando ({totaleDocumenti})
-          </h3>
-        </div>
-
-        {/* Template Salvati */}
-        {templateSalvati.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="text-md font-medium text-purple-700 flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              Template Documenti ({templateSalvati.length})
-            </h4>
-            <div className="bg-purple-50 border border-purple-200 rounded-lg">
-              {templateSalvati.map((template, index) => (
-                <div
-                  key={template.id}
-                  className="p-4 border-b last:border-b-0 border-purple-200"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h5 className="font-medium text-purple-900">
-                        {template.nome || template.fileName || 'Template Documento'}
-                      </h5>
-                      <p className="text-sm text-purple-600 mt-1">
-                        Salvato con editor template • Pronto per eredità ai progetti
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                        Template
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Documenti Esistenti - Nascosto perché la tabella è vuota */}
-
-        {/* Messaggio quando non ci sono documenti */}
-        {totaleDocumenti === 0 && (
-          <div className="text-center py-12">
-            <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Nessun documento presente
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Non ci sono ancora documenti per questo bando. Usa l'Editor Template per creare i primi documenti.
-            </p>
-            <button
-              onClick={() => setActiveTab('template')}
-              className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 mx-auto"
-            >
-              <Settings className="w-4 h-4" />
-              Apri Editor Template
-            </button>
-          </div>
-        )}
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-6">
@@ -494,14 +391,14 @@ export default function BandiContent() {
             <>
               <button
                 onClick={() => setIsSelectMode(true)}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                className="bg-gradient-to-br from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg"
               >
                 <CheckSquare className="w-4 h-4" />
                 Seleziona
               </button>
               <button
                 onClick={() => setShowNewBandoModal(true)}
-                className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                className="bg-gradient-to-br from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg"
               >
                 <Plus className="w-4 h-4" />
                 Nuovo Bando
@@ -513,45 +410,45 @@ export default function BandiContent() {
 
       {/* Statistiche Rapide */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+        <div className="bg-gradient-to-br from-emerald-500 to-teal-500 p-4 rounded-xl border border-emerald-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-green-600">Aperti</p>
-              <p className="text-2xl font-bold text-green-900">{bandiAperti.length}</p>
+              <p className="text-sm font-bold text-emerald-100 drop-shadow-sm">Aperti</p>
+              <p className="text-2xl font-black text-white drop-shadow">{bandiAperti.length}</p>
             </div>
-            <Calendar className="w-8 h-8 text-green-600" />
+            <Calendar className="w-8 h-8 text-emerald-200 drop-shadow" />
           </div>
         </div>
 
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+        <div className="bg-gradient-to-br from-cyan-500 to-teal-500 p-4 rounded-xl border border-cyan-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-blue-600">In arrivo</p>
-              <p className="text-2xl font-bold text-blue-900">{bandiProssimi.length}</p>
+              <p className="text-sm font-bold text-cyan-100 drop-shadow-sm">In arrivo</p>
+              <p className="text-2xl font-black text-white drop-shadow">{bandiInArrivo.length}</p>
             </div>
-            <Calendar className="w-8 h-8 text-blue-600" />
+            <Calendar className="w-8 h-8 text-cyan-200 drop-shadow" />
           </div>
         </div>
 
-        <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+        <div className="bg-gradient-to-br from-amber-500 to-yellow-500 p-4 rounded-xl border border-amber-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-orange-600">In valutazione</p>
-              <p className="text-2xl font-bold text-orange-900">{bandiInValutazione.length}</p>
+              <p className="text-sm font-bold text-white drop-shadow-sm">Scaduti</p>
+              <p className="text-2xl font-black text-white drop-shadow">{bandiScaduti.length}</p>
             </div>
-            <Building className="w-8 h-8 text-orange-600" />
+            <Building className="w-8 h-8 text-white drop-shadow" />
           </div>
         </div>
 
-        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Progetti attivi</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {bandi.reduce((sum, b) => sum + (b.progetti_attivi || 0), 0)}
+              <p className="text-sm font-bold text-red-100 drop-shadow-sm">Progetti attivi</p>
+              <p className="text-2xl font-black text-white drop-shadow">
+                {totalProgettiAttivi}
               </p>
             </div>
-            <FileText className="w-8 h-8 text-gray-600" />
+            <FileText className="w-8 h-8 text-red-200 drop-shadow" />
           </div>
         </div>
       </div>
@@ -651,7 +548,7 @@ export default function BandiContent() {
               {bandiFiltrati.map((bando) => (
                 <tr key={bando.id} className="hover:bg-gray-50">
                   {isSelectMode && (
-                    <td className="px-6 py-4 whitespace-nowrap w-12">
+                    <td className="px-1 py-2 w-12">
                       <button
                         onClick={() => toggleSelectBando(bando.id)}
                         className="text-gray-600 hover:text-gray-800"
@@ -664,7 +561,7 @@ export default function BandiContent() {
                       </button>
                     </td>
                   )}
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-1 py-2">
                     <div>
                       <div className="text-sm font-medium text-gray-900">
                         {bando.nome}
@@ -674,10 +571,10 @@ export default function BandiContent() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-1 py-2 text-sm text-gray-900">
                     {bando.ente_erogatore}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-1 py-2">
                     <div className="text-sm">
                       <div>Apertura: <span className="font-medium">{formatDate(bando.data_apertura_presentazione)}</span></div>
                       <div>Chiusura: <span className="font-medium">{formatDate(bando.data_chiusura_presentazione)}</span></div>
@@ -686,18 +583,18 @@ export default function BandiContent() {
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-1 py-2">
                     <div className="text-sm">
                       <div>{formatCurrency(bando.contributo_massimo)}</div>
                       <div className="text-gray-500">{bando.percentuale_contributo}%</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-1 py-2">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getStatoColor(bando.stato_calcolato)}`}>
-                      {bando.stato_calcolato.replace('_', ' ')}
+                      {bando.stato_calcolato ? bando.stato_calcolato.replace('_', ' ') : 'N/A'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-1 py-2 text-sm text-gray-900">
                     <div className="text-center">
                       <div className="font-medium">{bando.progetti_collegati || 0}</div>
                       <div className="text-gray-500 text-xs">
@@ -705,15 +602,8 @@ export default function BandiContent() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <td className="px-1 py-2 text-sm font-medium">
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => setSelectedBando(bando)}
-                        className="text-blue-600 hover:text-blue-900"
-                        title="Visualizza dettagli"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
                       <button
                         onClick={() => handleEditBando(bando)}
                         className="text-orange-600 hover:text-orange-900"
@@ -721,15 +611,13 @@ export default function BandiContent() {
                       >
                         <Edit className="w-4 h-4" />
                       </button>
-                      {(bando.stato_calcolato === 'CHIUSO' || bando.stato_calcolato === 'IN_VALUTAZIONE') && (
-                        <button
-                          onClick={() => handleCreateProgetto(bando)}
-                          className="text-emerald-600 hover:text-emerald-900"
-                          title="Crea progetto da bando vinto"
-                        >
-                          <Rocket className="w-4 h-4" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleCreateProgetto(bando)}
+                        className="text-emerald-600 hover:text-emerald-900"
+                        title="Crea progetto da bando"
+                      >
+                        <Rocket className="w-4 h-4" />
+                      </button>
                       {bando.link_bando_ufficiale && (
                         <a
                           href={bando.link_bando_ufficiale}
@@ -741,13 +629,6 @@ export default function BandiContent() {
                           <ExternalLink className="w-4 h-4" />
                         </a>
                       )}
-                      <button
-                        onClick={() => handleTemplateSelect(bando)}
-                        className="text-purple-600 hover:text-purple-900"
-                        title="Gestisci template documenti"
-                      >
-                        <Settings className="w-4 h-4" />
-                      </button>
                       <button
                         onClick={() => handleDeleteBando(bando.id)}
                         className="text-red-600 hover:text-red-900"
@@ -774,194 +655,6 @@ export default function BandiContent() {
         )}
       </div>
 
-      {/* Modal dettagli bando */}
-      {selectedBando && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg max-w-7xl w-full max-h-[95vh] overflow-hidden m-4">
-            <div className="flex flex-col h-full">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{selectedBando.nome}</h2>
-                    <p className="text-gray-600">{selectedBando.codice_bando}</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSelectedBando(null)
-                      setActiveTab('info')
-                    }}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex space-x-1">
-                  <button
-                    onClick={() => setActiveTab('info')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg ${
-                      activeTab === 'info'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Eye className="w-4 h-4" />
-                      Informazioni
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('documenti')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg ${
-                      activeTab === 'documenti'
-                        ? 'bg-green-100 text-green-700'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      Documenti
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('template')}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg ${
-                      activeTab === 'template'
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Settings className="w-4 h-4" />
-                      Editor Template
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Contenuto Tab */}
-              <div className="flex-1 overflow-hidden">
-                {activeTab === 'info' ? (
-                  <div className="p-6 overflow-y-auto h-full">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2">Informazioni Generali</h3>
-                          <div className="space-y-2 text-sm">
-                            <div><span className="font-medium">Ente:</span> {selectedBando.ente_erogatore}</div>
-                            <div><span className="font-medium">Tipologia:</span> {selectedBando.tipologia_bando}</div>
-                            <div><span className="font-medium">Contributo Max:</span> {formatCurrency(selectedBando.contributo_massimo)}</div>
-                            <div><span className="font-medium">Budget Totale:</span> {formatCurrency(selectedBando.budget_totale)}</div>
-                            <div><span className="font-medium">% Contributo:</span> {selectedBando.percentuale_contributo}%</div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2">Scadenze</h3>
-                          <div className="space-y-2 text-sm">
-                            <div><span className="font-medium">Pubblicazione:</span> {formatDate(selectedBando.data_pubblicazione)}</div>
-                            <div><span className="font-medium">Apertura:</span> {formatDate(selectedBando.data_apertura_presentazione)}</div>
-                            <div><span className="font-medium">Chiusura:</span> {formatDate(selectedBando.data_chiusura_presentazione)}</div>
-                            <div><span className="font-medium">Valutazione:</span> {selectedBando.tempo_valutazione_giorni} giorni</div>
-                            <div><span className="font-medium">Tipo Valutazione:</span> {selectedBando.tipo_valutazione}</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2">Criteri di Ammissibilità</h3>
-                          <div className="space-y-2 text-sm">
-                            <div>
-                              <span className="font-medium">Settori:</span>
-                              <div className="mt-1">
-                                {selectedBando.settori_ammessi?.map(settore => (
-                                  <span key={settore} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1 mb-1">
-                                    {settore}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                            <div>
-                              <span className="font-medium">Dimensioni Aziendali:</span>
-                              <div className="mt-1">
-                                {selectedBando.dimensioni_aziendali_ammesse?.map(dim => (
-                                  <span key={dim} className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded mr-1 mb-1">
-                                    {dim}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                            <div><span className="font-medium">Area Geografica:</span> {selectedBando.localizzazione_geografica}</div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2">Contatti e Documenti</h3>
-                          <div className="space-y-2 text-sm">
-                            <div><span className="font-medium">Referente:</span> {selectedBando.referente_bando}</div>
-                            <div><span className="font-medium">Email:</span> {selectedBando.email_referente}</div>
-                            <div><span className="font-medium">Documenti caricati:</span> {selectedBando.documenti_caricati}</div>
-                            {selectedBando.link_bando_ufficiale && (
-                              <div>
-                                <a
-                                  href={selectedBando.link_bando_ufficiale}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Bando Ufficiale
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {selectedBando.note_interne && (
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Note Interne</h3>
-                            <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                              {selectedBando.note_interne}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {selectedBando.descrizione && (
-                      <div className="mt-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Descrizione</h3>
-                        <p className="text-sm text-gray-600 bg-gray-50 p-4 rounded">
-                          {selectedBando.descrizione}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : activeTab === 'documenti' ? (
-                  <div className="p-6 overflow-y-auto h-full">
-                    <BandoDocumentsTab
-                      bandoId={selectedBando.id}
-                      onTemplateSelect={(template) => {
-                        // Non far nulla per ora, solo visualizzazione
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div className="h-full p-6">
-                    <DocumentTemplateEditor
-                      bandoId={selectedBando.id}
-                      onSave={saveDocumentTemplate}
-                      existingTemplate={JSON.parse(localStorage.getItem(`template_${selectedBando.id}`) || 'null')}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Form Nuovo Bando */}
       {showNewBandoModal && (

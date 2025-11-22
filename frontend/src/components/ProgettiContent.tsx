@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Search, Plus, Filter, Calendar, Euro, Building, FileText, Clock, CheckCircle, AlertTriangle, Eye, Upload, Edit, Trash2, CheckSquare, Square } from 'lucide-react'
+import { Search, Plus, Filter, Calendar, Euro, Building, FileText, Clock, CheckCircle, AlertTriangle, Upload, Edit, Trash2, CheckSquare, Square } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import ProgettoForm from './ProgettoForm'
 
@@ -46,15 +46,13 @@ interface Progetto {
   updated_at: string
 }
 
-export default function ProgettiContent() {
+export default function ProgettiContent({ initialFilter, onNavigate }: { initialFilter?: string; onNavigate?: (page: string, params?: any) => void }) {
   const [progetti, setProgetti] = useState<Progetto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState(initialFilter || '')
   const [filtroStato, setFiltroStato] = useState<string>('tutti')
   const [filtroEnte, setFiltroEnte] = useState<string>('tutti')
-  const [selectedProgetto, setSelectedProgetto] = useState<Progetto | null>(null)
-  const [showNewProgettoModal, setShowNewProgettoModal] = useState(false)
   const [progettoInModifica, setProgettoInModifica] = useState<Progetto | null>(null)
   const [selectedProgettiForDelete, setSelectedProgettiForDelete] = useState<Set<string>>(new Set())
   const [isSelectMode, setIsSelectMode] = useState(false)
@@ -84,7 +82,6 @@ export default function ProgettiContent() {
         .eq('bando_id', progettoData.bando_id)
 
       // La tabella scadenze_bandi_template non esiste ancora nel database
-      console.log(`Skipping template check - tabella template non ancora implementata nel database`)
       return
 
       // Prepara le date di riferimento dal progetto esistente
@@ -107,7 +104,6 @@ export default function ProgettiContent() {
       for (const template of templateData) {
         const eventoRif = template.evento_riferimento
         if (!dateRiferimento[eventoRif]) {
-          console.log(`Data di riferimento '${eventoRif}' non disponibile per il progetto, skip scadenza`)
           continue
         }
 
@@ -183,7 +179,6 @@ export default function ProgettiContent() {
         giorni_preavviso: 7
       })
 
-      console.log(`Creando ${templatesDefault.length} template di default per il bando ${bandoNome}`)
 
       const { error } = await supabase
         .from('scadenze_bandi_template')
@@ -198,7 +193,6 @@ export default function ProgettiContent() {
           fullError: error
         })
       } else {
-        console.log(`Template di default creati per il bando ${bandoNome}`)
       }
 
     } catch (error) {
@@ -210,6 +204,13 @@ export default function ProgettiContent() {
   useEffect(() => {
     fetchProgetti()
   }, [])
+
+  // Aggiorna il filtro di ricerca quando viene passato un filtro iniziale
+  useEffect(() => {
+    if (initialFilter) {
+      setSearchTerm(initialFilter)
+    }
+  }, [initialFilter])
 
   const fetchProgetti = async () => {
     try {
@@ -279,10 +280,98 @@ export default function ProgettiContent() {
     try {
       const progettiIds = progettoToDelete ? [progettoToDelete] : Array.from(selectedProgettiForDelete)
 
-      console.log('Eliminando progetti:', progettiIds)
+      // 🔥 PRIMO: Recupera TUTTI i dati dei progetti PRIMA di eliminarli
+      console.log(`🔍 Pre-recupero dati per ${progettiIds.length} progetti prima dell'eliminazione`)
+      const progettiDataMap = new Map()
 
-      // Per ogni progetto, elimina prima le scadenze collegate
       for (const progettoId of progettiIds) {
+        console.log(`🔍 Pre-recupero dati progetto ID: ${progettoId}`)
+        try {
+          // Query semplificata per evitare problemi RLS (senza drive_folder_id che non esiste)
+          const { data: progettoBase, error: baseError } = await supabase
+            .from('scadenze_bandi_progetti')
+            .select('titolo_progetto, bando_id')
+            .eq('id', progettoId)
+            .single()
+
+          if (baseError) {
+            console.error(`❌ Errore recupero progetto ${progettoId}:`, baseError)
+            continue
+          }
+
+          if (!progettoBase) {
+            console.warn(`⚠️ Progetto ${progettoId} non trovato`)
+            continue
+          }
+
+          console.log(`📋 Dati progetto base pre-recuperati:`, progettoBase)
+
+          // Recupera nome bando se disponibile
+          let bandoNome = null
+          if (progettoBase.bando_id) {
+            const { data: bandoData } = await supabase
+              .from('scadenze_bandi_bandi')
+              .select('nome')
+              .eq('id', progettoBase.bando_id)
+              .single()
+
+            bandoNome = bandoData?.nome || null
+            console.log(`📋 Nome bando recuperato: ${bandoNome}`)
+          }
+
+          // Salva i dati nella mappa (senza drive_folder_id che non esiste nella DB)
+          progettiDataMap.set(progettoId, {
+            titolo_progetto: progettoBase.titolo_progetto,
+            bando_nome: bandoNome
+          })
+
+          console.log(`✅ Dati progetto ${progettoId} salvati per eliminazione successiva`)
+        } catch (error) {
+          console.error(`❌ Errore pre-recupero progetto ${progettoId}:`, error)
+        }
+      }
+
+      console.log(`📊 Pre-recuperati dati per ${progettiDataMap.size}/${progettiIds.length} progetti`)
+
+      // 🔥 SECONDO: Ora procedi con le eliminazioni Google Drive
+      for (const progettoId of progettiIds) {
+        const progettoData = progettiDataMap.get(progettoId)
+
+        if (!progettoData) {
+          console.warn(`⚠️ Saltando eliminazione Drive per progetto ${progettoId} - dati non disponibili`)
+          continue
+        }
+
+        console.log(`🗑️ Usando dati pre-recuperati per eliminazione Drive progetto: ${progettoData.titolo_progetto}`)
+
+        // Elimina cartella Google Drive se esiste
+        if (progettoData.titolo_progetto) {
+          console.log(`🗑️ Tentativo eliminazione cartella Drive per progetto: ${progettoData.titolo_progetto}`)
+          try {
+            const driveResponse = await fetch('/api/drive/delete-progetto', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                bandoName: progettoData.bando_nome,
+                progettoNome: progettoData.titolo_progetto,
+                // Senza drive_folder_id - l'API cercherà per nome progetto
+              })
+            })
+
+            if (driveResponse.ok) {
+              console.log(`✅ Cartella Drive progetto "${progettoData.titolo_progetto}" eliminata con successo`)
+            } else {
+              const errorText = await driveResponse.text()
+              console.warn(`⚠️ Impossibile eliminare cartella Drive progetto "${progettoData.titolo_progetto}":`, errorText)
+            }
+          } catch (driveError) {
+            console.warn('⚠️ Errore eliminazione cartella Drive (continuo comunque):', driveError)
+          }
+        } else {
+          console.log(`⚠️ Dati insufficienti per eliminazione Drive progetto ${progettoId}`)
+        }
+
+        // 1. Elimina le scadenze collegate al progetto
         const { error: scadenzeError } = await supabase
           .from('scadenze_bandi_scadenze')
           .delete()
@@ -316,7 +405,6 @@ export default function ProgettiContent() {
       setShowDeleteConfirm(false)
       fetchProgetti() // Ricarica la lista
 
-      console.log(`✅ Eliminati con successo ${progettiIds.length} progetti e relative scadenze`)
     } catch (error: any) {
       console.error('Errore nell\'eliminazione:', error)
       alert(`Errore: ${error.message || 'Impossibile eliminare il progetto'}`)
@@ -406,6 +494,12 @@ export default function ProgettiContent() {
     }).format(amount)
   }
 
+  const handleBandoClick = (bandoNome: string) => {
+    if (onNavigate) {
+      onNavigate('bandi', { filter: bandoNome })
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -445,17 +539,10 @@ export default function ProgettiContent() {
             <>
               <button
                 onClick={() => setIsSelectMode(true)}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                className="bg-gradient-to-br from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg"
               >
                 <CheckSquare className="w-4 h-4" />
                 Seleziona
-              </button>
-              <button
-                onClick={() => setShowNewProgettoModal(true)}
-                className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Nuovo Progetto
               </button>
             </>
           )}
@@ -464,43 +551,43 @@ export default function ProgettiContent() {
 
       {/* Statistiche Rapide */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+        <div className="bg-gradient-to-br from-amber-500 to-yellow-500 p-4 rounded-xl border border-amber-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-yellow-600">Decreto Atteso</p>
-              <p className="text-2xl font-bold text-yellow-900">{progettiDecretoAtteso.length}</p>
+              <p className="text-sm font-bold text-white drop-shadow-sm">Decreto Atteso</p>
+              <p className="text-2xl font-black text-white drop-shadow">{progettiDecretoAtteso.length}</p>
             </div>
-            <Clock className="w-8 h-8 text-yellow-600" />
+            <Clock className="w-8 h-8 text-white drop-shadow" />
           </div>
         </div>
 
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+        <div className="bg-gradient-to-br from-cyan-500 to-teal-500 p-4 rounded-xl border border-cyan-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-blue-600">Decreto Ricevuto</p>
-              <p className="text-2xl font-bold text-blue-900">{progettiDecretoRicevuto.length}</p>
+              <p className="text-sm font-bold text-cyan-100 drop-shadow-sm">Decreto Ricevuto</p>
+              <p className="text-2xl font-black text-white drop-shadow">{progettiDecretoRicevuto.length}</p>
             </div>
-            <AlertTriangle className="w-8 h-8 text-blue-600" />
+            <AlertTriangle className="w-8 h-8 text-cyan-200 drop-shadow" />
           </div>
         </div>
 
-        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+        <div className="bg-gradient-to-br from-emerald-500 to-teal-500 p-4 rounded-xl border border-emerald-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-green-600">In Corso</p>
-              <p className="text-2xl font-bold text-green-900">{progettiInCorso.length}</p>
+              <p className="text-sm font-bold text-emerald-100 drop-shadow-sm">In Corso</p>
+              <p className="text-2xl font-black text-white drop-shadow">{progettiInCorso.length}</p>
             </div>
-            <Building className="w-8 h-8 text-green-600" />
+            <Building className="w-8 h-8 text-emerald-200 drop-shadow" />
           </div>
         </div>
 
-        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Completati</p>
-              <p className="text-2xl font-bold text-gray-900">{progettiCompletati.length}</p>
+              <p className="text-sm font-bold text-red-100 drop-shadow-sm">Completati</p>
+              <p className="text-2xl font-black text-white drop-shadow">{progettiCompletati.length}</p>
             </div>
-            <CheckCircle className="w-8 h-8 text-gray-600" />
+            <CheckCircle className="w-8 h-8 text-red-200 drop-shadow" />
           </div>
         </div>
       </div>
@@ -557,8 +644,8 @@ export default function ProgettiContent() {
 
       {/* Lista Progetti */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto max-w-full">
+          <table className="w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 {isSelectMode && (
@@ -591,21 +678,22 @@ export default function ProgettiContent() {
                   Stato
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Progresso
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Scadenze
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Azioni
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {progettiFiltrati.map((progetto) => (
-                <tr key={progetto.id} className="hover:bg-gray-50">
+                <tr
+                  key={progetto.id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => setProgettoInModifica(progetto)}
+                >
                   {isSelectMode && (
-                    <td className="px-6 py-4 whitespace-nowrap w-12">
+                    <td
+                      className="px-6 py-4 whitespace-nowrap w-12"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <button
                         onClick={() => toggleSelectProgetto(progetto.id)}
                         className="text-gray-600 hover:text-gray-800"
@@ -618,7 +706,7 @@ export default function ProgettiContent() {
                       </button>
                     </td>
                   )}
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-1 py-2">
                     <div>
                       <div className="text-sm font-medium text-gray-900">
                         {progetto.titolo_progetto || 'Titolo non specificato'}
@@ -628,79 +716,44 @@ export default function ProgettiContent() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-1 py-2">
                     <div className="text-sm">
                       <div className="font-medium text-gray-900">{progetto.cliente_denominazione}</div>
                       <div className="text-gray-500">{progetto.cliente_piva}</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td
+                    className="px-1 py-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <div className="text-sm">
-                      <div className="font-medium text-gray-900">{progetto.bando_nome}</div>
+                      <button
+                        onClick={() => handleBandoClick(progetto.bando_nome)}
+                        className="font-medium text-blue-600 hover:text-blue-800 cursor-pointer transition-colors duration-150 text-left"
+                        title="Vai al bando"
+                      >
+                        {progetto.bando_nome}
+                      </button>
                       <div className="text-gray-500">{progetto.ente_erogatore}</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-1 py-2">
                     <div className="text-sm">
                       <div>Tot: <span className="font-medium">{formatCurrency(progetto.importo_totale_progetto)}</span></div>
                       <div className="text-green-600">Contr: {formatCurrency(progetto.contributo_ammesso)} ({progetto.percentuale_contributo}%)</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-1 py-2">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getStatoColor(progetto.stato_calcolato)}`}>
                       {progetto.stato_calcolato.replace('_', ' ')}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
-                        <div
-                          className={`h-2 rounded-full ${getProgressBarColor(progetto.percentuale_completamento)}`}
-                          style={{ width: `${progetto.percentuale_completamento}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-sm font-medium text-gray-700">
-                        {progetto.percentuale_completamento}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                  <td className="px-1 py-2 text-center">
                     <div className="text-sm">
                       <div className="font-medium">{progetto.scadenze_totali || 0}</div>
                       <div className={`text-xs ${progetto.scadenze_attive > 0 ? 'text-orange-600' : 'text-gray-500'}`}>
                         {progetto.scadenze_attive || 0} attive
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setSelectedProgetto(progetto)}
-                        className="text-blue-600 hover:text-blue-900"
-                        title="Visualizza dettagli"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setProgettoInModifica(progetto)}
-                        className="text-orange-600 hover:text-orange-900"
-                        title="Modifica progetto"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        className="text-purple-600 hover:text-purple-900"
-                        title="Carica documenti"
-                      >
-                        <Upload className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProgetto(progetto.id)}
-                        className="text-red-600 hover:text-red-900"
-                        title="Elimina progetto"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -720,167 +773,7 @@ export default function ProgettiContent() {
         )}
       </div>
 
-      {/* Modal dettagli progetto */}
-      {selectedProgetto && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto m-4">
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">{selectedProgetto.titolo_progetto}</h2>
-                  <p className="text-gray-600">{selectedProgetto.codice_progetto}</p>
-                </div>
-                <button
-                  onClick={() => setSelectedProgetto(null)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ✕
-                </button>
-              </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Colonna 1: Info Progetto */}
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Informazioni Progetto</h3>
-                    <div className="space-y-2 text-sm">
-                      <div><span className="font-medium">Stato:</span> {selectedProgetto.stato_calcolato}</div>
-                      <div><span className="font-medium">Progresso:</span> {selectedProgetto.percentuale_completamento}%</div>
-                      <div><span className="font-medium">Referente:</span> {selectedProgetto.referente_interno}</div>
-                      <div><span className="font-medium">Email:</span> {selectedProgetto.email_referente_interno}</div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Importi</h3>
-                    <div className="space-y-2 text-sm">
-                      <div><span className="font-medium">Importo Totale:</span> {formatCurrency(selectedProgetto.importo_totale_progetto)}</div>
-                      <div><span className="font-medium">Contributo Ammesso:</span> {formatCurrency(selectedProgetto.contributo_ammesso)}</div>
-                      <div><span className="font-medium">% Contributo:</span> {selectedProgetto.percentuale_contributo}%</div>
-                      {selectedProgetto.anticipo_richiedibile && (
-                        <div><span className="font-medium">% Anticipo:</span> {selectedProgetto.percentuale_anticipo}%</div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Bando Collegato</h3>
-                    <div className="space-y-2 text-sm">
-                      <div><span className="font-medium">Nome:</span> {selectedProgetto.bando_nome}</div>
-                      <div><span className="font-medium">Codice:</span> {selectedProgetto.codice_bando}</div>
-                      <div><span className="font-medium">Ente:</span> {selectedProgetto.ente_erogatore}</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Colonna 2: Date Critiche */}
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Date Critiche</h3>
-                    <div className="space-y-2 text-sm">
-                      <div><span className="font-medium">Decreto Concessione:</span> {formatDate(selectedProgetto.data_decreto_concessione)}</div>
-                      <div>
-                        <span className="font-medium">Scad. Accettazione:</span> {formatDate(selectedProgetto.scadenza_accettazione_esiti)}
-                        {selectedProgetto.giorni_ad_accettazione !== null && selectedProgetto.giorni_ad_accettazione >= 0 && (
-                          <span className="text-orange-600 ml-1">({selectedProgetto.giorni_ad_accettazione} gg)</span>
-                        )}
-                      </div>
-                      <div><span className="font-medium">Accettazione Effettiva:</span> {formatDate(selectedProgetto.data_effettiva_accettazione_esiti)}</div>
-                      <div><span className="font-medium">Avvio Progetto:</span> {formatDate(selectedProgetto.data_avvio_progetto)}</div>
-                      <div><span className="font-medium">Fine Prevista:</span> {formatDate(selectedProgetto.data_fine_progetto_prevista)}</div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Anticipo & SAL</h3>
-                    <div className="space-y-2 text-sm">
-                      <div>
-                        <span className="font-medium">Scad. Richiesta Anticipo:</span> {formatDate(selectedProgetto.scadenza_richiesta_anticipo)}
-                        {selectedProgetto.giorni_a_richiesta_anticipo !== null && selectedProgetto.giorni_a_richiesta_anticipo >= 0 && (
-                          <span className="text-orange-600 ml-1">({selectedProgetto.giorni_a_richiesta_anticipo} gg)</span>
-                        )}
-                      </div>
-                      <div><span className="font-medium">Richiesta Effettiva:</span> {formatDate(selectedProgetto.data_effettiva_richiesta_anticipo)}</div>
-                      <div><span className="font-medium">Numero SAL:</span> {selectedProgetto.numero_sal}</div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Rendicontazione</h3>
-                    <div className="space-y-2 text-sm">
-                      <div>
-                        <span className="font-medium">Scad. Rendicontazione:</span> {formatDate(selectedProgetto.scadenza_rendicontazione_finale)}
-                        {selectedProgetto.giorni_a_rendicontazione !== null && selectedProgetto.giorni_a_rendicontazione >= 0 && (
-                          <span className="text-orange-600 ml-1">({selectedProgetto.giorni_a_rendicontazione} gg)</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Colonna 3: Cliente e Documenti */}
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Cliente</h3>
-                    <div className="space-y-2 text-sm">
-                      <div><span className="font-medium">Denominazione:</span> {selectedProgetto.cliente_denominazione}</div>
-                      <div><span className="font-medium">P.IVA:</span> {selectedProgetto.cliente_piva}</div>
-                      <div><span className="font-medium">Email:</span> {selectedProgetto.cliente_email}</div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Scadenze & Documenti</h3>
-                    <div className="space-y-2 text-sm">
-                      <div><span className="font-medium">Scadenze Totali:</span> {selectedProgetto.scadenze_totali}</div>
-                      <div><span className="font-medium">Scadenze Attive:</span> {selectedProgetto.scadenze_attive}</div>
-                      <div><span className="font-medium">Documenti Caricati:</span> {selectedProgetto.documenti_caricati}</div>
-                    </div>
-                  </div>
-
-                  {selectedProgetto.note_progetto && (
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Note</h3>
-                      <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                        {selectedProgetto.note_progetto}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {selectedProgetto.descrizione_progetto && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Descrizione Progetto</h3>
-                  <p className="text-sm text-gray-600 bg-gray-50 p-4 rounded">
-                    {selectedProgetto.descrizione_progetto}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Placeholder per modal nuovo progetto */}
-      {showNewProgettoModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-bold mb-4">Nuovo Progetto</h2>
-            <p className="text-gray-600 mb-4">
-              Form di creazione progetto sarà implementato nel prossimo step.
-              <br />
-              Include selezione bando vincente e cliente.
-            </p>
-            <button
-              onClick={() => setShowNewProgettoModal(false)}
-              className="bg-blue-600 text-white px-4 py-2 rounded"
-            >
-              Chiudi
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Modal modifica progetto */}
       {progettoInModifica && (
@@ -889,6 +782,10 @@ export default function ProgettiContent() {
           onProgettoCreated={() => {
             setProgettoInModifica(null)
             fetchProgetti() // Ricarica la lista
+          }}
+          onDelete={(progettoId) => {
+            setProgettoInModifica(null)
+            handleDeleteProgetto(progettoId)
           }}
           progetto={progettoInModifica}
         />

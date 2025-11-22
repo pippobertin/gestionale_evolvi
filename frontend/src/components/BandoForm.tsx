@@ -21,6 +21,16 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useSession, signIn, signOut } from 'next-auth/react'
+import SimpleResponsableSelector from './SimpleResponsableSelector'
+
+interface EventoCatalogo {
+  id: string
+  nome: string
+  descrizione?: string
+  standard: boolean
+}
+
 
 // Interfacce
 interface TemplateScadenza {
@@ -52,7 +62,8 @@ interface BandoFormData {
   data_pubblicazione: string
   data_apertura_presentazione: string
   data_chiusura_presentazione: string
-  data_pubblicazione_graduatoria: string
+  data_base_calcolo: string
+  evento_base_id: string
   tempo_valutazione_giorni: number
   tipo_valutazione: 'A_PUNTEGGIO' | 'JUST_IN_TIME'
   stato_bando: string
@@ -74,8 +85,12 @@ interface BandoFormProps {
 type TabType = 'generale' | 'scadenze' | 'documenti'
 
 export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormProps) {
+  const { data: session, status } = useSession()
   const [activeTab, setActiveTab] = useState<TabType>('generale')
   const [loading, setLoading] = useState(false)
+  const [eventiCatalogo, setEventiCatalogo] = useState<EventoCatalogo[]>([])
+  const [showNuovoEvento, setShowNuovoEvento] = useState(false)
+  const [nuovoEvento, setNuovoEvento] = useState({ nome: '', descrizione: '' })
 
   // Dati del bando
   const [formData, setFormData] = useState<BandoFormData>({
@@ -91,7 +106,8 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
     data_pubblicazione: '',
     data_apertura_presentazione: '',
     data_chiusura_presentazione: '',
-    data_pubblicazione_graduatoria: '',
+    data_base_calcolo: '',
+    evento_base_id: '',
     tempo_valutazione_giorni: 60,
     tipo_valutazione: 'A_PUNTEGGIO',
     stato_bando: 'APERTO',
@@ -113,6 +129,11 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({})
 
+  // Carica eventi del catalogo
+  useEffect(() => {
+    fetchEventiCatalogo()
+  }, [])
+
   useEffect(() => {
     // Genera codice automatico per nuovo bando
     if (!bando) {
@@ -121,6 +142,12 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
 
     if (bando) {
       // Popola form per modifica
+      console.log('📋 Caricando bando dal database:', {
+        id: bando.id,
+        evento_base_id: bando.evento_base_id,
+        data_base_calcolo: bando.data_base_calcolo
+      })
+
       setFormData({
         codice_bando: bando.codice_bando || '',
         nome: bando.nome || '',
@@ -134,7 +161,8 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
         data_pubblicazione: bando.data_pubblicazione ? bando.data_pubblicazione.split('T')[0] : '',
         data_apertura_presentazione: bando.data_apertura_presentazione ? bando.data_apertura_presentazione.split('T')[0] : '',
         data_chiusura_presentazione: bando.data_chiusura_presentazione ? bando.data_chiusura_presentazione.split('T')[0] : '',
-        data_pubblicazione_graduatoria: bando.data_pubblicazione_graduatoria ? bando.data_pubblicazione_graduatoria.split('T')[0] : '',
+        data_base_calcolo: bando.data_base_calcolo ? bando.data_base_calcolo.split('T')[0] : '',
+        evento_base_id: bando.evento_base_id || '',
         tempo_valutazione_giorni: bando.tempo_valutazione_giorni || 60,
         tipo_valutazione: bando.tipo_valutazione || 'A_PUNTEGGIO',
         stato_bando: bando.stato_bando || 'APERTO',
@@ -153,6 +181,77 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
       loadTemplateDefault()
     }
   }, [bando])
+
+  // Effetto per aggiornare i template quando cambia l'evento base
+  useEffect(() => {
+    if (bando?.id && formData.evento_base_id && templateScadenze.length > 0) {
+      // Aggiorna i template esistenti con il nuovo evento base
+      const templatesAggiornati = templateScadenze.map(template => {
+        // Se il template fa riferimento a un evento base, aggiornalo
+        if (template.evento_riferimento?.startsWith('evento_base_')) {
+          return {
+            ...template,
+            evento_riferimento: `evento_base_${formData.evento_base_id}`
+          }
+        }
+        return template
+      })
+
+      setTemplateScadenze(templatesAggiornati)
+    }
+  }, [formData.evento_base_id])
+
+  // Funzioni per gestione eventi catalogo
+  const fetchEventiCatalogo = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('scadenze_bandi_eventi_catalogo')
+        .select('*')
+        .order('standard', { ascending: false })
+        .order('nome')
+
+      if (error) throw error
+      setEventiCatalogo(data || [])
+
+      // Se non c'è evento_base_id impostato E non stiamo modificando un bando esistente, usa il primo evento standard
+      if (!formData.evento_base_id && !bando && data && data.length > 0) {
+        const eventoDefault = data.find(e => e.nome === 'Pubblicazione Graduatoria') || data[0]
+        setFormData(prev => ({ ...prev, evento_base_id: eventoDefault.id }))
+        console.log('🆕 Impostando evento default per nuovo bando:', eventoDefault.nome)
+      }
+    } catch (error) {
+      console.error('Errore nel caricamento eventi catalogo:', error)
+    }
+  }
+
+  const handleAggiungiEvento = async () => {
+    if (!nuovoEvento.nome.trim()) return
+
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('scadenze_bandi_eventi_catalogo')
+        .insert([{
+          nome: nuovoEvento.nome.trim(),
+          descrizione: nuovoEvento.descrizione.trim() || null,
+          standard: false
+        }])
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setEventiCatalogo(prev => [...prev, data])
+      setFormData(prev => ({ ...prev, evento_base_id: data.id }))
+      setNuovoEvento({ nome: '', descrizione: '' })
+      setShowNuovoEvento(false)
+    } catch (error) {
+      console.error('Errore nell\'aggiunta evento:', error)
+      alert('Errore nell\'aggiunta del nuovo evento')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const generateCodiceBando = async () => {
     try {
@@ -207,21 +306,34 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
       if (error) throw error
 
       // Converte i template dal database nel formato dell'interfaccia
-      const templatesConverted = (data || []).map(template => ({
-        id: template.id,
-        nome: template.nome,
-        descrizione: template.descrizione,
-        giorni_da_evento: template.giorni_da_evento >= 60 ? Math.round(template.giorni_da_evento / 30) : template.giorni_da_evento,
-        unita_tempo: template.giorni_da_evento >= 60 ? 'mesi' : 'giorni',
-        evento_riferimento: template.evento_riferimento,
-        tipo_scadenza: template.tipo_scadenza,
-        priorita: template.priorita,
-        obbligatoria: template.obbligatoria,
-        ordine_sequenza: template.ordine_sequenza,
-        dipende_da_template_id: template.dipende_da_template_id,
-        responsabile_suggerito: template.responsabile_suggerito,
-        note_template: template.note_template
-      }))
+      const templatesConverted = (data || []).map((template, index) => {
+        // Aggiorna i riferimenti agli eventi in base all'evento base attuale del bando
+        let eventoRiferimentoAggiornato = template.evento_riferimento
+
+        // Se il template fa riferimento a un evento base, aggiornalo con l'evento base attuale
+        if (template.evento_riferimento?.startsWith('evento_base_')) {
+          const eventoBaseAttuale = formData.evento_base_id
+          if (eventoBaseAttuale) {
+            eventoRiferimentoAggiornato = `evento_base_${eventoBaseAttuale}`
+          }
+        }
+
+        return {
+          id: template.id,
+          nome: template.nome,
+          descrizione: template.descrizione,
+          giorni_da_evento: template.giorni_da_evento >= 60 ? Math.round(template.giorni_da_evento / 30) : template.giorni_da_evento,
+          unita_tempo: (template.giorni_da_evento >= 60 ? 'mesi' : 'giorni') as 'giorni' | 'mesi',
+          evento_riferimento: eventoRiferimentoAggiornato,
+          tipo_scadenza: template.tipo_scadenza,
+          priorita: template.priorita,
+          obbligatoria: template.obbligatoria,
+          ordine_sequenza: template.ordine_sequenza,
+          dipende_da_template_id: template.dipende_da_template_id,
+          responsabile_suggerito: template.responsabile_suggerito,
+          note_template: template.note_template
+        }
+      })
 
       setTemplateScadenze(templatesConverted)
     } catch (error) {
@@ -305,21 +417,56 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
 
         if (docError) throw docError
 
+        // Upload su Google Drive se connesso
+        if (session?.accessToken) {
+          try {
+            setUploadProgress(prev => ({ ...prev, [fileName]: 75 }))
+
+            // Converti file in base64 per l'API
+            const arrayBuffer = await file.arrayBuffer()
+            const fileBuffer = Buffer.from(arrayBuffer).toString('base64')
+
+            const driveResponse = await fetch('/api/drive/upload-file', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                bandoName: bando.nome,
+                categoria,
+                fileName,
+                fileBuffer
+              })
+            })
+
+            if (driveResponse.ok) {
+              const driveResult = await driveResponse.json()
+              console.log('✅ File caricato su Google Drive:', driveResult)
+            } else {
+              console.error('❌ Errore upload Drive:', await driveResponse.text())
+            }
+          } catch (driveError) {
+            console.error('❌ Errore Google Drive upload:', driveError)
+          }
+        }
+
         setUploadProgress(prev => ({ ...prev, [fileName]: 100 }))
 
         // Aggiorna lista documenti
         setDocumenti(prev => [docData, ...prev])
 
       } catch (error: any) {
-        console.error('Errore upload dettagliato:', {
-          error,
+        console.error('Errore upload file:', {
           fileName,
-          bando: bando?.id,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
+          bandoId: bando?.id,
+          message: error?.message || 'Errore sconosciuto',
+          details: error?.details || 'Nessun dettaglio',
+          hint: error?.hint || 'Nessun suggerimento',
+          code: error?.code || 'Nessun codice',
+          errorType: typeof error,
+          errorString: String(error)
         })
-        alert(`Errore caricando ${fileName}: ${error.message || 'Errore sconosciuto'}`)
+        alert(`Errore caricando ${fileName}: ${error?.message || 'Errore sconosciuto'}`)
       }
     }
 
@@ -478,11 +625,14 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
       // Prepara dati per salvataggio - rimuovi campi date vuoti
       const dataToSave = { ...formData }
 
-      // Gestisci date vuote
-      if (!dataToSave.data_pubblicazione) delete dataToSave.data_pubblicazione
-      if (!dataToSave.data_apertura_presentazione) delete dataToSave.data_apertura_presentazione
-      if (!dataToSave.data_chiusura_presentazione) delete dataToSave.data_chiusura_presentazione
-      if (!dataToSave.data_pubblicazione_graduatoria) delete dataToSave.data_pubblicazione_graduatoria
+      // Gestisci date vuote - rimuovi completamente i campi vuoti o assegna null
+      const fieldsToClean = ['data_pubblicazione', 'data_apertura_presentazione', 'data_chiusura_presentazione', 'data_base_calcolo']
+
+      fieldsToClean.forEach(field => {
+        if (!dataToSave[field as keyof typeof dataToSave] || dataToSave[field as keyof typeof dataToSave] === '') {
+          delete dataToSave[field as keyof typeof dataToSave]
+        }
+      })
 
       // Gestisci campi numerici
       if (!dataToSave.contributo_massimo) dataToSave.contributo_massimo = 0
@@ -492,6 +642,20 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
 
       // Gestisci enum
       if (!dataToSave.regime_aiuto) dataToSave.regime_aiuto = 'DE_MINIMIS'
+
+      // Assicurati che evento_base_id sia incluso (non può essere vuoto)
+      if (!dataToSave.evento_base_id) {
+        const eventoDefault = eventiCatalogo.find(e => e.standard && e.nome === 'Pubblicazione Graduatoria')
+        if (eventoDefault) {
+          dataToSave.evento_base_id = eventoDefault.id
+        }
+      }
+
+      console.log('📊 Dati che sto per salvare:', {
+        evento_base_id: dataToSave.evento_base_id,
+        data_base_calcolo: dataToSave.data_base_calcolo,
+        resto: Object.keys(dataToSave)
+      })
 
       let bandoId: string
 
@@ -519,19 +683,45 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
       // Salva template scadenze
       await saveTemplateScadenze(bandoId)
 
+      // Crea struttura Google Drive SOLO per nuovi bandi (non per modifiche)
+      if (!bando?.id && session?.accessToken) {
+        try {
+          const token = localStorage.getItem('auth_token')
+          const bandoResponse = await fetch('/api/drive/create-bando', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ bandoName: dataToSave.nome })
+          })
+
+          if (bandoResponse.ok) {
+            const bandoResult = await bandoResponse.json()
+            console.log('✅ Struttura Google Drive bando creata:', bandoResult)
+          } else {
+            const errorText = await bandoResponse.text()
+            console.warn('⚠️ Drive non disponibile (token scaduto?), continuo senza:', errorText)
+            // Non bloccare il salvataggio se Drive non funziona
+          }
+        } catch (driveError) {
+          console.error('❌ Errore Google Drive bando:', driveError)
+        }
+      }
+
       onBandoCreated()
       onClose()
     } catch (error: any) {
-      console.error('Errore nel salvataggio dettagliato:', {
-        error,
-        formData,
+      console.error('Errore nel salvataggio del bando:', {
+        message: error?.message || 'Errore sconosciuto',
+        details: error?.details || 'Nessun dettaglio',
+        hint: error?.hint || 'Nessun suggerimento',
+        code: error?.code || 'Nessun codice',
         bandoId: bando?.id,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
+        errorType: typeof error,
+        errorString: String(error)
       })
-      alert(`Errore nel salvataggio del bando: ${error.message || 'Errore sconosciuto'}`)
+      alert(`Errore nel salvataggio del bando: ${error?.message || 'Errore sconosciuto'}`)
     } finally {
       setLoading(false)
     }
@@ -576,33 +766,20 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
         if (error) throw error
       }
     } catch (error: any) {
-      console.error('Errore salvataggio template dettagliato:', {
-        error,
+      console.error('Errore salvataggio template:', {
         bandoId,
         templateCount: templateScadenze.length,
-        message: error.message,
-        details: error.details,
-        hint: error.hint
+        message: error?.message || 'Errore sconosciuto',
+        details: error?.details || 'Nessun dettaglio',
+        hint: error?.hint || 'Nessun suggerimento',
+        code: error?.code || 'Nessun codice',
+        errorType: typeof error,
+        errorString: String(error)
       })
       throw error
     }
   }
 
-  const addTemplateScadenza = () => {
-    const newTemplate: TemplateScadenza = {
-      nome: '',
-      descrizione: '',
-      giorni_da_evento: 30,
-      unita_tempo: 'giorni',
-      evento_riferimento: 'pubblicazione_graduatoria',
-      tipo_scadenza: 'comunicazione',
-      priorita: 'media',
-      obbligatoria: true,
-      ordine_sequenza: templateScadenze.length + 1
-    }
-    setTemplateScadenze([...templateScadenze, newTemplate])
-    setShowAddTemplate(false)
-  }
 
   const removeTemplateScadenza = (index: number) => {
     setTemplateScadenze(templateScadenze.filter((_, i) => i !== index))
@@ -628,13 +805,73 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
     { id: 'documenti', label: 'Documenti', icon: FileText }
   ]
 
-  const eventiRiferimento = [
-    { value: 'pubblicazione_bando', label: 'Pubblicazione Bando' },
-    { value: 'pubblicazione_graduatoria', label: 'Pubblicazione Graduatoria' },
-    { value: 'accettazione_esiti', label: 'Accettazione Esiti' },
-    { value: 'avvio_progetto', label: 'Avvio Progetto' },
-    { value: 'conclusione_progetto', label: 'Conclusione Progetto' }
-  ]
+  // Funzione dinamica per gli eventi di riferimento
+  const getEventiRiferimento = (currentIndex: number) => {
+    const eventi: Array<{value: string, label: string}> = []
+
+    // Per la prima scadenza, sempre l'evento base del bando
+    if (currentIndex === 0) {
+      const eventoBase = eventiCatalogo.find(e => e.id === formData.evento_base_id)
+      if (eventoBase) {
+        eventi.push({
+          value: `evento_base_${eventoBase.id}`,
+          label: `${eventoBase.nome} (Evento Base)`
+        })
+      }
+    } else {
+      // Per le scadenze successive, mostra l'evento base + le scadenze precedenti
+      const eventoBase = eventiCatalogo.find(e => e.id === formData.evento_base_id)
+      if (eventoBase) {
+        eventi.push({
+          value: `evento_base_${eventoBase.id}`,
+          label: `${eventoBase.nome} (Evento Base)`
+        })
+      }
+
+      // Aggiungi tutte le scadenze precedenti come possibili riferimenti
+      for (let i = 0; i < currentIndex; i++) {
+        const scadenzaPrecedente = templateScadenze[i]
+        if (scadenzaPrecedente && scadenzaPrecedente.nome) {
+          eventi.push({
+            value: `scadenza_${i}`,
+            label: `${scadenzaPrecedente.nome} (Scadenza ${i + 1})`
+          })
+        }
+      }
+    }
+
+    return eventi
+  }
+
+  const addTemplateScadenza = () => {
+    const currentIndex = templateScadenze.length
+    let eventoRiferimentoDefault = ''
+
+    // Per la prima scadenza, usa l'evento base del bando
+    if (currentIndex === 0) {
+      const eventoBase = eventiCatalogo.find(e => e.id === formData.evento_base_id)
+      if (eventoBase) {
+        eventoRiferimentoDefault = `evento_base_${eventoBase.id}`
+      }
+    } else {
+      // Per le scadenze successive, di default riferisciti alla scadenza precedente
+      eventoRiferimentoDefault = `scadenza_${currentIndex - 1}`
+    }
+
+    const newTemplate: TemplateScadenza = {
+      nome: '',
+      descrizione: '',
+      giorni_da_evento: 30,
+      unita_tempo: 'giorni',
+      evento_riferimento: eventoRiferimentoDefault,
+      tipo_scadenza: 'accettazione',
+      priorita: 'media',
+      obbligatoria: true,
+      ordine_sequenza: templateScadenze.length + 1,
+      responsabile_suggerito: 'amministrazione@blmproject.it'
+    }
+    setTemplateScadenze([...templateScadenze, newTemplate])
+  }
 
   const tipiScadenza = [
     { value: 'accettazione', label: 'Accettazione' },
@@ -832,7 +1069,7 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
                     </label>
                     <select
                       value={formData.regime_aiuto}
-                      onChange={(e) => setFormData({...formData, regime_aiuto: e.target.value})}
+                      onChange={(e) => setFormData({...formData, regime_aiuto: e.target.value as 'DE_MINIMIS' | 'ESENZIONE' | 'NO_AIUTO_STATO' | 'ALTRO'})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="DE_MINIMIS">De Minimis</option>
@@ -910,37 +1147,109 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
                 </div>
               </div>
 
-              {/* Date Eventi Critici */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Eventi Base e Date Critiche */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Selezione Evento Base */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Data Pubblicazione Graduatoria ⭐
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tipo Evento Base ⭐
+                  </label>
+                  <select
+                    value={formData.evento_base_id}
+                    onChange={(e) => setFormData({...formData, evento_base_id: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">Seleziona evento...</option>
+                    {eventiCatalogo.map(evento => (
+                      <option key={evento.id} value={evento.id}>
+                        {evento.nome} {evento.standard ? '(Standard)' : '(Personalizzato)'}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowNuovoEvento(!showNuovoEvento)}
+                    className="mt-2 text-sm text-primary-600 hover:text-primary-700"
+                  >
+                    + Aggiungi nuovo evento
+                  </button>
+
+                  {/* Form nuovo evento */}
+                  {showNuovoEvento && (
+                    <div className="mt-3 p-3 bg-gray-50 rounded border">
+                      <input
+                        type="text"
+                        placeholder="Nome evento..."
+                        value={nuovoEvento.nome}
+                        onChange={(e) => setNuovoEvento({...nuovoEvento, nome: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded mb-2"
+                      />
+                      <textarea
+                        placeholder="Descrizione (opzionale)..."
+                        value={nuovoEvento.descrizione}
+                        onChange={(e) => setNuovoEvento({...nuovoEvento, descrizione: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded mb-2"
+                        rows={2}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleAggiungiEvento}
+                          disabled={!nuovoEvento.nome.trim() || loading}
+                          className="px-3 py-1 bg-primary-600 text-white rounded text-sm hover:bg-primary-700 disabled:opacity-50"
+                        >
+                          Aggiungi
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowNuovoEvento(false)}
+                          className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400"
+                        >
+                          Annulla
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Data Base per Calcolo */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Data Base per Calcolo Scadenze ⭐
                   </label>
                   <input
                     type="date"
-                    value={formData.data_pubblicazione_graduatoria}
-                    onChange={(e) => setFormData({...formData, data_pubblicazione_graduatoria: e.target.value})}
+                    value={formData.data_base_calcolo}
+                    onChange={(e) => setFormData({...formData, data_base_calcolo: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                   />
                   <p className="text-xs text-primary-600 mt-1">
-                    Trigger principale per scadenze progetti
+                    Data dell'evento selezionato che farà scattare il calcolo delle scadenze
                   </p>
-                </div>
 
-                {/* Placeholder per future date critiche */}
-                <div className="col-span-2 bg-primary-50 p-4 rounded-lg border border-primary-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="w-4 h-4 text-primary-600" />
-                    <h4 className="font-medium text-primary-900">Date Eventi Trigger</h4>
-                  </div>
-                  <p className="text-sm text-primary-700">
-                    La <strong>Data Pubblicazione Graduatoria</strong> è fondamentale per calcolare automaticamente
-                    le scadenze dei progetti collegati a questo bando. Inseriscila quando il bando è concluso
-                    e puoi creare i progetti.
-                  </p>
-                  {formData.data_pubblicazione_graduatoria && (
-                    <div className="mt-2 text-sm text-green-700">
-                      ✅ Data impostata: {new Date(formData.data_pubblicazione_graduatoria).toLocaleDateString('it-IT')}
+                  {/* Informazioni sull'evento selezionato */}
+                  {formData.evento_base_id && (
+                    <div className="mt-3 p-3 bg-primary-50 rounded border border-primary-200">
+                      {(() => {
+                        const evento = eventiCatalogo.find(e => e.id === formData.evento_base_id)
+                        return evento ? (
+                          <div>
+                            <h4 className="font-medium text-primary-900 mb-1">
+                              {evento.nome}
+                            </h4>
+                            {evento.descrizione && (
+                              <p className="text-sm text-primary-700 mb-2">
+                                {evento.descrizione}
+                              </p>
+                            )}
+                            {formData.data_base_calcolo && (
+                              <div className="text-sm text-green-700">
+                                ✅ Data impostata: {new Date(formData.data_base_calcolo).toLocaleDateString('it-IT')}
+                              </div>
+                            )}
+                          </div>
+                        ) : null
+                      })()}
                     </div>
                   )}
                 </div>
@@ -1062,7 +1371,8 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
                             onChange={(e) => updateTemplateScadenza(index, 'evento_riferimento', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                           >
-                            {eventiRiferimento.map(evento => (
+                            <option value="">Seleziona evento di riferimento...</option>
+                            {getEventiRiferimento(index).map(evento => (
                               <option key={evento.value} value={evento.value}>{evento.label}</option>
                             ))}
                           </select>
@@ -1088,12 +1398,10 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Responsabile
                           </label>
-                          <input
-                            type="email"
+                          <SimpleResponsableSelector
                             value={template.responsabile_suggerito || ''}
-                            onChange={(e) => updateTemplateScadenza(index, 'responsabile_suggerito', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            placeholder="email@blmproject.it"
+                            onChange={(email) => updateTemplateScadenza(index, 'responsabile_suggerito', email)}
+                            placeholder="Seleziona responsabile per questa scadenza..."
                           />
                         </div>
                       </div>
@@ -1135,7 +1443,7 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
                       </div>
 
                       <div className="text-primary-600 font-medium">
-                        {template.giorni_da_evento} {template.unita_tempo} da {eventiRiferimento.find(e => e.value === template.evento_riferimento)?.label}
+                        {template.giorni_da_evento} {template.unita_tempo} da {getEventiRiferimento(index).find(e => e.value === template.evento_riferimento)?.label}
                       </div>
                     </div>
 

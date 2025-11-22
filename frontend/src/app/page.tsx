@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { AuthProvider, useAuth } from '@/contexts/AuthContext'
+import AuthForm from '@/components/AuthForm'
 import Sidebar from '@/components/Sidebar'
 import TopBar from '@/components/TopBar'
 import DashboardContent from '@/components/DashboardContent'
@@ -8,11 +10,43 @@ import ClientiContent from '@/components/ClientiContent'
 import ScadenzeContent from '@/components/ScadenzeContent'
 import BandiContent from '@/components/BandiContent'
 import ProgettiContent from '@/components/ProgettiContent'
+import SettingsContent from '@/components/SettingsContent'
+import { LoadingSpinner } from '@/components/shared'
 
-export default function HomePage() {
+function AppContent() {
+  const { user, loading } = useAuth()
   const [activeItem, setActiveItem] = useState('dashboard')
   const [sidebarExpanded, setSidebarExpanded] = useState(true)
+  const [navigationParams, setNavigationParams] = useState<any>(null)
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner size="large" text="Caricamento..." />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <AuthForm />
+  }
+
+  const handleNavigation = (page: string, params?: any) => {
+    setActiveItem(page)
+    setNavigationParams(params)
+  }
+
+  return <MainApp activeItem={activeItem} setActiveItem={setActiveItem} navigationParams={navigationParams} onNavigate={handleNavigation} sidebarExpanded={sidebarExpanded} setSidebarExpanded={setSidebarExpanded} />
+}
+
+function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, sidebarExpanded, setSidebarExpanded }: {
+  activeItem: string
+  setActiveItem: (item: string) => void
+  navigationParams: any
+  onNavigate: (page: string, params?: any) => void
+  sidebarExpanded: boolean
+  setSidebarExpanded: (expanded: boolean) => void
+}) {
   const getPageTitle = () => {
     switch (activeItem) {
       case 'dashboard': return 'Dashboard'
@@ -44,15 +78,15 @@ export default function HomePage() {
   const renderContent = () => {
     switch (activeItem) {
       case 'dashboard':
-        return <DashboardContent onNavigate={setActiveItem} />
+        return <DashboardContent onNavigate={onNavigate} />
       case 'scadenze':
         return <ScadenzeContent />
       case 'clienti':
-        return <ClientiContent />
+        return <ClientiContent onNavigate={onNavigate} />
       case 'bandi':
-        return <BandiContent />
+        return <BandiContent initialFilter={navigationParams?.filter} />
       case 'progetti':
-        return <ProgettiContent />
+        return <ProgettiContent initialFilter={navigationParams?.clienteFilter} onNavigate={onNavigate} />
       case 'consulenti':
         return (
           <div className="bg-white rounded-lg card-shadow p-8 text-center">
@@ -68,14 +102,9 @@ export default function HomePage() {
           </div>
         )
       case 'settings':
-        return (
-          <div className="bg-white rounded-lg card-shadow p-8 text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Impostazioni Sistema</h2>
-            <p className="text-gray-600">Sezione in sviluppo - Configurazione sistema</p>
-          </div>
-        )
+        return <SettingsContent />
       default:
-        return <DashboardContent />
+        return <DashboardContent onNavigate={setActiveItem} />
     }
   }
 
@@ -103,5 +132,13 @@ export default function HomePage() {
         </main>
       </div>
     </div>
+  )
+}
+
+export default function HomePage() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   )
 }

@@ -14,13 +14,11 @@ import {
   Euro,
   Users,
   Hash,
-  Globe,
-  CreditCard,
-  Star,
-  Clock,
-  Target
+  FolderOpen
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import ReferentiManager from './ReferentiManager'
+import DocumentiManager from './DocumentiManager'
 
 interface Cliente {
   id: string
@@ -29,13 +27,16 @@ interface Cliente {
   partita_iva?: string
   rea?: string
   codice_fiscale?: string
-  ateco?: string
+  ateco_2025?: string
+  ateco_descrizione?: string
   data_costituzione?: string
   email?: string
   pec?: string
   telefono?: string
   sito_web?: string
   coordinate_bancarie?: string
+  banca_filiale?: string
+  estremi_iscrizione_runts?: string
   sdi?: string
   indirizzo_fatturazione?: string
   cap_fatturazione?: string
@@ -51,16 +52,27 @@ interface Cliente {
   numero_dipendenti?: number
   numero_volontari?: number
   numero_collaboratori?: number
-  categoria_evolvi?: 'BASE' | 'PREMIUM' | 'BUSINESS' | 'ENTERPRISE'
+  categoria_evolvi?: 'CLIENTE_SPOT' | 'EVOLVI_BASE' | 'EVOLVI_FULL'
   durata_evolvi?: string
   scadenza_evolvi?: string
-  assegnato_a?: string
-  target?: string
-  membro_di?: string
-  proprietario?: string
   rating?: number
   descrizione?: string
   note?: string
+  // Legale rappresentante
+  legale_rappresentante_nome?: string
+  legale_rappresentante_cognome?: string
+  legale_rappresentante_codice_fiscale?: string
+  legale_rappresentante_data_nascita?: string
+  legale_rappresentante_luogo_nascita?: string
+  legale_rappresentante_provincia_nascita?: string
+  legale_rappresentante_nazionalita?: string
+  legale_rappresentante_indirizzo?: string
+  legale_rappresentante_cap?: string
+  legale_rappresentante_citta?: string
+  legale_rappresentante_provincia?: string
+  legale_rappresentante_email?: string
+  legale_rappresentante_telefono?: string
+  legale_rappresentante_note?: string
   created_at: string
   updated_at: string
 }
@@ -75,7 +87,7 @@ interface ClienteDettaglioProps {
 export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }: ClienteDettaglioProps) {
   const [cliente, setCliente] = useState<Cliente | null>(null)
   const [loading, setLoading] = useState(true)
-  const [clienteCollegato, setClienteCollegato] = useState<Cliente | null>(null)
+  const [currentTab, setCurrentTab] = useState('anagrafica')
 
   useEffect(() => {
     if (isOpen && clienteId) {
@@ -94,19 +106,6 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
 
       if (error) throw error
       setCliente(data)
-
-      // Carica anche l'azienda collegata se esiste
-      if (data.impresa_collegata_id) {
-        const { data: collegata, error: erroreCollegata } = await supabase
-          .from('scadenze_bandi_clienti')
-          .select('*')
-          .eq('id', data.impresa_collegata_id)
-          .single()
-
-        if (!erroreCollegata) {
-          setClienteCollegato(collegata)
-        }
-      }
     } catch (error) {
       console.error('Errore nel caricamento cliente:', error)
     } finally {
@@ -114,89 +113,9 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
     }
   }
 
-  // Calcola dimensione aggregata considerando collegamenti aziendali
-  const calcolaDimensioneAggregata = (cliente: Cliente): string => {
-    if (!cliente.ula && !cliente.ultimo_fatturato && !cliente.attivo_bilancio) {
-      return cliente.dimensione || ''
-    }
-
-    let ulaTotal = cliente.ula || 0
-    let fatturatoTotal = cliente.ultimo_fatturato || 0
-    let attivoTotal = cliente.attivo_bilancio || 0
-
-    // Se c'è un collegamento aziendale, aggrega i dati dell'azienda collegata
-    if (cliente.tipo_collegamento !== 'AUTONOMA' && cliente.impresa_collegata_id && clienteCollegato) {
-      const percentuale = (cliente.percentuale_partecipazione || 0) / 100
-
-      if (cliente.tipo_collegamento === 'COLLEGATA') {
-        // Per aziende collegate (25-49.99%): somma proporzionale alla partecipazione
-        ulaTotal += (clienteCollegato.ula || 0) * percentuale
-        fatturatoTotal += (clienteCollegato.ultimo_fatturato || 0) * percentuale
-        attivoTotal += (clienteCollegato.attivo_bilancio || 0) * percentuale
-      } else if (cliente.tipo_collegamento === 'ASSOCIATA') {
-        // Per aziende associate (≥50%): somma il 100%
-        ulaTotal += clienteCollegato.ula || 0
-        fatturatoTotal += clienteCollegato.ultimo_fatturato || 0
-        attivoTotal += clienteCollegato.attivo_bilancio || 0
-      }
-    }
-
-    // Applica i limiti UE 2003/361/CE
-    if (ulaTotal < 10 && (fatturatoTotal <= 2000000 || attivoTotal <= 2000000)) return 'MICRO'
-    if (ulaTotal < 50 && (fatturatoTotal <= 10000000 || attivoTotal <= 10000000)) return 'PICCOLA'
-    if (ulaTotal < 250 && (fatturatoTotal <= 50000000 || attivoTotal <= 43000000)) return 'MEDIA'
-    return 'GRANDE'
-  }
-
-  const formatCurrency = (amount?: number) => {
-    if (!amount) return '-'
-    return new Intl.NumberFormat('it-IT', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0
-    }).format(amount)
-  }
-
   const formatDate = (dateString?: string) => {
-    if (!dateString) return '-'
-    return new Date(dateString).toLocaleDateString('it-IT')
-  }
-
-  const getDimensioneColor = (dimensione?: string) => {
-    switch (dimensione) {
-      case 'MICRO': return 'bg-green-100 text-green-800 border-green-200'
-      case 'PICCOLA': return 'bg-blue-100 text-blue-800 border-blue-200'
-      case 'MEDIA': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'GRANDE': return 'bg-purple-100 text-purple-800 border-purple-200'
-      default: return 'bg-gray-100 text-gray-800 border-gray-200'
-    }
-  }
-
-  const getCategoriaColor = (categoria?: string) => {
-    switch (categoria) {
-      case 'BASE': return 'bg-gray-100 text-gray-800'
-      case 'PREMIUM': return 'bg-blue-100 text-blue-800'
-      case 'BUSINESS': return 'bg-green-100 text-green-800'
-      case 'ENTERPRISE': return 'bg-purple-100 text-purple-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const renderRating = (rating?: number) => {
-    if (!rating) return <span className="text-gray-400">Nessun rating</span>
-
-    return (
-      <div className="flex items-center space-x-1">
-        {Array.from({ length: 5 }, (_, i) => (
-          <Star
-            key={i}
-            className={`w-4 h-4 ${
-              i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-            }`}
-          />
-        ))}
-      </div>
-    )
+    if (!dateString) return ''
+    return new Date(dateString).toISOString().split('T')[0]
   }
 
   if (!isOpen) return null
@@ -225,24 +144,509 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
     )
   }
 
+  const tabs = [
+    { id: 'anagrafica', label: 'Dati Anagrafici', icon: Building2 },
+    { id: 'contatti', label: 'Contatti', icon: Mail },
+    { id: 'legale', label: 'Legale Rappresentante', icon: User },
+    { id: 'dimensionamento', label: 'Dimensionamento', icon: Users },
+    { id: 'collegamenti', label: 'Rapporti di Collegamento', icon: Hash },
+    { id: 'gestione', label: 'Gestione', icon: FileText },
+    { id: 'documenti', label: 'Documenti', icon: FolderOpen }
+  ]
+
+  const renderTabContent = () => {
+    switch (currentTab) {
+      case 'anagrafica':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Denominazione</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.denominazione || '-'}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Numero Azienda</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.numero_azienda || '-'}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Partita IVA</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.partita_iva || '-'}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Codice Fiscale</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.codice_fiscale || '-'}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">REA</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.rea || '-'}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Codice ATECO 2025</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.ateco_2025 || '-'}
+                </div>
+                {cliente.ateco_descrizione && (
+                  <p className="text-xs text-gray-600 mt-1">
+                    <strong>Attività:</strong> {cliente.ateco_descrizione}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Data Costituzione</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.data_costituzione ? new Date(cliente.data_costituzione).toLocaleDateString('it-IT') : '-'}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Estremi iscrizione al RUNTS</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.estremi_iscrizione_runts || '-'}
+                </div>
+              </div>
+            </div>
+
+            {/* Sezione Dati Bancari */}
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Euro className="w-5 h-5 mr-2" />
+                Dati Bancari e Fatturazione
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Coordinate Bancarie (IBAN)</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.coordinate_bancarie || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Banca/Filiale</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.banca_filiale || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Codice SDI</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.sdi || '-'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Indirizzo */}
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <MapPin className="w-5 h-5 mr-2" />
+                Indirizzo di Fatturazione
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Indirizzo</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.indirizzo_fatturazione || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">CAP</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.cap_fatturazione || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Città</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.citta_fatturazione || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Provincia</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.provincia_fatturazione || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Stato</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.stato_fatturazione || '-'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'contatti':
+        return (
+          <div className="space-y-6">
+            {/* Contatti aziendali principali */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Mail className="w-5 h-5 mr-2" />
+                Contatti Aziendali Principali
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.email || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">PEC</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.pec || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Telefono</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.telefono || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Sito Web</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.sito_web || '-'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Referenti aziendali */}
+            <div className="border-t pt-6">
+              <ReferentiManager
+                clienteId={cliente.id}
+                isNewClient={false}
+              />
+            </div>
+          </div>
+        )
+
+      case 'legale':
+        return (
+          <div className="space-y-6">
+            {/* Dati Anagrafici */}
+            <div>
+              <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+                <User className="w-4 h-4 mr-2" />
+                Dati Anagrafici
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.legale_rappresentante_nome || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Cognome</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.legale_rappresentante_cognome || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Codice Fiscale</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.legale_rappresentante_codice_fiscale || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Data di Nascita</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.legale_rappresentante_data_nascita ? new Date(cliente.legale_rappresentante_data_nascita).toLocaleDateString('it-IT') : '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Luogo di Nascita</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.legale_rappresentante_luogo_nascita || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Provincia di Nascita</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.legale_rappresentante_provincia_nascita || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nazionalità</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.legale_rappresentante_nazionalita || '-'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Indirizzo */}
+            <div>
+              <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+                <MapPin className="w-4 h-4 mr-2" />
+                Indirizzo di Residenza
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Indirizzo</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.legale_rappresentante_indirizzo || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">CAP</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.legale_rappresentante_cap || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Città</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.legale_rappresentante_citta || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Provincia</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.legale_rappresentante_provincia || '-'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Contatti */}
+            <div>
+              <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+                <Mail className="w-4 h-4 mr-2" />
+                Contatti
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.legale_rappresentante_email || '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Telefono</label>
+                  <div className="input bg-gray-50 cursor-not-allowed">
+                    {cliente.legale_rappresentante_telefono || '-'}
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Note</label>
+                  <div className="input bg-gray-50 cursor-not-allowed min-h-[80px]">
+                    {cliente.legale_rappresentante_note || '-'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'dimensionamento':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">ULA (Unità Lavorative Annue)</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.ula || '-'}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ultimo Fatturato (€)</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.ultimo_fatturato ? cliente.ultimo_fatturato.toLocaleString('it-IT') : '-'}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Attivo di Bilancio (€)</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.attivo_bilancio ? cliente.attivo_bilancio.toLocaleString('it-IT') : '-'}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Numero Dipendenti</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.numero_dipendenti || 0}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Numero Volontari</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.numero_volontari || 0}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Numero Collaboratori</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.numero_collaboratori || 0}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Matricola INPS</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.matricola_inps || '-'}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">PAT INAIL</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.pat_inail || '-'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'collegamenti':
+        return (
+          <div className="space-y-6">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-yellow-800 mb-2">
+                ⚖️ Rapporti di Collegamento/Controllo (UE 2003/361/CE)
+              </h4>
+              <p className="text-xs text-yellow-700">
+                Visualizzazione in sola lettura. Cliccare "Modifica" per gestire i rapporti di collegamento.
+              </p>
+            </div>
+            <div className="text-center py-8 text-gray-500">
+              <Building2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Per visualizzare e gestire i rapporti di collegamento,</p>
+              <p className="text-sm">utilizzare la modalità modifica cliente</p>
+            </div>
+          </div>
+        )
+
+      case 'gestione':
+        const showEvolviFields = cliente.categoria_evolvi === 'EVOLVI_BASE' || cliente.categoria_evolvi === 'EVOLVI_FULL'
+
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+                <div className="input bg-gray-50 cursor-not-allowed">
+                  {cliente.categoria_evolvi === 'CLIENTE_SPOT' ? 'Cliente spot' :
+                   cliente.categoria_evolvi === 'EVOLVI_BASE' ? 'Evolvi Base' :
+                   cliente.categoria_evolvi === 'EVOLVI_FULL' ? 'Evolvi Full' : '-'}
+                </div>
+              </div>
+
+              {showEvolviFields && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Scadenza Evolvi</label>
+                    <div className="input bg-gray-50 cursor-not-allowed">
+                      {cliente.scadenza_evolvi ? new Date(cliente.scadenza_evolvi).toLocaleDateString('it-IT') : '-'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Durata Evolvi</label>
+                    <div className="input bg-gray-50 cursor-not-allowed">
+                      {cliente.durata_evolvi || '-'}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Informazione per clienti spot */}
+            {cliente.categoria_evolvi === 'CLIENTE_SPOT' && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <FileText className="w-5 h-5 text-yellow-600 mr-2" />
+                  <h4 className="text-yellow-800 font-medium">Cliente Spot</h4>
+                </div>
+                <p className="text-yellow-700 text-sm mt-2">
+                  Cliente occasionale senza abbonamento Evolvi.
+                </p>
+              </div>
+            )}
+
+            {/* Informazione per clienti Evolvi */}
+            {showEvolviFields && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <FileText className="w-5 h-5 text-blue-600 mr-2" />
+                  <h4 className="text-blue-800 font-medium">Cliente Evolvi</h4>
+                </div>
+                <p className="text-blue-700 text-sm mt-2">
+                  Cliente con abbonamento attivo {cliente.categoria_evolvi === 'EVOLVI_BASE' ? 'Base' : 'Full'}.
+                </p>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Descrizione</label>
+              <div className="input bg-gray-50 cursor-not-allowed min-h-[80px]">
+                {cliente.descrizione || '-'}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Note</label>
+              <div className="input bg-gray-50 cursor-not-allowed min-h-[80px]">
+                {cliente.note || '-'}
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'documenti':
+        return (
+          <div className="space-y-6">
+            <DocumentiManager
+              clienteId={cliente.id}
+              isNewClient={false}
+            />
+          </div>
+        )
+
+      default:
+        return null
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-hard max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-hard max-w-7xl w-full max-h-[95vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="gradient-primary text-white p-6 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Building2 className="w-6 h-6" />
-            <div>
-              <h2 className="text-xl font-bold">{cliente.denominazione}</h2>
-              {cliente.partita_iva && (
-                <p className="text-primary-100 text-sm">P.IVA: {cliente.partita_iva}</p>
-              )}
-            </div>
+            <h2 className="text-xl font-bold">
+              {cliente.denominazione}
+            </h2>
           </div>
           <div className="flex items-center space-x-2">
             <button
               onClick={() => onEdit(cliente)}
               className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              title="Modifica cliente"
             >
               <Edit className="w-5 h-5" />
             </button>
@@ -255,331 +659,32 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="border-b border-gray-200 px-6">
+          <div className="flex space-x-6 overflow-x-auto min-w-full">
+            {tabs.map((tab) => {
+              const Icon = tab.icon
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setCurrentTab(tab.id)}
+                  className={`py-4 px-2 border-b-2 font-medium text-sm flex items-center space-x-2 transition-colors flex-shrink-0 ${
+                    currentTab === tab.id
+                      ? 'border-primary-500 text-primary-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{tab.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] space-y-8">
-          {/* Riepilogo */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="card p-4 text-center">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                <Euro className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="text-2xl font-bold text-gray-900">
-                {formatCurrency(cliente.ultimo_fatturato)}
-              </div>
-              <div className="text-sm text-gray-600">Ultimo Fatturato</div>
-            </div>
-
-            <div className="card p-4 text-center">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                <Users className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="text-2xl font-bold text-gray-900">
-                {cliente.numero_dipendenti || 0}
-              </div>
-              <div className="text-sm text-gray-600">Dipendenti</div>
-            </div>
-
-            <div className="card p-4 text-center">
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                <Hash className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div className="text-2xl font-bold text-gray-900">
-                {cliente.ula || '-'}
-              </div>
-              <div className="text-sm text-gray-600">ULA</div>
-            </div>
-
-            <div className="card p-4 text-center">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                <Star className="w-6 h-6 text-purple-600" />
-              </div>
-              <div className="mb-2">
-                {renderRating(cliente.rating)}
-              </div>
-              <div className="text-sm text-gray-600">Rating</div>
-            </div>
-          </div>
-
-          {/* Dati Anagrafici */}
-          <div className="card p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <Building2 className="w-5 h-5 mr-2" />
-              Dati Anagrafici
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {cliente.numero_azienda && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-500">Numero Azienda</label>
-                  <p className="text-gray-900">{cliente.numero_azienda}</p>
-                </div>
-              )}
-              {cliente.codice_fiscale && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-500">Codice Fiscale</label>
-                  <p className="text-gray-900">{cliente.codice_fiscale}</p>
-                </div>
-              )}
-              {cliente.rea && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-500">REA</label>
-                  <p className="text-gray-900">{cliente.rea}</p>
-                </div>
-              )}
-              {cliente.ateco && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-500">Codice ATECO</label>
-                  <p className="text-gray-900">{cliente.ateco}</p>
-                </div>
-              )}
-              {cliente.data_costituzione && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-500">Data Costituzione</label>
-                  <p className="text-gray-900">{formatDate(cliente.data_costituzione)}</p>
-                </div>
-              )}
-              {calcolaDimensioneAggregata(cliente) && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-500">Dimensione</label>
-                  <span className={`badge ${getDimensioneColor(calcolaDimensioneAggregata(cliente))}`}>
-                    {calcolaDimensioneAggregata(cliente)}
-                  </span>
-                  {cliente.tipo_collegamento !== 'AUTONOMA' && cliente.impresa_collegata_id && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      📊 Calcolo aggregato secondo UE 2003/361/CE
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Contatti */}
-          <div className="card p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <Mail className="w-5 h-5 mr-2" />
-              Contatti
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                {cliente.email && (
-                  <div className="flex items-center space-x-3">
-                    <Mail className="w-4 h-4 text-gray-400" />
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Email</label>
-                      <p className="text-gray-900">{cliente.email}</p>
-                    </div>
-                  </div>
-                )}
-                {cliente.pec && (
-                  <div className="flex items-center space-x-3">
-                    <Mail className="w-4 h-4 text-gray-400" />
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">PEC</label>
-                      <p className="text-gray-900">{cliente.pec}</p>
-                    </div>
-                  </div>
-                )}
-                {cliente.telefono && (
-                  <div className="flex items-center space-x-3">
-                    <Phone className="w-4 h-4 text-gray-400" />
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Telefono</label>
-                      <p className="text-gray-900">{cliente.telefono}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="space-y-4">
-                {cliente.sito_web && (
-                  <div className="flex items-center space-x-3">
-                    <Globe className="w-4 h-4 text-gray-400" />
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Sito Web</label>
-                      <a
-                        href={cliente.sito_web}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary-600 hover:text-primary-700"
-                      >
-                        {cliente.sito_web}
-                      </a>
-                    </div>
-                  </div>
-                )}
-                {cliente.coordinate_bancarie && (
-                  <div className="flex items-center space-x-3">
-                    <CreditCard className="w-4 h-4 text-gray-400" />
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">IBAN</label>
-                      <p className="text-gray-900 font-mono text-sm">{cliente.coordinate_bancarie}</p>
-                    </div>
-                  </div>
-                )}
-                {cliente.sdi && (
-                  <div className="flex items-center space-x-3">
-                    <Hash className="w-4 h-4 text-gray-400" />
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Codice SDI</label>
-                      <p className="text-gray-900">{cliente.sdi}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Indirizzo */}
-          {(cliente.indirizzo_fatturazione || cliente.citta_fatturazione) && (
-            <div className="card p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <MapPin className="w-5 h-5 mr-2" />
-                Indirizzo di Fatturazione
-              </h3>
-              <div className="text-gray-900">
-                {cliente.indirizzo_fatturazione && (
-                  <p>{cliente.indirizzo_fatturazione}</p>
-                )}
-                {(cliente.cap_fatturazione || cliente.citta_fatturazione || cliente.provincia_fatturazione) && (
-                  <p>
-                    {cliente.cap_fatturazione && `${cliente.cap_fatturazione} `}
-                    {cliente.citta_fatturazione}
-                    {cliente.provincia_fatturazione && ` (${cliente.provincia_fatturazione})`}
-                  </p>
-                )}
-                {cliente.stato_fatturazione && (
-                  <p>{cliente.stato_fatturazione}</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Dimensionamento */}
-          <div className="card p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <Users className="w-5 h-5 mr-2" />
-              Dimensionamento
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {cliente.ula && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-500">ULA</label>
-                  <p className="text-gray-900">{cliente.ula}</p>
-                </div>
-              )}
-              {cliente.attivo_bilancio && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-500">Attivo di Bilancio</label>
-                  <p className="text-gray-900">{formatCurrency(cliente.attivo_bilancio)}</p>
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-gray-500">Dipendenti</label>
-                <p className="text-gray-900">{cliente.numero_dipendenti || 0}</p>
-              </div>
-              {cliente.numero_volontari ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-500">Volontari</label>
-                  <p className="text-gray-900">{cliente.numero_volontari}</p>
-                </div>
-              ) : null}
-              {cliente.numero_collaboratori ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-500">Collaboratori</label>
-                  <p className="text-gray-900">{cliente.numero_collaboratori}</p>
-                </div>
-              ) : null}
-              {(cliente.matricola_inps || cliente.pat_inail) && (
-                <>
-                  {cliente.matricola_inps && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">Matricola INPS</label>
-                      <p className="text-gray-900">{cliente.matricola_inps}</p>
-                    </div>
-                  )}
-                  {cliente.pat_inail && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500">PAT INAIL</label>
-                      <p className="text-gray-900">{cliente.pat_inail}</p>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Gestione Evolvi */}
-          {(cliente.categoria_evolvi || cliente.scadenza_evolvi) && (
-            <div className="card p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Target className="w-5 h-5 mr-2" />
-                Gestione Evolvi
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {cliente.categoria_evolvi && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500">Categoria</label>
-                    <span className={`badge ${getCategoriaColor(cliente.categoria_evolvi)}`}>
-                      {cliente.categoria_evolvi}
-                    </span>
-                  </div>
-                )}
-                {cliente.durata_evolvi && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500">Durata</label>
-                    <p className="text-gray-900">{cliente.durata_evolvi}</p>
-                  </div>
-                )}
-                {cliente.scadenza_evolvi && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500">Scadenza</label>
-                    <p className="text-gray-900">{formatDate(cliente.scadenza_evolvi)}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Descrizione e Note */}
-          {(cliente.descrizione || cliente.note) && (
-            <div className="card p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <FileText className="w-5 h-5 mr-2" />
-                Informazioni Aggiuntive
-              </h3>
-              <div className="space-y-4">
-                {cliente.descrizione && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-2">Descrizione</label>
-                    <p className="text-gray-900 whitespace-pre-wrap">{cliente.descrizione}</p>
-                  </div>
-                )}
-                {cliente.note && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-2">Note</label>
-                    <p className="text-gray-900 whitespace-pre-wrap">{cliente.note}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Metadata */}
-          <div className="card p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <Clock className="w-5 h-5 mr-2" />
-              Informazioni di Sistema
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-500">Creato il</label>
-                <p className="text-gray-900">{formatDate(cliente.created_at)}</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-500">Ultima modifica</label>
-                <p className="text-gray-900">{formatDate(cliente.updated_at)}</p>
-              </div>
-            </div>
-          </div>
+        <div className="p-6 overflow-y-auto flex-1">
+          {renderTabContent()}
         </div>
       </div>
     </div>

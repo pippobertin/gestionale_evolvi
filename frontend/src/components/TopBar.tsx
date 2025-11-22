@@ -9,9 +9,13 @@ import {
   HelpCircle,
   Moon,
   LogOut,
-  MessageSquare
+  MessageSquare,
+  Cloud,
+  CloudOff
 } from 'lucide-react'
 import { useState } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { useGoogleDriveStatus } from '@/hooks/useGoogleDriveStatus'
 
 interface TopBarProps {
   title: string
@@ -19,8 +23,15 @@ interface TopBarProps {
 }
 
 export default function TopBar({ title, breadcrumb = [] }: TopBarProps) {
+  const { user, logout, isAdmin } = useAuth()
+  const { isConnected: isGoogleDriveConnected, loading: googleDriveLoading } = useGoogleDriveStatus()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+
+  const handleLogout = async () => {
+    await logout()
+    setShowUserMenu(false)
+  }
 
   const notifications = [
     {
@@ -75,18 +86,41 @@ export default function TopBar({ title, breadcrumb = [] }: TopBarProps) {
           </div>
         </div>
 
-        {/* Right side - Search and Actions */}
-        <div className="flex items-center space-x-4">
-          {/* Global Search */}
-          <div className="relative hidden md:block">
+        {/* Center - Search Bar */}
+        <div className="flex-1 flex justify-center max-w-2xl mx-8">
+          <div className="relative w-full max-w-lg">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type="text"
               placeholder="Cerca scadenze, clienti, bandi..."
-              className="w-96 pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg placeholder-gray-400 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 shadow-sm"
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg placeholder-gray-400 text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 shadow-sm"
             />
+          </div>
+        </div>
+
+        {/* Right side - Actions */}
+        <div className="flex items-center space-x-4">
+          {/* Google Drive Status */}
+          <div className="flex items-center space-x-2">
+            {googleDriveLoading ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            ) : (
+              <>
+                {isGoogleDriveConnected ? (
+                  <div className="flex items-center space-x-2 bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-1.5 rounded-lg border border-emerald-400">
+                    <Cloud className="w-4 h-4 text-emerald-200 drop-shadow" />
+                    <span className="text-xs font-bold text-white drop-shadow-sm">Drive connesso</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2 bg-red-600 px-3 py-1.5 rounded-lg border border-red-500">
+                    <CloudOff className="w-4 h-4 text-white" />
+                    <span className="text-xs font-bold text-white drop-shadow-sm">Drive disconnesso</span>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -104,7 +138,7 @@ export default function TopBar({ title, breadcrumb = [] }: TopBarProps) {
             {/* Messages */}
             <button className="p-2.5 hover:bg-white/20 rounded-lg transition-colors duration-200 group relative">
               <MessageSquare className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
-              <span className="absolute -top-1 -right-1 bg-green-400 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+              <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold border-2 border-white shadow-lg">
                 3
               </span>
             </button>
@@ -117,7 +151,7 @@ export default function TopBar({ title, breadcrumb = [] }: TopBarProps) {
               >
                 <Bell className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-400 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium animate-pulse">
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold border-2 border-white shadow-lg">
                     {unreadCount}
                   </span>
                 )}
@@ -168,11 +202,15 @@ export default function TopBar({ title, breadcrumb = [] }: TopBarProps) {
                 className="flex items-center space-x-3 p-2 hover:bg-white/20 rounded-lg transition-colors duration-200 group"
               >
                 <div className="w-8 h-8 bg-white/30 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                  <span className="text-sm font-black text-white drop-shadow">A</span>
+                  <span className="text-sm font-black text-white drop-shadow">
+                    {user?.nome?.[0]?.toUpperCase() || 'U'}
+                  </span>
                 </div>
                 <div className="hidden md:block text-left">
-                  <p className="font-bold text-sm text-white drop-shadow-sm">Administrator</p>
-                  <p className="text-white text-xs font-bold drop-shadow-sm">Super Admin</p>
+                  <p className="font-bold text-sm text-white drop-shadow-sm">{user?.nome_completo}</p>
+                  <p className="text-white text-xs font-bold drop-shadow-sm">
+                    {user?.livello_permessi === 'admin' ? 'Amministratore' : 'Collaboratore'}
+                  </p>
                 </div>
                 <ChevronDown className="w-4 h-4 text-white/75 group-hover:text-white transition-colors" />
               </button>
@@ -182,12 +220,17 @@ export default function TopBar({ title, breadcrumb = [] }: TopBarProps) {
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-hard border border-gray-200 overflow-hidden">
                   <div className="p-4 border-b border-gray-100">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                        <span className="text-primary-600 font-semibold">A</span>
+                      <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
+                        <span className="text-teal-600 font-semibold">
+                          {user?.nome?.[0]?.toUpperCase() || 'U'}
+                        </span>
                       </div>
                       <div>
-                        <p className="text-gray-900 font-medium">Administrator</p>
-                        <p className="text-gray-600 text-sm">admin@blm.it</p>
+                        <p className="text-gray-900 font-medium">{user?.nome_completo}</p>
+                        <p className="text-gray-600 text-sm">{user?.email}</p>
+                        <p className="text-gray-500 text-xs">
+                          {user?.livello_permessi === 'admin' ? 'Amministratore' : 'Collaboratore'}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -201,7 +244,10 @@ export default function TopBar({ title, breadcrumb = [] }: TopBarProps) {
                       <span>Impostazioni</span>
                     </button>
                     <hr className="my-2" />
-                    <button className="flex items-center space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 w-full text-left transition-colors">
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 w-full text-left transition-colors"
+                    >
                       <LogOut className="w-4 h-4" />
                       <span>Logout</span>
                     </button>

@@ -49,7 +49,7 @@ interface DashboardStats {
 }
 
 interface DashboardContentProps {
-  onNavigate: (page: string) => void
+  onNavigate: (page: string, params?: any) => void
 }
 
 export default function DashboardContent({ onNavigate }: DashboardContentProps) {
@@ -261,62 +261,62 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <button
           onClick={() => onNavigate('scadenze')}
-          className="bg-red-50 p-6 rounded-lg border border-red-200 hover:bg-red-100 transition-colors cursor-pointer text-left"
+          className="bg-gradient-to-br from-red-500 to-red-600 p-6 rounded-xl border border-red-400 hover:from-red-600 hover:to-red-700 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-red-600">Urgenti</p>
-              <p className="text-3xl font-bold text-red-900">{stats.urgenti}</p>
-              <p className="text-xs text-red-600">Scadute o critiche</p>
+              <p className="text-sm font-bold text-red-100 drop-shadow-sm">Urgenti</p>
+              <p className="text-3xl font-black text-white drop-shadow">{stats.urgenti}</p>
+              <p className="text-xs font-medium text-red-100 drop-shadow-sm">Scadute o critiche</p>
             </div>
-            <AlertTriangle className="w-10 h-10 text-red-600" />
+            <AlertTriangle className="w-10 h-10 text-red-200 drop-shadow" />
           </div>
         </button>
 
         <button
           onClick={() => onNavigate('scadenze')}
-          className="bg-orange-50 p-6 rounded-lg border border-orange-200 hover:bg-orange-100 transition-colors cursor-pointer text-left"
+          className="bg-gradient-to-br from-amber-500 to-yellow-500 p-6 rounded-xl border border-amber-400 hover:from-amber-600 hover:to-yellow-600 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-orange-600">Imminenti</p>
-              <p className="text-3xl font-bold text-orange-900">{stats.imminenti}</p>
-              <p className="text-xs text-orange-600">Entro 7 giorni</p>
+              <p className="text-sm font-bold text-white drop-shadow-sm">Imminenti</p>
+              <p className="text-3xl font-black text-white drop-shadow">{stats.imminenti}</p>
+              <p className="text-xs font-medium text-white drop-shadow-sm">Entro 7 giorni</p>
             </div>
-            <Clock className="w-10 h-10 text-orange-600" />
+            <Clock className="w-10 h-10 text-white drop-shadow" />
           </div>
         </button>
 
         <button
           onClick={() => onNavigate('scadenze')}
-          className="bg-green-50 p-6 rounded-lg border border-green-200 hover:bg-green-100 transition-colors cursor-pointer text-left"
+          className="bg-gradient-to-br from-emerald-500 to-teal-500 p-6 rounded-xl border border-emerald-400 hover:from-emerald-600 hover:to-teal-600 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-green-600">Completate</p>
-              <p className="text-3xl font-bold text-green-900">{stats.completate}</p>
-              <p className="text-xs text-green-600">
+              <p className="text-sm font-bold text-emerald-100 drop-shadow-sm">Completate</p>
+              <p className="text-3xl font-black text-white drop-shadow">{stats.completate}</p>
+              <p className="text-xs font-medium text-emerald-100 drop-shadow-sm">
                 {stats.totaleScadenze > 0
                   ? `${Math.round((stats.completate / stats.totaleScadenze) * 100)}% del totale`
                   : '0% del totale'
                 }
               </p>
             </div>
-            <CheckCircle2 className="w-10 h-10 text-green-600" />
+            <CheckCircle2 className="w-10 h-10 text-emerald-200 drop-shadow" />
           </div>
         </button>
 
         <button
           onClick={() => onNavigate('scadenze')}
-          className="bg-blue-50 p-6 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors cursor-pointer text-left"
+          className="bg-gradient-to-br from-cyan-500 to-teal-500 p-6 rounded-xl border border-cyan-400 hover:from-cyan-600 hover:to-teal-600 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-blue-600">Totale</p>
-              <p className="text-3xl font-bold text-blue-900">{stats.totaleScadenze}</p>
-              <p className="text-xs text-blue-600">Tutte le scadenze</p>
+              <p className="text-sm font-bold text-cyan-100 drop-shadow-sm">Totale</p>
+              <p className="text-3xl font-black text-white drop-shadow">{stats.totaleScadenze}</p>
+              <p className="text-xs font-medium text-cyan-100 drop-shadow-sm">Tutte le scadenze</p>
             </div>
-            <Activity className="w-10 h-10 text-blue-600" />
+            <Activity className="w-10 h-10 text-cyan-200 drop-shadow" />
           </div>
         </button>
       </div>

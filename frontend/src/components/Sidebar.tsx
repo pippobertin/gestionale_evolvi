@@ -62,8 +62,8 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
             </div>
             {shouldShowExpanded && (
               <div>
-                <h1 className="text-xl font-bold text-white">ScadenzePro</h1>
-                <p className="text-xs text-gray-400">Gestione Bandi</p>
+                <h1 className="text-xl font-bold text-white">Gestionale Evolvi</h1>
+                <p className="text-xs text-gray-400">Business Management</p>
               </div>
             )}
           </div>

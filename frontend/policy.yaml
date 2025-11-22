@@ -1,0 +1,8 @@
+  name: "organizations/202127954298/policies/iam.disableServiceAccountKeyCreation"
+  spec:
+    rules:
+    - enforce: true
+  EOF
+
+ gcloud org-policies set-policy policy.yaml --organization=202127954298
+rm policy.yaml

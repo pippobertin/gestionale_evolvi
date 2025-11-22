@@ -10,16 +10,18 @@ import {
   Phone,
   Calendar,
   Edit,
-  Trash2,
-  Eye,
   Users,
-  Euro,
   MapPin,
-  FileText
+  FileText,
+  CheckSquare,
+  Square,
+  Trash2,
+  Upload
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import ClienteForm from './ClienteForm'
 import ClienteDettaglio from './ClienteDettaglio'
+import ClientiMappingCSV from './ClientiMappingCSV'
 
 interface Cliente {
   id: string
@@ -38,9 +40,10 @@ interface Cliente {
   created_at: string
   legale_rappresentante?: string
   numero_progetti?: number
+  creato_da?: string
 }
 
-export default function ClientiContent() {
+export default function ClientiContent({ onNavigate }: { onNavigate?: (page: string, params?: any) => void }) {
   const [clienti, setClienti] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -54,6 +57,16 @@ export default function ClientiContent() {
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
   const [selectedClienteId, setSelectedClienteId] = useState<string>('')
 
+  // Bulk selection states
+  const [selectedClientiForDelete, setSelectedClientiForDelete] = useState<Set<string>>(new Set())
+  const [isSelectMode, setIsSelectMode] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [clienteToDelete, setClienteToDelete] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  // CSV Import state
+  const [showImportCSV, setShowImportCSV] = useState(false)
+
   // Fetch clienti da Supabase
   useEffect(() => {
     fetchClienti()
@@ -63,29 +76,45 @@ export default function ClientiContent() {
     try {
       setLoading(true)
 
-      // Usa la vista con dimensione aggregata calcolata
-      console.log('📊 Tentativo caricamento vista aggregata...')
-      const { data, error } = await supabase
+      // Query per ottenere clienti con conteggio progetti reali e prossima scadenza
+      let clientiData: any[] = []
+
+      const { data, error: clientiError } = await supabase
         .from('scadenze_bandi_clienti_con_dimensione_aggregata')
-        .select('*')
+        .select('*, creato_da')
         .order('denominazione')
 
-      if (error) {
-        console.warn('⚠️ Vista aggregata non disponibile, uso tabella normale:', error.message)
+      if (clientiError) {
+        console.warn('⚠️ Vista aggregata non disponibile, uso tabella normale:', clientiError.message)
         // Fallback sulla tabella normale se la view non esiste
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('scadenze_bandi_clienti')
-          .select('*')
+          .select('*, creato_da')
           .order('denominazione')
 
         if (fallbackError) throw fallbackError
-        console.log('📋 Caricati clienti base:', fallbackData?.length || 0)
-        setClienti(fallbackData || [])
+        clientiData = fallbackData || []
       } else {
-        console.log('✅ Caricati clienti con dimensione aggregata:', data?.length || 0)
-        console.log('📊 Esempio cliente con aggregazione:', data?.[0])
-        setClienti(data || [])
+        clientiData = data || []
       }
+
+      // Per ogni cliente, ottieni il conteggio progetti e la prossima scadenza
+      const clientiConDati = await Promise.all(
+        clientiData.map(async (cliente) => {
+          // Conta progetti reali per cliente_id (tutti i progetti associati al cliente)
+          const { count: numeroProgetti } = await supabase
+            .from('scadenze_bandi_progetti')
+            .select('*', { count: 'exact', head: true })
+            .eq('cliente_id', cliente.id)
+
+          return {
+            ...cliente,
+            numero_progetti: numeroProgetti || 0
+          }
+        })
+      )
+
+      setClienti(clientiConDati)
     } catch (error) {
       console.error('Errore nel caricamento clienti:', error)
     } finally {
@@ -99,34 +128,24 @@ export default function ClientiContent() {
     setShowForm(true)
   }
 
-  const handleModificaCliente = (cliente: Cliente) => {
-    setSelectedCliente(cliente)
-    setShowForm(true)
+  const handleImportCSV = () => {
+    setShowImportCSV(true)
   }
+
+  const handleCloseImportCSV = () => {
+    setShowImportCSV(false)
+  }
+
+  const handleImportComplete = () => {
+    fetchClienti() // Reload clients after import
+  }
+
 
   const handleDettaglioCliente = (clienteId: string) => {
     setSelectedClienteId(clienteId)
     setShowDettaglio(true)
   }
 
-  const handleEliminaCliente = async (clienteId: string, denominazione: string) => {
-    if (window.confirm(`Sei sicuro di voler eliminare il cliente "${denominazione}"?`)) {
-      try {
-        const { error } = await supabase
-          .from('scadenze_bandi_clienti')
-          .delete()
-          .eq('id', clienteId)
-
-        if (error) throw error
-
-        fetchClienti() // Ricarica la lista
-        alert('Cliente eliminato con successo')
-      } catch (error) {
-        console.error('Errore nell\'eliminazione:', error)
-        alert('Errore nell\'eliminazione del cliente')
-      }
-    }
-  }
 
   const handleCloseForm = () => {
     setShowForm(false)
@@ -192,6 +211,117 @@ export default function ClientiContent() {
     setShowForm(true)
   }
 
+  const handleNavigateToProjects = (cliente: Cliente) => {
+    if (onNavigate) {
+      onNavigate('progetti', { clienteFilter: cliente.denominazione })
+    }
+  }
+
+  // Bulk selection handlers
+  const handleDeleteCliente = (clienteId: string) => {
+    setClienteToDelete(clienteId)
+    setShowDeleteConfirm(true)
+  }
+
+  const handleBulkDelete = () => {
+    if (selectedClientiForDelete.size > 0) {
+      setShowDeleteConfirm(true)
+    }
+  }
+
+  const confirmDelete = async () => {
+    setDeleting(true)
+    try {
+      const clientiIds = clienteToDelete ? [clienteToDelete] : Array.from(selectedClientiForDelete)
+
+      // Per ogni cliente, elimina prima tutti i progetti collegati e poi il cliente
+      for (const clienteId of clientiIds) {
+        // 1. Trova tutti i progetti collegati a questo cliente
+        const { data: progetti, error: progettiError } = await supabase
+          .from('scadenze_bandi_progetti')
+          .select('id')
+          .eq('cliente_id', clienteId)
+
+        if (progettiError) {
+          console.error('Errore nel trovare progetti collegati:', progettiError)
+          throw progettiError
+        }
+
+        // 2. Per ogni progetto, elimina prima tutte le scadenze collegate
+        for (const progetto of progetti || []) {
+          const { error: scadenzeError } = await supabase
+            .from('scadenze_bandi_scadenze')
+            .delete()
+            .eq('progetto_id', progetto.id)
+
+          if (scadenzeError) {
+            console.error('Errore eliminazione scadenze progetto:', scadenzeError)
+            throw scadenzeError
+          }
+        }
+
+        // 3. Elimina tutti i progetti collegati al cliente
+        if (progetti && progetti.length > 0) {
+          const { error: deleteProgettiError } = await supabase
+            .from('scadenze_bandi_progetti')
+            .delete()
+            .eq('cliente_id', clienteId)
+
+          if (deleteProgettiError) {
+            console.error('Errore eliminazione progetti:', deleteProgettiError)
+            throw deleteProgettiError
+          }
+        }
+      }
+
+      // 4. Finalmente elimina i clienti
+      const { error: clientiError } = await supabase
+        .from('scadenze_bandi_clienti')
+        .delete()
+        .in('id', clientiIds)
+
+      if (clientiError) {
+        console.error('Errore eliminazione clienti:', clientiError)
+        throw clientiError
+      }
+
+      // Reset stati
+      if (clienteToDelete) {
+        setClienteToDelete(null)
+      } else {
+        setSelectedClientiForDelete(new Set())
+        setIsSelectMode(false)
+      }
+
+      setShowDeleteConfirm(false)
+      fetchClienti() // Ricarica la lista
+
+    } catch (error: any) {
+      console.error('Errore nell\'eliminazione:', error)
+      alert(`Errore: ${error.message || 'Impossibile eliminare il cliente'}`)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const toggleSelectCliente = (clienteId: string) => {
+    const newSelected = new Set(selectedClientiForDelete)
+    if (newSelected.has(clienteId)) {
+      newSelected.delete(clienteId)
+    } else {
+      newSelected.add(clienteId)
+    }
+    setSelectedClientiForDelete(newSelected)
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedClientiForDelete.size === filteredClienti.length) {
+      setSelectedClientiForDelete(new Set())
+    } else {
+      setSelectedClientiForDelete(new Set(filteredClienti.map(c => c.id)))
+    }
+  }
+
   // Filtri
   const filteredClienti = clienti.filter(cliente => {
     const matchSearch = cliente.denominazione?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -238,6 +368,7 @@ export default function ClientiContent() {
     }
   }
 
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -259,13 +390,54 @@ export default function ClientiContent() {
             <p className="text-gray-600">{filteredClienti.length} clienti trovati</p>
           </div>
         </div>
-        <button
-          onClick={handleNuovoCliente}
-          className="btn-primary flex items-center space-x-2"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Nuovo Cliente</span>
-        </button>
+        <div className="flex items-center gap-3">
+          {isSelectMode ? (
+            <>
+              {selectedClientiForDelete.size > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Elimina ({selectedClientiForDelete.size})
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setIsSelectMode(false)
+                  setSelectedClientiForDelete(new Set())
+                }}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg"
+              >
+                Annulla
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setIsSelectMode(true)}
+                className="bg-gradient-to-br from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg"
+              >
+                <CheckSquare className="w-4 h-4" />
+                Seleziona
+              </button>
+              <button
+                onClick={handleImportCSV}
+                className="bg-gradient-to-br from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg"
+              >
+                <Upload className="w-4 h-4" />
+                Importa CSV
+              </button>
+              <button
+                onClick={handleNuovoCliente}
+                className="btn-primary flex items-center space-x-2"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Nuovo Cliente</span>
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Filtri e Ricerca */}
@@ -356,19 +528,49 @@ export default function ClientiContent() {
             <table className="table">
               <thead className="table-header">
                 <tr>
+                  {isSelectMode && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                      <button
+                        onClick={toggleSelectAll}
+                        className="text-gray-600 hover:text-gray-800"
+                      >
+                        {selectedClientiForDelete.size === filteredClienti.length ? (
+                          <CheckSquare className="w-4 h-4" />
+                        ) : (
+                          <Square className="w-4 h-4" />
+                        )}
+                      </button>
+                    </th>
+                  )}
                   <th className="table-header-cell">Cliente</th>
                   <th className="table-header-cell">Contatti</th>
                   <th className="table-header-cell">Dimensione</th>
-                  <th className="table-header-cell">Fatturato</th>
                   <th className="table-header-cell">Categoria</th>
                   <th className="table-header-cell">Progetti</th>
-                  <th className="table-header-cell">Azioni</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredClienti.map((cliente) => (
-                  <tr key={cliente.id} className="hover:bg-gray-25">
-                    <td className="table-cell">
+                  <tr key={cliente.id} className="hover:bg-gray-50 cursor-pointer transition-colors duration-150"
+                      onClick={() => !isSelectMode && handleDettaglioCliente(cliente.id)}>
+                    {isSelectMode && (
+                      <td className="px-1 py-2 w-12">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleSelectCliente(cliente.id)
+                          }}
+                          className="text-gray-600 hover:text-gray-800"
+                        >
+                          {selectedClientiForDelete.has(cliente.id) ? (
+                            <CheckSquare className="w-4 h-4 text-blue-600" />
+                          ) : (
+                            <Square className="w-4 h-4" />
+                          )}
+                        </button>
+                      </td>
+                    )}
+                    <td className="px-1 py-2">
                       <div className="flex items-start space-x-3">
                         <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
                           <Building2 className="w-5 h-5 text-primary-600" />
@@ -387,10 +589,15 @@ export default function ClientiContent() {
                         </div>
                       </div>
                     </td>
-                    <td className="table-cell">
+                    <td className="px-1 py-2">
                       <div className="space-y-1">
                         {cliente.email && (
-                          <div className="text-sm text-gray-600 flex items-center">
+                          <div className="text-sm text-blue-600 flex items-center hover:text-blue-800 cursor-pointer"
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 // TODO: Implementare apertura email dopo integrazione
+                                 console.log('Email clicked:', cliente.email);
+                               }}>
                             <Mail className="w-3 h-3 mr-1" />
                             {cliente.email}
                           </div>
@@ -403,7 +610,7 @@ export default function ClientiContent() {
                         )}
                       </div>
                     </td>
-                    <td className="table-cell">
+                    <td className="px-1 py-2">
                       <div className="space-y-2">
                         {calcolaDimensioneAggregata(cliente) && (
                           <span className={`badge ${getDimensioneColor(calcolaDimensioneAggregata(cliente))}`}>
@@ -418,17 +625,7 @@ export default function ClientiContent() {
                         )}
                       </div>
                     </td>
-                    <td className="table-cell">
-                      {cliente.ultimo_fatturato ? (
-                        <div className="flex items-center text-gray-900">
-                          <Euro className="w-3 h-3 mr-1" />
-                          {formatCurrency(cliente.ultimo_fatturato)}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="table-cell">
+                    <td className="px-1 py-2">
                       <div className="space-y-2">
                         {cliente.categoria_evolvi && (
                           <span className={`badge ${getCategoriaColor(cliente.categoria_evolvi)}`}>
@@ -443,37 +640,19 @@ export default function ClientiContent() {
                         )}
                       </div>
                     </td>
-                    <td className="table-cell">
-                      <div className="flex items-center space-x-1">
+                    <td className="px-1 py-2">
+                      <div
+                        className="flex items-center space-x-1 cursor-pointer hover:text-primary-600 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNavigateToProjects(cliente);
+                        }}
+                        title="Visualizza progetti di questo cliente"
+                      >
                         <FileText className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">
+                        <span className="text-sm text-gray-600 font-medium">
                           {cliente.numero_progetti || 0}
                         </span>
-                      </div>
-                    </td>
-                    <td className="table-cell">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleDettaglioCliente(cliente.id)}
-                          className="p-1 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
-                          title="Visualizza dettaglio"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleModificaCliente(cliente)}
-                          className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                          title="Modifica cliente"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEliminaCliente(cliente.id, cliente.denominazione)}
-                          className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                          title="Elimina cliente"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -498,6 +677,72 @@ export default function ClientiContent() {
         onClose={handleCloseDettaglio}
         onEdit={handleEditFromDettaglio}
       />
+
+      <ClientiMappingCSV
+        isOpen={showImportCSV}
+        onClose={handleCloseImportCSV}
+        onImportComplete={handleImportComplete}
+      />
+
+      {/* Modal Conferma Eliminazione */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Conferma eliminazione
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {clienteToDelete
+                      ? 'Sei sicuro di voler eliminare questo cliente?'
+                      : `Sei sicuro di voler eliminare ${selectedClientiForDelete.size} clienti?`
+                    }
+                  </p>
+                </div>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-4">
+                <p className="text-sm text-amber-800">
+                  ⚠️ <strong>Attenzione:</strong> Questa operazione eliminerà anche tutti i progetti e scadenze collegati ai clienti selezionati. L'operazione non può essere annullata.
+                </p>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false)
+                    setClienteToDelete(null)
+                  }}
+                  className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  disabled={deleting}
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  disabled={deleting}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {deleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Eliminando...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Conferma eliminazione
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

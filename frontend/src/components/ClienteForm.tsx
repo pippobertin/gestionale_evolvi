@@ -16,11 +16,15 @@ import {
   Hash,
   Plus,
   Edit,
-  Trash2
+  Trash2,
+  FolderOpen
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 import NuovaAziendaCollegataModal from './NuovaAziendaCollegataModal'
 import NuovoCollegamentoModal from './NuovoCollegamentoModal'
+import ReferentiManager from './ReferentiManager'
+import DocumentiManager from './DocumentiManager'
 
 interface Cliente {
   id?: string
@@ -37,6 +41,8 @@ interface Cliente {
   telefono?: string
   sito_web?: string
   coordinate_bancarie?: string
+  banca_filiale?: string // NEW: Banca/Filiale
+  estremi_iscrizione_runts?: string // NEW: Estremi iscrizione RUNTS
   sdi?: string
   indirizzo_fatturazione?: string
   cap_fatturazione?: string
@@ -59,7 +65,7 @@ interface Cliente {
   diritti_voto?: number
   influenza_dominante?: boolean
   note_collegamento?: string
-  categoria_evolvi?: 'BASE' | 'PREMIUM' | 'BUSINESS' | 'ENTERPRISE'
+  categoria_evolvi?: 'CLIENTE_SPOT' | 'EVOLVI_BASE' | 'EVOLVI_FULL'
   durata_evolvi?: string
   scadenza_evolvi?: string
   assegnato_a?: string
@@ -121,6 +127,7 @@ interface ClienteFormProps {
 }
 
 export default function ClienteForm({ cliente, isOpen, onClose, onSave }: ClienteFormProps) {
+  const { canDelete, user } = useAuth()
   const [formData, setFormData] = useState<Cliente>({
     denominazione: '',
     stato_fatturazione: 'Italia',
@@ -316,6 +323,9 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
   const [showNuovoCollegamentoModal, setShowNuovoCollegamentoModal] = useState(false)
   const [collegamentoInModifica, setCollegamentoInModifica] = useState<CollegamentoAziendale | null>(null)
 
+  // State per conferma eliminazione
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
   // Carica i collegamenti esistenti per l'azienda
   const loadCollegamenti = async (clienteId: string) => {
     if (!clienteId) return
@@ -353,27 +363,22 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
   // Carica i dati dell'azienda collegata quando viene selezionata
   const loadDatiAziendaCollegata = async (impresaId: string) => {
-    console.log('🔍 loadDatiAziendaCollegata chiamata con ID:', impresaId)
 
     if (!impresaId) {
-      console.log('❌ ID vuoto, impostando dati a null')
       setDatiAziendaCollegata(null)
       return
     }
 
     try {
-      console.log('📡 Eseguendo query Supabase...')
       const { data, error } = await supabase
         .from('scadenze_bandi_clienti')
         .select('ula, ultimo_fatturato, attivo_bilancio')
         .eq('id', impresaId)
         .single()
 
-      console.log('📊 Risultato query:', { data, error })
 
       if (error) throw error
 
-      console.log('✅ Dati caricati con successo:', data)
       setDatiAziendaCollegata(data)
     } catch (error) {
       console.error('❌ Errore caricamento dati azienda collegata:', error)
@@ -384,7 +389,6 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
   // Carica i dati dell'azienda collegata all'apertura del form se presente
   useEffect(() => {
     if (isOpen && cliente?.impresa_collegata_id) {
-      console.log('Caricando dati azienda collegata:', cliente.impresa_collegata_id)
       loadDatiAziendaCollegata(cliente.impresa_collegata_id)
     }
 
@@ -401,7 +405,6 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
       formData.ultimo_fatturato,
       formData.attivo_bilancio
     )
-    console.log('🔄 Dimensione aggiornata da useEffect:', nuovaDimensione)
     setDimensioneCalcolataCorrente(nuovaDimensione)
   }, [formData.ula, formData.ultimo_fatturato, formData.attivo_bilancio, formData.tipo_collegamento, formData.percentuale_partecipazione, datiAziendaCollegata])
 
@@ -413,11 +416,6 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
     let fatturatoTotal = fatturato || 0
     let attivoTotal = attivo || 0
 
-    console.log('=== CALCOLO DIMENSIONE AGGREGATA ===')
-    console.log('Valori base:', { ula, fatturato, attivo })
-    console.log('Tipo collegamento:', formData.tipo_collegamento)
-    console.log('Percentuale:', formData.percentuale_partecipazione)
-    console.log('Dati azienda collegata:', datiAziendaCollegata)
 
     // Somma tutti i collegamenti aziendali
     collegamenti.forEach(collegamento => {
@@ -449,7 +447,6 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
       }
     }
 
-    console.log('Totali finali:', { ulaTotal, fatturatoTotal, attivoTotal })
 
     // Applica i limiti UE 2003/361/CE
     let dimensioneCalcolata = ''
@@ -458,8 +455,6 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
     else if (ulaTotal < 250 && (fatturatoTotal <= 50000000 || attivoTotal <= 43000000)) dimensioneCalcolata = 'MEDIA'
     else dimensioneCalcolata = 'GRANDE'
 
-    console.log('Dimensione calcolata:', dimensioneCalcolata)
-    console.log('=====================================')
 
     return dimensioneCalcolata
   }
@@ -508,8 +503,6 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
   // Funzione per salvare un collegamento
   const salvaCollegamento = async (collegamento: CollegamentoAziendale) => {
     try {
-      console.log('💾 Tentativo di salvataggio collegamento:', collegamento)
-      console.log('🆔 Cliente ID:', cliente?.id)
 
       if (!cliente?.id) {
         throw new Error('ID cliente mancante - salvare prima il cliente')
@@ -517,7 +510,6 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
       if (collegamento.id) {
         // Update existing
-        console.log('✏️ Aggiornamento collegamento esistente ID:', collegamento.id)
         const { data, error } = await supabase
           .from('scadenze_bandi_collegamenti_aziendali')
           .update({
@@ -535,10 +527,8 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
           console.error('❌ Errore update:', error)
           throw error
         }
-        console.log('✅ Update riuscito:', data)
       } else {
         // Create new
-        console.log('➕ Creazione nuovo collegamento')
         const insertData = {
           azienda_madre_id: cliente.id,
           azienda_collegata_id: collegamento.azienda_collegata_id,
@@ -549,7 +539,6 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
           note_collegamento: collegamento.note_collegamento || null
         }
 
-        console.log('📋 Dati da inserire:', insertData)
 
         const { data, error } = await supabase
           .from('scadenze_bandi_collegamenti_aziendali')
@@ -560,21 +549,21 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
           console.error('❌ Errore insert:', error)
           throw error
         }
-        console.log('✅ Insert riuscito:', data)
       }
 
       // Ricarica i collegamenti
-      console.log('🔄 Ricaricando collegamenti...')
       await loadCollegamenti(cliente.id)
-      console.log('✅ Collegamento salvato con successo')
     } catch (error) {
       console.error('❌ Errore nel salvataggio del collegamento:', error)
 
       // Gestisci errore di collegamento duplicato
-      if (error.code === '23505' && error.message.includes('unique_collegamento_per_azienda')) {
+      const errorCode = (error as any)?.code
+      const errorMessage = error instanceof Error ? error.message : String(error)
+
+      if (errorCode === '23505' && errorMessage.includes('unique_collegamento_per_azienda')) {
         alert('Esiste già un collegamento con questa azienda. Non è possibile creare collegamenti duplicati.')
       } else {
-        alert(`Errore nel salvataggio del collegamento: ${error.message}`)
+        alert(`Errore nel salvataggio del collegamento: ${errorMessage}`)
       }
     }
   }
@@ -601,6 +590,30 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
     }
   }
 
+  const handleDeleteCliente = async () => {
+    if (!cliente?.id) return
+
+    try {
+      setSaving(true)
+      const { error } = await supabase
+        .from('scadenze_bandi_clienti')
+        .delete()
+        .eq('id', cliente.id)
+
+      if (error) throw error
+
+      setShowDeleteConfirm(false)
+      alert('Cliente eliminato con successo')
+      onSave() // Ricarica la lista
+      onClose() // Chiude il modal
+    } catch (error) {
+      console.error('Errore nell\'eliminazione:', error)
+      alert('Errore nell\'eliminazione del cliente')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleSave = async () => {
     if (!formData.denominazione.trim()) {
       alert('La denominazione è obbligatoria')
@@ -610,27 +623,35 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
     setSaving(true)
     try {
       // Prepara i dati per il salvataggio escludendo campi potenzialmente problematici
-      const dataToSave = { ...formData }
-
-      // Rimuovi campi calcolati/derivati che non devono essere salvati
-      delete dataToSave.numero_progetti
-      delete dataToSave.created_at
-      delete dataToSave.updated_at
-      delete dataToSave.dimensione
-      delete dataToSave.dimensione_aggregata
-      delete dataToSave.numero_collegamenti
-      delete dataToSave.legale_rappresentante_completo
-      delete dataToSave.legale_rappresentante_eta
+      const {
+        numero_progetti,
+        created_at,
+        updated_at,
+        dimensione,
+        dimensione_aggregata,
+        numero_collegamenti,
+        legale_rappresentante_completo,
+        legale_rappresentante_eta,
+        ...dataToSave
+      } = formData as any
 
       // Se il campo ATECO è vuoto, rimuovilo per evitare problemi di foreign key
       if (!dataToSave.ateco_2025 || dataToSave.ateco_2025.trim() === '') {
-        delete dataToSave.ateco_2025
-        delete dataToSave.ateco_descrizione
+        dataToSave.ateco_2025 = undefined
+        dataToSave.ateco_descrizione = undefined
       }
 
       // Gestisci tutti i campi data vuoti convertendoli a null
       const dateFields = ['scadenza_evolvi', 'data_bilancio_consolidato', 'data_costituzione', 'legale_rappresentante_data_nascita']
       dateFields.forEach(field => {
+        if (dataToSave[field] === '' || dataToSave[field] === undefined) {
+          dataToSave[field] = null
+        }
+      })
+
+      // Gestisci campi testo vuoti
+      const textFields = ['estremi_iscrizione_runts', 'banca_filiale']
+      textFields.forEach(field => {
         if (dataToSave[field] === '' || dataToSave[field] === undefined) {
           dataToSave[field] = null
         }
@@ -645,10 +666,15 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
         if (error) throw error
       } else {
-        // Create new client
+        // Create new client - aggiungi creato_da per tenere traccia dell'autore
+        const clienteData = {
+          ...dataToSave,
+          creato_da: user?.id
+        }
+
         const { error } = await supabase
           .from('scadenze_bandi_clienti')
-          .insert([dataToSave])
+          .insert([clienteData])
 
         if (error) throw error
       }
@@ -670,9 +696,11 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
     { id: 'contatti', label: 'Contatti', icon: Mail },
     { id: 'legale', label: 'Legale Rappresentante', icon: User },
     { id: 'dimensionamento', label: 'Dimensionamento', icon: Users },
-    { id: 'collegamenti', label: 'Rapporti Aziendali', icon: Hash },
-    { id: 'gestione', label: 'Gestione', icon: FileText }
+    { id: 'collegamenti', label: 'Rapporti di Collegamento', icon: Hash },
+    { id: 'gestione', label: 'Gestione', icon: FileText },
+    { id: 'documenti', label: 'Documenti', icon: FolderOpen }
   ]
+
 
   const renderTabContent = () => {
     switch (currentTab) {
@@ -803,6 +831,9 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   </p>
                 )}
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Data Costituzione
@@ -813,6 +844,64 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   onChange={(e) => handleInputChange('data_costituzione', e.target.value)}
                   className="input"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Estremi iscrizione al RUNTS
+                </label>
+                <input
+                  type="text"
+                  value={formData.estremi_iscrizione_runts || ''}
+                  onChange={(e) => handleInputChange('estremi_iscrizione_runts', e.target.value)}
+                  className="input"
+                  placeholder="Es: Reg. 123456 del 01/01/2024"
+                />
+              </div>
+            </div>
+
+            {/* Sezione Dati Bancari */}
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Euro className="w-5 h-5 mr-2" />
+                Dati Bancari e Fatturazione
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Coordinate Bancarie (IBAN)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.coordinate_bancarie || ''}
+                    onChange={(e) => handleInputChange('coordinate_bancarie', e.target.value)}
+                    className="input"
+                    placeholder="IT60 X054 2811 1010 0000 0123 456"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Banca/Filiale
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.banca_filiale || ''}
+                    onChange={(e) => handleInputChange('banca_filiale', e.target.value)}
+                    className="input"
+                    placeholder="Es: UniCredit Roma Centro"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Codice SDI
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.sdi || ''}
+                    onChange={(e) => handleInputChange('sdi', e.target.value)}
+                    className="input"
+                    placeholder="ABCDEF1"
+                  />
+                </div>
               </div>
             </div>
 
@@ -891,85 +980,70 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
       case 'contatti':
         return (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={formData.email || ''}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="input"
-                  placeholder="info@azienda.it"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  PEC
-                </label>
-                <input
-                  type="email"
-                  value={formData.pec || ''}
-                  onChange={(e) => handleInputChange('pec', e.target.value)}
-                  className="input"
-                  placeholder="pec@azienda.pec.it"
-                />
+            {/* Contatti aziendali principali */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Mail className="w-5 h-5 mr-2" />
+                Contatti Aziendali Principali
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email || ''}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className="input"
+                    placeholder="info@azienda.it"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    PEC
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.pec || ''}
+                    onChange={(e) => handleInputChange('pec', e.target.value)}
+                    className="input"
+                    placeholder="pec@azienda.pec.it"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Telefono
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.telefono || ''}
+                    onChange={(e) => handleInputChange('telefono', e.target.value)}
+                    className="input"
+                    placeholder="+39 06 12345678"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Sito Web
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.sito_web || ''}
+                    onChange={(e) => handleInputChange('sito_web', e.target.value)}
+                    className="input"
+                    placeholder="https://www.azienda.it"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Telefono
-                </label>
-                <input
-                  type="tel"
-                  value={formData.telefono || ''}
-                  onChange={(e) => handleInputChange('telefono', e.target.value)}
-                  className="input"
-                  placeholder="+39 06 12345678"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Sito Web
-                </label>
-                <input
-                  type="url"
-                  value={formData.sito_web || ''}
-                  onChange={(e) => handleInputChange('sito_web', e.target.value)}
-                  className="input"
-                  placeholder="https://www.azienda.it"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Coordinate Bancarie (IBAN)
-                </label>
-                <input
-                  type="text"
-                  value={formData.coordinate_bancarie || ''}
-                  onChange={(e) => handleInputChange('coordinate_bancarie', e.target.value)}
-                  className="input"
-                  placeholder="IT60 X054 2811 1010 0000 0123 456"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Codice SDI
-                </label>
-                <input
-                  type="text"
-                  value={formData.sdi || ''}
-                  onChange={(e) => handleInputChange('sdi', e.target.value)}
-                  className="input"
-                  placeholder="ABCDEF1"
-                />
-              </div>
+            {/* Referenti aziendali */}
+            <div className="border-t pt-6">
+              <ReferentiManager
+                clienteId={cliente?.id || ''}
+                isNewClient={!cliente?.id}
+              />
             </div>
           </div>
         )
@@ -1519,12 +1593,14 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
         )
 
       case 'gestione':
+        const showEvolviFields = formData.categoria_evolvi === 'EVOLVI_BASE' || formData.categoria_evolvi === 'EVOLVI_FULL'
+
         return (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Categoria Evolvi
+                  Categoria
                 </label>
                 <select
                   value={formData.categoria_evolvi || ''}
@@ -1532,90 +1608,68 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   className="input"
                 >
                   <option value="">Seleziona categoria</option>
-                  <option value="BASE">Base</option>
-                  <option value="PREMIUM">Premium</option>
-                  <option value="BUSINESS">Business</option>
-                  <option value="ENTERPRISE">Enterprise</option>
+                  <option value="CLIENTE_SPOT">Cliente spot</option>
+                  <option value="EVOLVI_BASE">Evolvi Base</option>
+                  <option value="EVOLVI_FULL">Evolvi Full</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Scadenza Evolvi
-                </label>
-                <input
-                  type="date"
-                  value={formData.scadenza_evolvi || ''}
-                  onChange={(e) => handleInputChange('scadenza_evolvi', e.target.value)}
-                  className="input"
-                />
-              </div>
+
+              {/* Mostra campi Evolvi solo se categoria Base o Full */}
+              {showEvolviFields && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Scadenza Evolvi
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.scadenza_evolvi || ''}
+                      onChange={(e) => handleInputChange('scadenza_evolvi', e.target.value)}
+                      className="input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Durata Evolvi
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.durata_evolvi || ''}
+                      onChange={(e) => handleInputChange('durata_evolvi', e.target.value)}
+                      className="input"
+                      placeholder="12 mesi"
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Durata Evolvi
-                </label>
-                <input
-                  type="text"
-                  value={formData.durata_evolvi || ''}
-                  onChange={(e) => handleInputChange('durata_evolvi', e.target.value)}
-                  className="input"
-                  placeholder="12 mesi"
-                />
+            {/* Informazione per clienti spot */}
+            {formData.categoria_evolvi === 'CLIENTE_SPOT' && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <FileText className="w-5 h-5 text-yellow-600 mr-2" />
+                  <h4 className="text-yellow-800 font-medium">Cliente Spot</h4>
+                </div>
+                <p className="text-yellow-700 text-sm mt-2">
+                  Cliente occasionale senza abbonamento Evolvi. Non sono disponibili i campi durata e scadenza.
+                </p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Assegnato a
-                </label>
-                <input
-                  type="text"
-                  value={formData.assegnato_a || ''}
-                  onChange={(e) => handleInputChange('assegnato_a', e.target.value)}
-                  className="input"
-                  placeholder="Nome Consulente"
-                />
-              </div>
-            </div>
+            )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Target
-                </label>
-                <input
-                  type="text"
-                  value={formData.target || ''}
-                  onChange={(e) => handleInputChange('target', e.target.value)}
-                  className="input"
-                  placeholder="PMI Innovativa"
-                />
+            {/* Informazione per clienti Evolvi */}
+            {showEvolviFields && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <FileText className="w-5 h-5 text-blue-600 mr-2" />
+                  <h4 className="text-blue-800 font-medium">Cliente Evolvi</h4>
+                </div>
+                <p className="text-blue-700 text-sm mt-2">
+                  Cliente con abbonamento attivo {formData.categoria_evolvi === 'EVOLVI_BASE' ? 'Base' : 'Full'}.
+                  Monitorare la scadenza per il rinnovo.
+                </p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Membro di
-                </label>
-                <input
-                  type="text"
-                  value={formData.membro_di || ''}
-                  onChange={(e) => handleInputChange('membro_di', e.target.value)}
-                  className="input"
-                  placeholder="Gruppo Aziendale"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Proprietario
-                </label>
-                <input
-                  type="text"
-                  value={formData.proprietario || ''}
-                  onChange={(e) => handleInputChange('proprietario', e.target.value)}
-                  className="input"
-                  placeholder="Nome Proprietario"
-                />
-              </div>
-            </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1645,6 +1699,16 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
           </div>
         )
 
+      case 'documenti':
+        return (
+          <div className="space-y-6">
+            <DocumentiManager
+              clienteId={cliente?.id || ''}
+              isNewClient={!cliente?.id}
+            />
+          </div>
+        )
+
       default:
         return null
     }
@@ -1652,14 +1716,26 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-hard max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-hard max-w-7xl w-full max-h-[95vh] overflow-hidden flex flex-col border-4 border-orange-400">
         {/* Header */}
         <div className="gradient-primary text-white p-6 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Building2 className="w-6 h-6" />
-            <h2 className="text-xl font-bold">
-              {cliente ? 'Modifica Cliente' : 'Nuovo Cliente'}
-            </h2>
+            <div>
+              <h2 className="text-xl font-bold">
+                {cliente ? 'Modifica Cliente' : 'Nuovo Cliente'}
+              </h2>
+              <div className="flex items-center space-x-2 mt-1">
+                <span className="px-2 py-1 bg-orange-400 text-orange-900 text-xs font-semibold rounded-full">
+                  ✏️ MODIFICA
+                </span>
+                {cliente?.denominazione && (
+                  <span className="text-primary-100 text-sm">
+                    {cliente.denominazione}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -1671,14 +1747,14 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
         {/* Tabs */}
         <div className="border-b border-gray-200 px-6">
-          <div className="flex space-x-6">
+          <div className="flex space-x-6 overflow-x-auto min-w-full">
             {tabs.map((tab) => {
               const Icon = tab.icon
               return (
                 <button
                   key={tab.id}
                   onClick={() => setCurrentTab(tab.id)}
-                  className={`py-4 px-2 border-b-2 font-medium text-sm flex items-center space-x-2 transition-colors ${
+                  className={`py-4 px-2 border-b-2 font-medium text-sm flex items-center space-x-2 transition-colors flex-shrink-0 ${
                     currentTab === tab.id
                       ? 'border-primary-500 text-primary-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -1693,31 +1769,48 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+        <div className="p-6 overflow-y-auto flex-1">
           {renderTabContent()}
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex items-center justify-end space-x-3">
-          <button
-            onClick={onClose}
-            className="btn-secondary"
-            disabled={loading}
-          >
-            Annulla
-          </button>
-          <button
-            onClick={handleSave}
-            className="btn-primary flex items-center space-x-2"
-            disabled={loading || !formData.denominazione.trim()}
-          >
-            {loading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            ) : (
-              <Save className="w-4 h-4" />
+        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex items-center justify-between flex-shrink-0">
+          {/* Pulsante Elimina a sinistra - solo se siamo in modalità modifica e abbiamo i permessi */}
+          <div className="flex items-center">
+            {cliente?.id && canDelete(cliente.creato_da) && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading}
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Elimina Cliente</span>
+              </button>
             )}
-            <span>{loading ? 'Salvando...' : 'Salva Cliente'}</span>
-          </button>
+          </div>
+
+          {/* Pulsanti azione a destra */}
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={onClose}
+              className="btn-secondary"
+              disabled={loading}
+            >
+              Annulla
+            </button>
+            <button
+              onClick={handleSave}
+              className="btn-primary flex items-center space-x-2"
+              disabled={loading || !formData.denominazione.trim()}
+            >
+              {loading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              <span>{loading ? 'Salvando...' : 'Salva Cliente'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1727,6 +1820,56 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
         onClose={() => setShowNuovaAziendaModal(false)}
         onSave={handleNuovaAziendaCreata}
       />
+
+      {/* Modal conferma eliminazione */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                  <Trash2 className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">Elimina Cliente</h3>
+                  <p className="text-sm text-gray-500">Questa azione non può essere annullata</p>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-gray-700">
+                  Sei sicuro di voler eliminare il cliente <strong>"{formData.denominazione}"</strong>?
+                </p>
+                <p className="text-sm text-red-600 mt-2">
+                  ⚠️ Verranno eliminati anche tutti i referenti, documenti e collegamenti associati al cliente.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="btn-secondary"
+                  disabled={loading}
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleDeleteCliente}
+                  className="btn-danger flex items-center space-x-2"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  <span>{loading ? 'Eliminando...' : 'Elimina Definitivamente'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

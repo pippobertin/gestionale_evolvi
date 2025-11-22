@@ -13,6 +13,7 @@ import {
   ChevronDown
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import ResponsableSelector from './ResponsableSelector'
 
 interface Cliente {
   id: string
@@ -41,13 +42,19 @@ interface TipologiaScadenza {
   descrizione?: string
 }
 
+interface ResponsabileData {
+  tipo: 'utente' | 'gruppo' | 'tutti'
+  utente_id?: string
+  gruppo_id?: string
+}
+
 interface ScadenzaFormData {
   titolo: string
   data_scadenza: string
   stato: 'non_iniziata' | 'in_corso' | 'completata' | 'annullata'
   priorita: 'bassa' | 'media' | 'alta' | 'critica'
   tipologia_scadenza_id?: string
-  responsabile_email?: string
+  responsabile_email?: string // Legacy field - manterremo per compatibilità
   note?: string
   // Entità collegate (una sola alla volta)
   cliente_id?: string
@@ -71,6 +78,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
 
   const [loading, setLoading] = useState(false)
   const [entitaSelezionata, setEntitaSelezionata] = useState<'cliente' | 'bando' | 'progetto' | ''>('')
+  const [responsabile, setResponsabile] = useState<ResponsabileData | null>(null)
 
   // Dati per i dropdown
   const [clienti, setClienti] = useState<Cliente[]>([])
@@ -98,6 +106,9 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
         if (scadenza.progetto_id) setEntitaSelezionata('progetto')
         else if (scadenza.bando_id) setEntitaSelezionata('bando')
         else if (scadenza.cliente_id) setEntitaSelezionata('cliente')
+
+        // Carica responsabile esistente
+        loadExistingResponsabile(scadenza.id)
       } else {
         // Nuovo - reset form
         setFormData({
@@ -107,6 +118,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
           priorita: 'media'
         })
         setEntitaSelezionata('')
+        setResponsabile(null)
       }
   }, [scadenza])
 
@@ -145,6 +157,30 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
     }
   }
 
+  const loadExistingResponsabile = async (scadenzaId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('scadenze_bandi_responsabili_scadenze')
+        .select('tipo_responsabile, utente_id, gruppo_id')
+        .eq('scadenza_id', scadenzaId)
+        .single()
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = No rows returned
+        throw error
+      }
+
+      if (data) {
+        setResponsabile({
+          tipo: data.tipo_responsabile as 'utente' | 'gruppo' | 'tutti',
+          utente_id: data.utente_id || undefined,
+          gruppo_id: data.gruppo_id || undefined
+        })
+      }
+    } catch (error) {
+      console.error('Errore caricamento responsabile esistente:', error)
+    }
+  }
+
   const handleInputChange = (field: keyof ScadenzaFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
@@ -180,24 +216,48 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
       if (!dataToSave.responsabile_email) delete dataToSave.responsabile_email
       if (!dataToSave.note) delete dataToSave.note
 
-      console.log('Dati da salvare:', dataToSave)
-      console.log('Entità selezionata:', entitaSelezionata)
+      let scadenzaId = scadenza?.id
 
-      if (scadenza?.id) {
+      if (scadenzaId) {
         // Modifica esistente
         const { error } = await supabase
           .from('scadenze_bandi_scadenze')
           .update(dataToSave)
-          .eq('id', scadenza.id)
+          .eq('id', scadenzaId)
 
         if (error) throw error
+
+        // Rimuovi responsabili esistenti
+        await supabase
+          .from('scadenze_bandi_responsabili_scadenze')
+          .delete()
+          .eq('scadenza_id', scadenzaId)
       } else {
-        // Nuova scadenza
-        const { error } = await supabase
+        // Nuova scadenza - prima crea la scadenza per ottenere l'ID
+        const { data: newScadenza, error } = await supabase
           .from('scadenze_bandi_scadenze')
           .insert([dataToSave])
+          .select()
+          .single()
 
         if (error) throw error
+        scadenzaId = newScadenza.id
+      }
+
+      // Aggiungi i nuovi responsabili se specificato
+      if (responsabile && scadenzaId) {
+        const responsabileData = {
+          scadenza_id: scadenzaId,
+          tipo_responsabile: responsabile.tipo,
+          utente_id: responsabile.utente_id || null,
+          gruppo_id: responsabile.gruppo_id || null
+        }
+
+        const { error: responsabileError } = await supabase
+          .from('scadenze_bandi_responsabili_scadenze')
+          .insert([responsabileData])
+
+        if (responsabileError) throw responsabileError
       }
 
       onScadenzaCreata()
@@ -437,14 +497,12 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email Responsabile
+                Responsabile
               </label>
-              <input
-                type="email"
-                value={formData.responsabile_email || ''}
-                onChange={(e) => handleInputChange('responsabile_email', e.target.value)}
-                className="input"
-                placeholder="responsabile@blmproject.it"
+              <ResponsableSelector
+                value={responsabile}
+                onChange={setResponsabile}
+                className="w-full"
               />
             </div>
 

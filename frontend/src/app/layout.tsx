@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import SessionProvider from '@/components/SessionProvider'
 
 export const metadata: Metadata = {
-  title: 'Gestione Scadenze Bandi',
-  description: 'Sistema per la gestione delle scadenze di bandi e clienti',
+  title: 'Gestionale Evolvi',
+  description: 'Sistema di gestione integrato per bandi, progetti e scadenze',
 }
 
 export default function RootLayout({
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="it">
       <body className="antialiased">
-        {children}
+        <SessionProvider>
+          {children}
+        </SessionProvider>
       </body>
     </html>
   )

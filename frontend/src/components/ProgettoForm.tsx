@@ -19,11 +19,9 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import Docxtemplater from 'docxtemplater'
-import PizZip from 'pizzip'
-import * as mammoth from 'mammoth'
-import { Document, Packer, Paragraph, TextRun, AlignmentType, convertInchesToTwip } from 'docx'
-import { createReport } from 'docx-templates'
+import { useSession, signIn, signOut } from 'next-auth/react'
+import DocumentiProgettoPreview from './DocumentiProgettoPreview'
+import DocumentPreviewModal from './DocumentPreviewModal'
 
 interface ProgettoFormData {
   bando_id: string
@@ -35,11 +33,10 @@ interface ProgettoFormData {
   importo_totale_progetto: number
   contributo_ammesso: number
   percentuale_contributo: number
-  data_pubblicazione_graduatoria: string
-  data_decreto_concessione: string
-  scadenza_accettazione_esiti: string
-  data_avvio_progetto: string
-  data_fine_progetto_prevista: string
+  data_base_calcolo: string | null
+  evento_base_id: string | null
+  // Campi dinamici per eventi progetto (saranno popolati dinamicamente)
+  eventi_progetto: { [eventoId: string]: string | null } // date degli eventi specifici del progetto
   anticipo_richiedibile: boolean
   percentuale_anticipo: number
   numero_sal: 'UNICO' | 'DUE' | 'TRE'
@@ -68,6 +65,7 @@ interface Cliente {
 interface ProgettoFormProps {
   onClose: () => void
   onProgettoCreated: () => void
+  onDelete?: (progettoId: string) => void
   bando?: Bando
   cliente?: Cliente
   progetto?: any // Per modifica esistente
@@ -75,20 +73,53 @@ interface ProgettoFormProps {
 
 type TabType = 'generale' | 'importi' | 'scadenze' | 'documenti' | 'avanzate'
 
-export default function ProgettoForm({ onClose, onProgettoCreated, bando, cliente, progetto }: ProgettoFormProps) {
+export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, bando, cliente, progetto }: ProgettoFormProps) {
   const [activeTab, setActiveTab] = useState<TabType>('generale')
   const [loading, setLoading] = useState(false)
+
+  // Google Drive session
+  const { data: session, status } = useSession()
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [])
   const [bandi, setBandi] = useState<Bando[]>([])
   const [clienti, setClienti] = useState<Cliente[]>([])
   const [templateScadenze, setTemplateScadenze] = useState<any[]>([])
   const [scadenzeSalvate, setScadenzeSalvate] = useState<any[]>([])
+  const [dateEffettiveScadenze, setDateEffettiveScadenze] = useState<{[scadenzaId: string]: string}>({})
   const [bandoSelezionato, setBandoSelezionato] = useState<any>(null)
+
+  // Stati per gestione eventi dinamici
+  const [eventiCatalogo, setEventiCatalogo] = useState<any[]>([])
+  const [eventiDelBando, setEventiDelBando] = useState<any[]>([]) // eventi usati nei template del bando
+  const [dateCalcolateBando, setDateCalcolateBando] = useState<{ [eventoId: string]: string }>({}) // date calcolate dal bando
 
   // Stati per documenti
   const [documenti, setDocumenti] = useState<any[]>([])
-  const [documentiEreditati, setDocumentiEreditati] = useState<any[]>([])
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<{[key: string]: number}>({})
+  const [previewModal, setPreviewModal] = useState<{
+    isOpen: boolean
+    documento: { nome_file: string; google_drive_id: string } | null
+  }>({ isOpen: false, documento: null })
+
+  // Stati per modal di visualizzazione documento
+  const [documentModal, setDocumentModal] = useState<{
+    open: boolean;
+    title: string;
+    url: string;
+    type: string;
+  }>({
+    open: false,
+    title: '',
+    url: '',
+    type: ''
+  })
 
   const [formData, setFormData] = useState<ProgettoFormData>({
     bando_id: bando?.id || '',
@@ -100,11 +131,9 @@ export default function ProgettoForm({ onClose, onProgettoCreated, bando, client
     importo_totale_progetto: 0,
     contributo_ammesso: 0,
     percentuale_contributo: bando?.percentuale_contributo || 0,
-    data_pubblicazione_graduatoria: '',
-    data_decreto_concessione: '',
-    scadenza_accettazione_esiti: '',
-    data_avvio_progetto: '',
-    data_fine_progetto_prevista: '',
+    data_base_calcolo: '',
+    evento_base_id: '',
+    eventi_progetto: {},
     anticipo_richiedibile: true,
     percentuale_anticipo: 30,
     numero_sal: 'DUE',
@@ -115,69 +144,61 @@ export default function ProgettoForm({ onClose, onProgettoCreated, bando, client
   })
 
   useEffect(() => {
-    loadBandi()
-    loadClienti()
+    const initializeForm = async () => {
+      await loadBandi()
+      await loadClienti()
 
-    if (progetto) {
-      // Modifica progetto esistente - pre-popola tutti i campi
-      setFormData({
-        bando_id: progetto.bando_id || '',
-        cliente_id: progetto.cliente_id || '',
-        codice_progetto: progetto.codice_progetto || '',
-        titolo_progetto: progetto.titolo_progetto || '',
-        descrizione_progetto: progetto.descrizione_progetto || '',
-        stato: progetto.stato || 'DECRETO_ATTESO',
-        importo_totale_progetto: progetto.importo_totale_progetto || 0,
-        contributo_ammesso: progetto.contributo_ammesso || 0,
-        percentuale_contributo: progetto.percentuale_contributo || 0,
-        data_pubblicazione_graduatoria: progetto.data_pubblicazione_graduatoria ? progetto.data_pubblicazione_graduatoria.split('T')[0] : '',
-        data_decreto_concessione: progetto.data_decreto_concessione ? progetto.data_decreto_concessione.split('T')[0] : '',
-        scadenza_accettazione_esiti: progetto.scadenza_accettazione_esiti ? progetto.scadenza_accettazione_esiti.split('T')[0] : '',
-        data_avvio_progetto: progetto.data_avvio_progetto ? progetto.data_avvio_progetto.split('T')[0] : '',
-        data_fine_progetto_prevista: progetto.data_fine_progetto_prevista ? progetto.data_fine_progetto_prevista.split('T')[0] : '',
-        anticipo_richiedibile: progetto.anticipo_richiedibile || true,
-        percentuale_anticipo: progetto.percentuale_anticipo || 30,
-        numero_sal: progetto.numero_sal || 'DUE',
-        proroga_richiedibile: progetto.proroga_richiedibile !== false,
-        referente_interno: progetto.referente_interno || '',
-        email_referente_interno: progetto.email_referente_interno || '',
-        note_progetto: progetto.note_progetto || ''
-      })
+      if (progetto) {
+        // Modifica progetto esistente - pre-popola tutti i campi
+        setFormData({
+          bando_id: progetto.bando_id || '',
+          cliente_id: progetto.cliente_id || '',
+          codice_progetto: progetto.codice_progetto || '',
+          titolo_progetto: progetto.titolo_progetto || '',
+          descrizione_progetto: progetto.descrizione_progetto || '',
+          stato: progetto.stato || 'DECRETO_ATTESO',
+          importo_totale_progetto: progetto.importo_totale_progetto || 0,
+          contributo_ammesso: progetto.contributo_ammesso || 0,
+          percentuale_contributo: progetto.percentuale_contributo || 0,
+          data_base_calcolo: progetto.data_base_calcolo ? progetto.data_base_calcolo.split('T')[0] : '',
+          evento_base_id: progetto.evento_base_id || '',
+          eventi_progetto: {},
+          anticipo_richiedibile: progetto.anticipo_richiedibile || true,
+          percentuale_anticipo: progetto.percentuale_anticipo || 30,
+          numero_sal: progetto.numero_sal || 'DUE',
+          proroga_richiedibile: progetto.proroga_richiedibile !== false,
+          referente_interno: progetto.referente_interno || '',
+          email_referente_interno: progetto.email_referente_interno || '',
+          note_progetto: progetto.note_progetto || ''
+        })
 
-      // Carica documenti per progetto esistente
-      loadDocumenti(progetto.id)
-      // Carica scadenze per progetto esistente
-      loadScadenze(progetto.id)
+        // Carica documenti per progetto esistente
+        loadDocumenti(progetto.id)
+        // Carica scadenze per progetto esistente
+        loadScadenze(progetto.id)
     } else {
       // Nuovo progetto
-      generateCodiceProgetto()
+      await generateCodiceProgetto()
 
       // Se passato un bando, pre-popola i campi
       if (bando) {
-        console.log('📋 Bando pre-selezionato trovato:', {
-          id: bando.id,
-          nome: bando.nome,
-          data_pubblicazione_graduatoria: bando.data_pubblicazione_graduatoria
-        })
-
-        const dataEreditata = bando.data_pubblicazione_graduatoria ?
-          bando.data_pubblicazione_graduatoria.split('T')[0] : ''
-
-        console.log('📅 Ereditando data dal bando pre-selezionato:', dataEreditata)
+        const dataEreditata = bando.data_base_calcolo ?
+          bando.data_base_calcolo.split('T')[0] : ''
 
         setFormData(prev => ({
           ...prev,
           contributo_ammesso: bando.contributo_massimo,
           percentuale_contributo: bando.percentuale_contributo,
-          // Importa automaticamente la data pubblicazione graduatoria
-          data_pubblicazione_graduatoria: dataEreditata
+          data_base_calcolo: dataEreditata,
+          evento_base_id: bando.evento_base_id || ''
         }))
 
-        // Carica template documents anche per nuovo progetto se c'è un bando
-        console.log('🔄 Caricando documenti per nuovo progetto con bando pre-selezionato')
-        loadDocumenti('')  // Passare stringa vuota come progettoId per nuovo progetto
+        loadDocumenti('')  // Per nuovo progetto
       }
     }
+    }
+
+    initializeForm()
   }, [bando, progetto])
 
   // Funzione per aggiornare il titolo progetto
@@ -202,7 +223,6 @@ export default function ProgettoForm({ onClose, onProgettoCreated, bando, client
   // Carica template scadenze quando cambia il bando selezionato
   useEffect(() => {
     if (formData.bando_id) {
-      console.log('🔄 Loading bando con template per:', formData.bando_id)
       loadBandoConTemplate(formData.bando_id)
     }
   }, [formData.bando_id])
@@ -210,72 +230,75 @@ export default function ProgettoForm({ onClose, onProgettoCreated, bando, client
   // Carica anche il bando pre-selezionato se passato come prop
   useEffect(() => {
     if (bando && bando.id && !bandoSelezionato) {
-      console.log('🔄 Loading bando pre-selezionato:', bando.id, bando.nome)
       loadBandoConTemplate(bando.id)
     }
   }, [bando, bandoSelezionato])
 
-  // Effetto aggiuntivo per mostrare scadenze calcolate quando cambiano i dati relevanti
+  // Effetto aggiuntivo per mostrare scadenze calcolate quando cambiano i dati rilevanti
   useEffect(() => {
-    if (formData.bando_id && (formData.data_pubblicazione_graduatoria || bandoSelezionato?.data_pubblicazione_graduatoria)) {
-      console.log('📅 Ricalcolo scadenze per preview:', {
-        bando_id: formData.bando_id,
-        data_pubblicazione: formData.data_pubblicazione_graduatoria || bandoSelezionato?.data_pubblicazione_graduatoria,
-        templates_count: templateScadenze?.length || 0
-      })
+    if (formData.bando_id && (formData.data_base_calcolo || bandoSelezionato?.data_base_calcolo)) {
       // Le scadenze vengono calcolate automaticamente quando viene renderizzato il tab "scadenze"
-      // tramite la funzione calcolaScadenzeAnteprima()
     }
-  }, [formData.bando_id, formData.data_pubblicazione_graduatoria, formData.data_decreto_concessione,
-      formData.data_avvio_progetto, bandoSelezionato, templateScadenze])
+  }, [formData.bando_id, formData.data_base_calcolo,
+      bandoSelezionato, templateScadenze])
 
   // Effetto separato per caricare documenti quando il bando è disponibile (per nuovi progetti)
   useEffect(() => {
     if (!progetto && formData.bando_id) {
-      console.log('📋 Caricando documenti per bando:', formData.bando_id)
       loadDocumenti('')
     }
   }, [formData.bando_id, progetto])
 
+  // Effetto per ricalcolare le scadenze quando cambiano le date degli eventi del progetto
+  useEffect(() => {
+    if (templateScadenze.length > 0 && formData.bando_id && Object.keys(formData.eventi_progetto).length > 0) {
+      ricalcolaScadenzeProgetto()
+    }
+  }, [formData.eventi_progetto, templateScadenze, formData.bando_id])
+
+  // Effetto per ricalcolare le scadenze quando cambiano le date effettive
+  useEffect(() => {
+    if (Object.keys(dateEffettiveScadenze).length > 0 && scadenzeSalvate.length > 0) {
+      ricalcolaScadenzeConDateEffettive()
+    }
+  }, [dateEffettiveScadenze])
+
   const loadBandi = async () => {
     try {
       const { data, error } = await supabase
-        .from('scadenze_bandi_bandi_view')
-        .select('id, nome, codice_bando, contributo_massimo, percentuale_contributo, tipologia_bando, data_pubblicazione_graduatoria')
+        .from('scadenze_bandi_bandi')
+        .select('id, nome, codice_bando, contributo_massimo, percentuale_contributo, tipologia_bando, data_base_calcolo, evento_base_id')
         .order('nome')
 
       if (error) throw error
       setBandi(data || [])
     } catch (error) {
-      console.error('❌ Errore caricamento bandi dettagliato:', error.message, error.details, error.hint)
+      console.error('❌ Errore caricamento bandi:', error.message)
     }
   }
 
   const loadBandoConTemplate = async (bandoId: string) => {
     try {
-      console.log('📋 Caricando dati completi per bando:', bandoId)
-
       // Carica bando con tutti i dati necessari
       const { data: bandoData, error: bandoError } = await supabase
-        .from('scadenze_bandi_bandi_view')
-        .select('id, nome, data_pubblicazione_graduatoria, contributo_massimo, percentuale_contributo')
+        .from('scadenze_bandi_bandi')
+        .select('id, nome, data_base_calcolo, evento_base_id, contributo_massimo, percentuale_contributo')
         .eq('id', bandoId)
         .single()
 
       if (bandoError) {
-        console.error('❌ Errore caricamento bando dettagliato:', bandoError.message, bandoError.details, bandoError.hint)
+        console.error('❌ Errore caricamento bando:', bandoError.message)
         throw bandoError
       }
 
-      console.log('📋 Dati bando caricati:', bandoData)
       setBandoSelezionato(bandoData)
 
-      // Se il bando ha una data_pubblicazione_graduatoria e il form non l'ha ancora, ereditala
-      if (bandoData.data_pubblicazione_graduatoria && !formData.data_pubblicazione_graduatoria) {
-        console.log('📅 Ereditando data pubblicazione graduatoria dal bando:', bandoData.data_pubblicazione_graduatoria)
+      // Se il bando ha una data_base_calcolo e il form non l'ha ancora, ereditala
+      if (bandoData.data_base_calcolo && !formData.data_base_calcolo) {
         setFormData(prev => ({
           ...prev,
-          data_pubblicazione_graduatoria: bandoData.data_pubblicazione_graduatoria.split('T')[0]
+          data_base_calcolo: bandoData.data_base_calcolo.split('T')[0],
+          evento_base_id: bandoData.evento_base_id || ''
         }))
       }
 
@@ -287,76 +310,245 @@ export default function ProgettoForm({ onClose, onProgettoCreated, bando, client
         .order('ordine_sequenza')
 
       if (templatesError) {
-        console.error('Errore caricamento template (non bloccante):', templatesError)
-        // Non lanciamo l'errore perché i template potrebbero non esistere
+        console.error('Errore caricamento template scadenze (non bloccante):', templatesError)
       }
 
-      console.log('📋 Template scadenze caricati:', templates?.length || 0, 'template')
-      console.log('📋 Template completi:', templates)
       setTemplateScadenze(templates || [])
+
+      // Carica eventi del bando e calcola le date
+      await loadEventiDelBando(bandoId, bandoData, templates || [])
     } catch (error) {
       console.error('Errore caricamento bando e template:', error)
     }
   }
 
-  // Calcola scadenze in anteprima basandosi sui template e date inserite
-  const calcolaScadenzeAnteprima = () => {
-    if (!bandoSelezionato || !templateScadenze || templateScadenze.length === 0) return []
+  // Carica eventi del bando e calcola le date dal template
+  const loadEventiDelBando = async (bandoId: string, bandoData: any, templates: any[]) => {
+    try {
+      // Carica tutti gli eventi del catalogo
+      const { data: catalogo, error: catalogoError } = await supabase
+        .from('scadenze_bandi_eventi_catalogo')
+        .select('*')
 
-    // Sistema universale basato sui template del bando
-    const scadenzeCalcolate = []
-
-    for (const template of templateScadenze) {
-      let dataRiferimento = null
-      let eventoNome = ''
-
-      // Determina la data di riferimento
-      if (template.evento_riferimento === 'pubblicazione_graduatoria') {
-        dataRiferimento = formData.data_pubblicazione_graduatoria || bandoSelezionato.data_pubblicazione_graduatoria
-        eventoNome = 'Pubblicazione Graduatoria'
-      } else if (template.evento_riferimento === 'decreto_concessione') {
-        dataRiferimento = formData.data_decreto_concessione
-        eventoNome = 'Decreto Concessione'
-      } else if (template.evento_riferimento === 'avvio_progetto') {
-        dataRiferimento = formData.data_avvio_progetto
-        eventoNome = 'Avvio Progetto'
+      if (catalogoError) {
+        console.error('Errore caricamento catalogo eventi:', catalogoError)
+        return
       }
 
-      // Se non abbiamo la data specifica, usa pubblicazione graduatoria come fallback
-      if (!dataRiferimento) {
-        dataRiferimento = formData.data_pubblicazione_graduatoria || bandoSelezionato.data_pubblicazione_graduatoria
-        eventoNome = 'Pubblicazione Graduatoria (fallback)'
+      setEventiCatalogo(catalogo || [])
+
+      // Estrai tutti gli eventi unici usati nei template del bando
+      const eventiUsati = new Set<string>()
+      const dateCalcolate: { [eventoId: string]: string } = {}
+
+      // Aggiungi l'evento base del bando
+      if (bandoData.evento_base_id) {
+        eventiUsati.add(bandoData.evento_base_id)
+        // La data dell'evento base è quella inserita nel bando
+        if (bandoData.data_base_calcolo) {
+          dateCalcolate[bandoData.evento_base_id] = bandoData.data_base_calcolo.split('T')[0]
+        }
       }
 
-      if (dataRiferimento) {
-        const dataRif = new Date(dataRiferimento)
-        const dataScadenza = new Date(dataRif)
-        dataScadenza.setDate(dataScadenza.getDate() + (template.giorni_da_evento || 0))
+      // Simula il calcolo delle scadenze per determinare le date degli eventi successivi
+      if (templates && templates.length > 0 && bandoData.data_base_calcolo) {
+        const scadenzeSimulate = new Map<string, Date>()
+        const dataBase = new Date(bandoData.data_base_calcolo)
 
-        scadenzeCalcolate.push({
-          nome: template.nome || template.nome_scadenza,
-          dataScadenza: dataScadenza.toLocaleDateString('it-IT'),
-          calcolabile: true,
-          priorita: template.priorita || 'media',
-          giorni_da_evento: `+${template.giorni_da_evento || 0}`,
-          evento_riferimento: eventoNome,
-          dataRiferimentoUsata: dataRif.toLocaleDateString('it-IT')
-        })
-      } else {
-        scadenzeCalcolate.push({
-          nome: template.nome || template.nome_scadenza,
-          dataScadenza: '',
-          calcolabile: false,
-          priorita: template.priorita || 'media',
-          giorni_da_evento: `+${template.giorni_da_evento || 0}`,
-          evento_riferimento: template.evento_riferimento || 'N/D',
-          dataRiferimentoUsata: ''
-        })
+        for (let i = 0; i < templates.length; i++) {
+          const template = templates[i]
+          let dataRiferimento = null
+
+          if (template.evento_riferimento?.startsWith('evento_base_')) {
+            dataRiferimento = dataBase
+          } else if (template.evento_riferimento?.startsWith('scadenza_')) {
+            const scadenzaIndex = parseInt(template.evento_riferimento.replace('scadenza_', ''))
+            if (scadenzeSimulate.has(`scadenza_${scadenzaIndex}`)) {
+              dataRiferimento = scadenzeSimulate.get(`scadenza_${scadenzaIndex}`)
+            } else {
+              dataRiferimento = dataBase
+            }
+          } else {
+            dataRiferimento = dataBase
+          }
+
+          if (dataRiferimento) {
+            const dataScadenza = new Date(dataRiferimento)
+            dataScadenza.setDate(dataScadenza.getDate() + (template.giorni_da_evento || 0))
+            scadenzeSimulate.set(`scadenza_${i}`, dataScadenza)
+
+            // Se questo template rappresenta un evento (non solo una scadenza),
+            // aggiungi la sua data come possibile riferimento futuro
+            if (template.tipo_scadenza && !template.tipo_scadenza.includes('generico')) {
+              const eventoNome = `template_${i}_${template.tipo_scadenza}`
+              dateCalcolate[eventoNome] = dataScadenza.toISOString().split('T')[0]
+            }
+          }
+        }
       }
+
+      // Trova gli eventi del catalogo corrispondenti
+      const eventiDelBandoArray = (catalogo || []).filter(evento =>
+        eventiUsati.has(evento.id)
+      )
+
+      setEventiDelBando(eventiDelBandoArray)
+      setDateCalcolateBando(dateCalcolate)
+
+      console.log('📅 Eventi del bando caricati:', eventiDelBandoArray)
+      console.log('📊 Date calcolate:', dateCalcolate)
+
+    } catch (error) {
+      console.error('Errore caricamento eventi del bando:', error)
     }
-
-    return scadenzeCalcolate
   }
+
+  // Ricalcola scadenze quando cambia una data effettiva
+  const ricalcolaScadenzeConDateEffettive = () => {
+    if (!templateScadenze.length || !scadenzeSalvate.length) return
+
+    try {
+      const nuoveScadenze = [...scadenzeSalvate]
+
+      // Per ogni scadenza, verifica se deve essere ricalcolata
+      nuoveScadenze.forEach((scadenza, index) => {
+        const template = templateScadenze[index]
+        if (!template) return
+
+        // Se c'è una data effettiva per questa specifica scadenza, non ricalcolarla
+        if (dateEffettiveScadenze[scadenza.id]) {
+          return // Mantiene la sua data effettiva
+        }
+
+        // Altrimenti, calcola la data basandosi sulla catena delle scadenze
+        let dataRiferimento = null
+
+        // Trova la data di riferimento dall'evento base o dalla scadenza precedente
+        if (index === 0) {
+          // Prima scadenza: usa l'evento base
+          if (formData.eventi_progetto && bandoSelezionato?.evento_base_id) {
+            const dataEventoBase = formData.eventi_progetto[bandoSelezionato.evento_base_id]
+            if (dataEventoBase) {
+              dataRiferimento = new Date(dataEventoBase)
+            }
+          }
+
+          // Fallback alla data del bando
+          if (!dataRiferimento && bandoSelezionato?.data_base_calcolo) {
+            dataRiferimento = new Date(bandoSelezionato.data_base_calcolo)
+          }
+        } else {
+          // Scadenze successive: usa la scadenza precedente
+          const scadenzaPrecedente = nuoveScadenze[index - 1]
+
+          // Prima controlla se la scadenza precedente ha una data effettiva
+          if (dateEffettiveScadenze[scadenzaPrecedente.id]) {
+            dataRiferimento = new Date(dateEffettiveScadenze[scadenzaPrecedente.id])
+          } else if (scadenzaPrecedente.data_scadenza && !isNaN(new Date(scadenzaPrecedente.data_scadenza).getTime())) {
+            dataRiferimento = new Date(scadenzaPrecedente.data_scadenza)
+          }
+        }
+
+        // Calcola la nuova data se abbiamo un riferimento
+        if (dataRiferimento && template.giorni_da_evento !== undefined) {
+          const nuovaData = new Date(dataRiferimento)
+          nuovaData.setDate(nuovaData.getDate() + template.giorni_da_evento)
+          scadenza.data_scadenza = nuovaData.toISOString()
+        }
+      })
+
+      setScadenzeSalvate(nuoveScadenze)
+    } catch (error) {
+      console.error('❌ Errore nel ricalcolo scadenze con date effettive:', error)
+    }
+  }
+
+  // Ricalcola le scadenze del progetto basandosi sulle date degli eventi specifici
+  const ricalcolaScadenzeProgetto = () => {
+    if (!templateScadenze.length || !formData.bando_id) return
+
+    try {
+      const nuoveScadenze = []
+      const scadenzeGenerate = new Map<string, Date>()
+
+      // Determina la data base da usare (progetto-specifica o da bando)
+      const getDataEventoProgetto = (eventoId: string): Date | null => {
+        // Prima controlla se c'è una data specifica per il progetto
+        if (formData.eventi_progetto[eventoId]) {
+          return new Date(formData.eventi_progetto[eventoId])
+        }
+        // Altrimenti usa la data calcolata dal bando
+        if (dateCalcolateBando[eventoId]) {
+          return new Date(dateCalcolateBando[eventoId])
+        }
+        return null
+      }
+
+      console.log('🔄 Ricalcolando scadenze del progetto...')
+      console.log('📊 Eventi progetto:', formData.eventi_progetto)
+      console.log('📊 Date bando:', dateCalcolateBando)
+
+      for (let i = 0; i < templateScadenze.length; i++) {
+        const template = templateScadenze[i]
+        let dataRiferimento = null
+
+        console.log(`   Template ${i + 1}: ${template.nome}`)
+        console.log(`   Evento riferimento: ${template.evento_riferimento}`)
+
+        // Determina la data di riferimento basandosi sui nuovi eventi dinamici
+        if (template.evento_riferimento?.startsWith('evento_base_')) {
+          const eventoId = template.evento_riferimento.replace('evento_base_', '')
+          dataRiferimento = getDataEventoProgetto(eventoId)
+          console.log(`   ✅ Usando evento base ${eventoId}:`, dataRiferimento?.toISOString().split('T')[0])
+        } else if (template.evento_riferimento?.startsWith('scadenza_')) {
+          const scadenzaIndex = parseInt(template.evento_riferimento.replace('scadenza_', ''))
+          if (scadenzeGenerate.has(`scadenza_${scadenzaIndex}`)) {
+            dataRiferimento = scadenzeGenerate.get(`scadenza_${scadenzaIndex}`)
+            console.log(`   ✅ Usando scadenza precedente ${scadenzaIndex}:`, dataRiferimento?.toISOString().split('T')[0])
+          } else {
+            console.log(`   ⚠️ Scadenza precedente ${scadenzaIndex} non trovata`)
+          }
+        }
+
+        // Fallback: usa la data base calcolo
+        if (!dataRiferimento && formData.data_base_calcolo) {
+          dataRiferimento = new Date(formData.data_base_calcolo)
+          console.log(`   ⚠️ Fallback a data base calcolo:`, dataRiferimento.toISOString().split('T')[0])
+        }
+
+        if (dataRiferimento) {
+          const dataScadenza = new Date(dataRiferimento)
+          dataScadenza.setDate(dataScadenza.getDate() + (template.giorni_da_evento || 0))
+
+          // Memorizza per i prossimi template
+          scadenzeGenerate.set(`scadenza_${i}`, dataScadenza)
+
+          nuoveScadenze.push({
+            id: `scadenza_${i}_${Date.now()}`,
+            titolo: template.nome,
+            descrizione: template.descrizione,
+            data_scadenza: dataScadenza.toISOString().split('T')[0],
+            priorita: template.priorita,
+            obbligatoria: template.obbligatoria,
+            responsabile: template.responsabile_suggerito,
+            note: template.note_template
+          })
+
+          console.log(`   📅 Data scadenza: ${dataScadenza.toISOString().split('T')[0]}`)
+        } else {
+          console.error(`   ❌ Impossibile calcolare scadenza per: ${template.nome}`)
+        }
+      }
+
+      // Aggiorna le scadenze calcolate per la visualizzazione
+      setScadenzeSalvate(nuoveScadenze)
+      console.log('✅ Scadenze ricalcolate:', nuoveScadenze)
+
+    } catch (error) {
+      console.error('❌ Errore nel ricalcolo scadenze progetto:', error)
+    }
+  }
+
 
   const loadClienti = async () => {
     try {
@@ -372,287 +564,187 @@ export default function ProgettoForm({ onClose, onProgettoCreated, bando, client
     }
   }
 
-  const generateCodiceProgetto = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('scadenze_bandi_progetti')
-        .select('codice_progetto')
-        .order('created_at', { ascending: false })
-        .limit(1)
-
-      if (error) throw error
-
-      let nuovoNumero = 1
-      if (data && data.length > 0) {
-        const ultimoCodice = data[0].codice_progetto
-        const match = ultimoCodice?.match(/PRJ-(\d{4})-(\d{3})/)
-        if (match) {
-          const anno = new Date().getFullYear()
-          const ultimoAnno = parseInt(match[1])
-          const ultimoNumero = parseInt(match[2])
-
-          if (ultimoAnno === anno) {
-            nuovoNumero = ultimoNumero + 1
-          } else {
-            nuovoNumero = 1
-          }
-        }
-      }
-
-      const anno = new Date().getFullYear()
-      const numeroFormattato = nuovoNumero.toString().padStart(3, '0')
-      const nuovoCodice = `PRJ-${anno}-${numeroFormattato}`
-
-      setFormData(prev => ({ ...prev, codice_progetto: nuovoCodice }))
-    } catch (error) {
-      console.error('Errore generazione codice:', error)
-      const anno = new Date().getFullYear()
-      const fallbackCodice = `PRJ-${anno}-001`
-      setFormData(prev => ({ ...prev, codice_progetto: fallbackCodice }))
-    }
-  }
-
-  // Funzione per caricare scadenze salvate
   const loadScadenze = async (progettoId: string) => {
     try {
       const { data, error } = await supabase
         .from('scadenze_bandi_scadenze')
-        .select(`
-          id,
-          titolo,
-          data_scadenza,
-          stato,
-          priorita,
-          responsabile_email,
-          note,
-          progetto_id,
-          bando_id,
-          cliente_id
-        `)
+        .select('*')
         .eq('progetto_id', progettoId)
         .order('data_scadenza')
 
       if (error) throw error
-      console.log('📅 Scadenze salvate caricate:', data?.length || 0, 'per progetto:', progettoId)
       setScadenzeSalvate(data || [])
     } catch (error) {
-      console.error('❌ Errore caricamento scadenze:', error)
+      console.error('Errore caricamento scadenze:', error)
     }
   }
 
-  const handleBandoChange = (bandoId: string) => {
-    const selectedBando = bandi.find(b => b.id === bandoId)
-    console.log('DEBUG - handleBandoChange:', {
-      bandoId,
-      selectedBando,
-      data_pubblicazione_graduatoria: selectedBando?.data_pubblicazione_graduatoria
-    })
-
-    if (selectedBando) {
-      const dataEredirata = selectedBando.data_pubblicazione_graduatoria ?
-        selectedBando.data_pubblicazione_graduatoria.split('T')[0] : ''
-
-      console.log('DEBUG - Ereditando data pubblicazione:', dataEredirata)
-
-      setFormData(prev => ({
-        ...prev,
-        bando_id: bandoId,
-        titolo_progetto: `Progetto ${selectedBando.nome}`,
-        contributo_ammesso: selectedBando.contributo_massimo,
-        percentuale_contributo: selectedBando.percentuale_contributo,
-        // Eredita la data pubblicazione graduatoria dal bando
-        data_pubblicazione_graduatoria: dataEredirata
-      }))
-    }
-  }
-
-  const handleImportoChange = (importo: number) => {
-    const contributo = Math.round(importo * (formData.percentuale_contributo / 100))
-    setFormData(prev => ({
-      ...prev,
-      importo_totale_progetto: importo,
-      contributo_ammesso: contributo
-    }))
-  }
-
-  const handlePercentualeChange = (percentuale: number) => {
-    const contributo = Math.round(formData.importo_totale_progetto * (percentuale / 100))
-    setFormData(prev => ({
-      ...prev,
-      percentuale_contributo: percentuale,
-      contributo_ammesso: contributo
-    }))
-  }
-
-  const handleSave = async () => {
-    if (!formData.bando_id || !formData.cliente_id || !formData.titolo_progetto) {
-      alert('Bando, Cliente e Titolo progetto sono obbligatori')
-      return
-    }
-
-    setLoading(true)
+  const loadDocumenti = async (progettoId: string) => {
     try {
-      // Prepara dati per salvataggio
-      const dataToSave = { ...formData }
+      const documentiCaricati: any[] = []
 
-      // DEBUG: Verifica cosa stiamo salvando
-      console.log('🔍 DEBUG - Form data prima del save:', {
-        data_pubblicazione_graduatoria: formData.data_pubblicazione_graduatoria,
-        bando_id: formData.bando_id,
-        cliente_id: formData.cliente_id,
-        bandoSelezionato: bandoSelezionato?.data_pubblicazione_graduatoria,
-        bando_prop: bando?.data_pubblicazione_graduatoria
-      })
-      console.log('🔍 DEBUG - Data to save structure completa:', JSON.stringify(dataToSave, null, 2))
+      if (progettoId) {
+        // Carica documenti dal database per progetto esistente
+        const { data: dbDocumenti, error: docError } = await supabase
+          .from('scadenze_bandi_documenti_progetto')
+          .select('*')
+          .eq('progetto_id', progettoId)
+          .order('created_at', { ascending: false })
 
-      // Gestisci date vuote - se non presenti, le rimuoviamo dal payload
-      if (!dataToSave.data_pubblicazione_graduatoria) delete dataToSave.data_pubblicazione_graduatoria
-      if (!dataToSave.data_decreto_concessione) delete dataToSave.data_decreto_concessione
-      if (!dataToSave.scadenza_accettazione_esiti) delete dataToSave.scadenza_accettazione_esiti
-      if (!dataToSave.data_avvio_progetto) delete dataToSave.data_avvio_progetto
-      if (!dataToSave.data_fine_progetto_prevista) delete dataToSave.data_fine_progetto_prevista
-
-      // Gestisci campi numerici
-      if (!dataToSave.importo_totale_progetto) dataToSave.importo_totale_progetto = 0
-      if (!dataToSave.contributo_ammesso) dataToSave.contributo_ammesso = 0
-      if (!dataToSave.percentuale_contributo) dataToSave.percentuale_contributo = 0
-      if (!dataToSave.percentuale_anticipo) dataToSave.percentuale_anticipo = 30
-
-      let progettoId: string
-
-      if (progetto?.id) {
-        // Modifica progetto esistente
-        console.log('Aggiornando progetto esistente con ID:', progetto.id)
-        const { error: progettoError } = await supabase
-          .from('scadenze_bandi_progetti')
-          .update(dataToSave)
-          .eq('id', progetto.id)
-
-        if (progettoError) {
-          console.error('Errore aggiornamento progetto:', progettoError)
-          throw progettoError
-        }
-        progettoId = progetto.id
-      } else {
-        // Inserisci nuovo progetto
-        console.log('Inserendo nuovo progetto...')
-        const { data: progettoData, error: progettoError } = await supabase
-          .from('scadenze_bandi_progetti')
-          .insert([dataToSave])
-          .select()
-          .single()
-
-        if (progettoError) {
-          console.error('Errore inserimento progetto:', {
-            message: progettoError.message,
-            details: progettoError.details,
-            hint: progettoError.hint,
-            code: progettoError.code,
-            dataToSave
-          })
-          throw progettoError
-        }
-
-        console.log('Progetto inserito con successo:', progettoData)
-        progettoId = progettoData.id
-
-        // NUOVO: Copia tutti i documenti dal bucket del bando al bucket del progetto
-        try {
-          console.log('📄 Copiando documenti dal bando al progetto...')
-
-          // Lista tutti i file nel bucket del bando
-          const { data: bandoFiles, error: listError } = await supabase.storage
-            .from('bandi-documenti')
-            .list(formData.bando_id)
-
-          if (listError) {
-            console.warn('⚠️ Errore nel listare documenti del bando:', listError)
-          } else if (bandoFiles && bandoFiles.length > 0) {
-            console.log(`📋 Trovati ${bandoFiles.length} documenti nel bando`)
-
-            for (const file of bandoFiles) {
-              try {
-                // Scarica il file dal bucket del bando
-                const { data: fileData, error: downloadError } = await supabase.storage
-                  .from('bandi-documenti')
-                  .download(`${formData.bando_id}/${file.name}`)
-
-                if (downloadError) {
-                  console.error(`❌ Errore download ${file.name}:`, downloadError)
-                  continue
-                }
-
-                // Upload nel bucket del progetto
-                const { error: uploadError } = await supabase.storage
-                  .from('progetti-documenti')
-                  .upload(`${progettoId}/${file.name}`, fileData, {
-                    contentType: file.metadata?.mimetype || 'application/octet-stream',
-                    cacheControl: '3600',
-                    upsert: true
-                  })
-
-                if (uploadError) {
-                  console.error(`❌ Errore upload ${file.name} nel progetto:`, uploadError)
-                } else {
-                  console.log(`✅ Copiato documento: ${file.name}`)
-                }
-              } catch (copyError) {
-                console.error(`❌ Errore copia documento ${file.name}:`, copyError)
-              }
-            }
-
-            console.log('✅ Copia documenti dal bando completata')
-          } else {
-            console.log('📋 Nessun documento trovato nel bando')
-          }
-        } catch (copyDocsError) {
-          console.error('❌ Errore generale nella copia documenti:', copyDocsError)
-          // Non bloccare la creazione del progetto se la copia fallisce
-        }
-      }
-
-      // Genera scadenze automatiche dal template del bando (solo per nuovi progetti)
-      if (!progetto?.id) {
-        console.log('🔄 Verifica condizioni per generazione scadenze:', {
-          isNewProject: !progetto?.id,
-          hasDataPubblicazione: !!formData.data_pubblicazione_graduatoria,
-          dataPubblicazione: formData.data_pubblicazione_graduatoria,
-          bandoId: formData.bando_id
-        })
-
-        console.log('🔍 DEBUG - Controllo data per generazione scadenze:', {
-          'formData.data_pubblicazione_graduatoria': formData.data_pubblicazione_graduatoria,
-          'bandoSelezionato?.data_pubblicazione_graduatoria': bandoSelezionato?.data_pubblicazione_graduatoria,
-          'entrambi presenti': !!(formData.data_pubblicazione_graduatoria || bandoSelezionato?.data_pubblicazione_graduatoria)
-        })
-
-        if (formData.data_pubblicazione_graduatoria || bandoSelezionato?.data_pubblicazione_graduatoria) {
-          const dataToUse = formData.data_pubblicazione_graduatoria || bandoSelezionato?.data_pubblicazione_graduatoria
-          console.log('✅ Generando scadenze per nuovo progetto con data pubblicazione:', dataToUse)
-          await generateScadenzeFromTemplate(progettoId, formData.bando_id)
-          // Carica le scadenze appena create per mostrarle subito
-          await loadScadenze(progettoId)
+        if (docError) {
+          console.error('Errore caricamento documenti database:', docError)
         } else {
-          console.log('⚠️ Nessuna data_pubblicazione_graduatoria trovata per generare scadenze automatiche')
+          documentiCaricati.push(...(dbDocumenti || []))
         }
-      } else {
-        console.log('⏸️ Skip generazione scadenze - progetto esistente in modifica')
-      }
+      } else if (formData.bando_id) {
+        // Per nuovi progetti: eredita e copia fisicamente gli "Allegati da Compilare" dal bando
+        console.log('🔄 Caricamento e copia allegati da bando per nuovo progetto...')
 
-      onProgettoCreated()
-      onClose()
-    } catch (error: any) {
-      console.error('Errore salvataggio progetto:', error)
-      alert(`Errore nel salvataggio: ${error.message || 'Errore sconosciuto'}`)
-    } finally {
-      setLoading(false)
+        // Prima verifichiamo tutti i documenti del bando per debug
+        console.log('🔍 Debug: Verificando TUTTI i documenti del bando...')
+        const { data: tuttiDocumentiBando, error: debugError } = await supabase
+          .from('scadenze_bandi_documenti')
+          .select('id, nome_file, categoria, tipo_documento, bando_id')
+          .eq('bando_id', formData.bando_id)
+
+        if (debugError) {
+          console.error('❌ Errore debug documenti bando:', debugError)
+        } else {
+          console.log('📋 TUTTI i documenti del bando:', tuttiDocumentiBando)
+          console.log(`📊 Categorie presenti:`, tuttiDocumentiBando?.map(d => d.categoria))
+        }
+
+        const { data: bandoAllegati, error: allegatiError } = await supabase
+          .from('scadenze_bandi_documenti')
+          .select('*')
+          .eq('bando_id', formData.bando_id)
+          .eq('categoria', 'allegati') // Solo allegati, non normativa
+          .order('created_at', { ascending: false })
+
+        if (allegatiError) {
+          console.error('Errore caricamento allegati dal bando:', allegatiError)
+        } else {
+          console.log(`✅ Trovati ${bandoAllegati?.length || 0} allegati da ereditare dal bando`)
+          if (bandoAllegati?.length > 0) {
+            console.log('📎 Allegati da copiare:', bandoAllegati.map(a => `${a.nome_file} (${a.categoria})`))
+          }
+        }
+
+        const progettoId = 'temp_' + Date.now()
+
+        // Il bucket progetti-documenti dovrebbe già esistere (gestito in Supabase)
+        console.log('🔍 Verificando bucket progetti-documenti...')
+        const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets()
+
+        if (bucketsError) {
+          console.warn('⚠️ Non posso verificare buckets (permessi limitati), procedo comunque')
+        } else {
+          const progettiDocumentiBucket = buckets.find(b => b.name === 'progetti-documenti')
+          if (progettiDocumentiBucket) {
+            console.log('✅ Bucket progetti-documenti trovato')
+          } else {
+            console.warn('⚠️ Bucket progetti-documenti non trovato nella lista, ma procedo comunque')
+          }
+        }
+
+        // Copia fisicamente ogni allegato dal bando al progetto
+        for (const allegato of bandoAllegati || []) {
+            try {
+              console.log(`📁 Copiando allegato: ${allegato.nome_file}`)
+
+              // 1. Scarica il file dal bucket bandi
+              const { data: fileData, error: downloadError } = await supabase.storage
+                .from('bandi-documenti')
+                .download(allegato.url_file)
+
+              if (downloadError) {
+                console.error(`❌ Errore download allegato ${allegato.nome_file}:`, downloadError)
+                continue
+              }
+
+              // 2. Genera nuovo nome file per il progetto
+              const nuovoNomeFile = `template_${Date.now()}_${allegato.nome_file}`
+              const nuovoPercorso = `${progettoId}/${nuovoNomeFile}`
+
+              // 3. Carica il file nel bucket progetti
+              console.log(`⬆️ Tentativo upload: ${nuovoPercorso} (${fileData.size} bytes)`)
+              const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('progetti-documenti')
+                .upload(nuovoPercorso, fileData)
+
+              if (uploadError) {
+                console.error(`❌ Errore upload allegato ${allegato.nome_file}:`, uploadError)
+                console.error(`❌ Dettagli upload error:`, JSON.stringify(uploadError, null, 2))
+                continue
+              }
+
+              console.log(`✅ Upload completato:`, uploadData)
+
+              // 4. Crea record del documento copiato
+              const documentoCopia = {
+                ...allegato,
+                id: `template_${allegato.id}_${Date.now()}`, // Nuovo ID
+                progetto_id: null, // Sarà impostato quando si salva il progetto
+                url_file: nuovoPercorso, // Nuovo percorso nel bucket progetti
+                inherited_from_bando: true,
+                status: 'to_compile',
+                nome_file: allegato.nome_file, // Mantiene il nome originale per l'utente
+                descrizione: `Template da compilare: ${allegato.descrizione || allegato.nome_file}`
+              }
+
+              documentiCaricati.push(documentoCopia)
+              console.log(`✅ Allegato copiato: ${allegato.nome_file} -> ${nuovoPercorso}`)
+
+            } catch (error) {
+              console.error(`❌ Errore generico copia allegato ${allegato.nome_file}:`, error)
+            }
+          }
+        }
+
+      setDocumenti(documentiCaricati);
+    } catch (error) {
+      console.error('Errore generale caricamento documenti:', error);
     }
   }
 
-  const generateScadenzeFromTemplate = async (progettoId: string, bandoId: string) => {
-    try {
-      console.log('🔄 Generando scadenze automatiche per progetto:', progettoId, 'da bando:', bandoId)
+  const generateCodiceProgetto = async () => {
+    const anno = new Date().getFullYear()
+    let tentativo = 0
+    let codiceGenerato = ''
 
+    do {
+      tentativo++
+      const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+      codiceGenerato = `PROG-${anno}-${randomNum}`
+
+      // Verifica se il codice esiste già nel database
+      const { data: existing } = await supabase
+        .from('scadenze_bandi_progetti')
+        .select('id')
+        .eq('codice_progetto', codiceGenerato)
+        .single()
+
+      // Se non esiste (errore nel .single()), il codice è disponibile
+      if (!existing) {
+        break
+      }
+
+      console.log(`⚠️ Codice ${codiceGenerato} già esistente, nuovo tentativo...`)
+    } while (tentativo < 10) // Massimo 10 tentativi
+
+    if (tentativo >= 10) {
+      // Fallback con timestamp se dopo 10 tentativi non trova un codice unico
+      const timestamp = Date.now().toString().slice(-4)
+      codiceGenerato = `PROG-${anno}-${timestamp}`
+      console.log(`🔄 Usando fallback con timestamp: ${codiceGenerato}`)
+    }
+
+    setFormData(prev => ({ ...prev, codice_progetto: codiceGenerato }))
+    console.log(`✅ Codice progetto generato: ${codiceGenerato}`)
+  }
+
+  const generateScadenzeFromTemplate = async (progettoId: string, bandoId: string, formData: ProgettoFormData) => {
+    try {
       // Carica i template di scadenze del bando
       const { data: templates, error: templatesError } = await supabase
         .from('scadenze_bandi_template_scadenze')
@@ -661,1372 +753,1379 @@ export default function ProgettoForm({ onClose, onProgettoCreated, bando, client
         .order('ordine_sequenza')
 
       if (templatesError) {
-        console.error('❌ Errore caricamento template nella generateScadenzeFromTemplate:', templatesError)
+        console.error('❌ Errore caricamento template scadenze:', templatesError)
         throw templatesError
       }
 
-      console.log('📋 Template trovati per generazione scadenze:', templates?.length || 0)
-      console.log('📋 Template dettaglio:', templates)
-
       if (!templates || templates.length === 0) {
-        console.log('⚠️ Nessun template di scadenze trovato per il bando:', bandoId)
+        console.log('📋 Nessun template di scadenze trovato per il bando')
         return
       }
 
-      // Carica le informazioni del bando
-      const { data: bandoData, error: bandoError } = await supabase
-        .from('scadenze_bandi_bandi_view')
-        .select('data_pubblicazione_graduatoria, nome')
+      // Carica dati completi del bando
+      const { data: bandoData, error: bandoDataError } = await supabase
+        .from('scadenze_bandi_bandi')
+        .select('data_base_calcolo, evento_base_id')
         .eq('id', bandoId)
         .single()
 
-      if (bandoError) throw bandoError
+      if (bandoDataError) {
+        console.error('❌ Errore caricamento dati bando:', bandoDataError)
+        return
+      }
 
-      // Debug delle date disponibili
-      console.log('🔍 Debug date disponibili:')
-      console.log('  - formData.data_pubblicazione_graduatoria:', formData.data_pubblicazione_graduatoria)
-      console.log('  - bandoData.data_pubblicazione_graduatoria:', bandoData?.data_pubblicazione_graduatoria)
-      console.log('  - bandoData completo:', bandoData)
+      // Carica il catalogo eventi
+      const { data: eventiCatalogo, error: eventiError } = await supabase
+        .from('scadenze_bandi_eventi_catalogo')
+        .select('*')
 
-      // Usa i template del bando se disponibili
-      if (templates && templates.length > 0) {
-        console.log(`📋 Usando ${templates.length} template del bando per generare scadenze`)
-        const scadenzeToInsert = []
+      if (eventiError) {
+        console.error('❌ Errore caricamento eventi catalogo:', eventiError)
+        return
+      }
 
-        for (const template of templates) {
-          console.log('🔄 Processando template:', template)
-          let dataScadenza = null
+      const scadenzeToInsert = []
+      const scadenzeGenerate = new Map<string, Date>() // Mappa per tenere traccia delle scadenze generate
 
-          // Calcola la data in base all'evento di riferimento del template
-          let dataRiferimento = null
+      // Usa sempre la data_base_calcolo come data di riferimento iniziale
+      const dataBaseCalcolo = formData.data_base_calcolo || bandoData?.data_base_calcolo
 
-          // Determina la data di riferimento in base al tipo di evento
-          if (template.evento_riferimento === 'pubblicazione_graduatoria') {
-            dataRiferimento = formData.data_pubblicazione_graduatoria || bandoData?.data_pubblicazione_graduatoria
-          } else if (template.evento_riferimento === 'decreto_concessione') {
-            dataRiferimento = formData.data_decreto_concessione
-          } else if (template.evento_riferimento === 'avvio_progetto') {
-            dataRiferimento = formData.data_avvio_progetto
-          }
+      if (!dataBaseCalcolo) {
+        console.error('❌ Data base calcolo non disponibile')
+        return
+      }
 
-          // Se non abbiamo trovato una data specifica, usa data_pubblicazione_graduatoria come fallback
-          if (!dataRiferimento) {
-            console.log(`⚠️ Evento "${template.evento_riferimento}" non disponibile per template "${template.nome}", uso data_pubblicazione_graduatoria come fallback`)
-            dataRiferimento = formData.data_pubblicazione_graduatoria || bandoData?.data_pubblicazione_graduatoria
-          }
+      console.log('📅 Data base calcolo:', dataBaseCalcolo)
+      console.log('📋 Template scadenze trovati:', templates.length)
 
-          if (dataRiferimento) {
-            const dataRif = new Date(dataRiferimento)
-            console.log('📅 Data di riferimento trovata:', dataRif, 'per template:', template.nome)
+      for (let i = 0; i < templates.length; i++) {
+        const template = templates[i]
+        let dataRiferimento = null
 
-            dataScadenza = new Date(dataRif)
-            // Usa giorni_da_evento dalla struttura reale del template
-            dataScadenza.setDate(dataScadenza.getDate() + (template.giorni_da_evento || 0))
-            console.log('📅 Scadenza calcolata:', dataScadenza.toISOString().split('T')[0])
+        console.log(`🔄 Elaborando template ${i + 1}: ${template.nome}`)
+        console.log(`   Evento riferimento: ${template.evento_riferimento}`)
+
+        // Logica per determinare la data di riferimento basata sui nuovi eventi dinamici
+        if (template.evento_riferimento?.startsWith('evento_base_')) {
+          const eventoId = template.evento_riferimento.replace('evento_base_', '')
+
+          // Prima controlla se c'è una data specifica per il progetto
+          if (formData.eventi_progetto && formData.eventi_progetto[eventoId]) {
+            dataRiferimento = formData.eventi_progetto[eventoId]
+            console.log(`   ✅ Usando data progetto per evento ${eventoId}: ${dataRiferimento}`)
           } else {
-            console.log(`⚠️ Nessuna data di riferimento disponibile per template "${template.nome}"`)
+            // Altrimenti usa la data base calcolo del bando
+            dataRiferimento = dataBaseCalcolo
+            console.log(`   ✅ Usando data bando per evento base: ${dataRiferimento}`)
           }
+        } else if (template.evento_riferimento?.startsWith('scadenza_')) {
+          // È un riferimento a una scadenza precedente
+          const scadenzaIndex = parseInt(template.evento_riferimento.replace('scadenza_', ''))
+          const scadenzaPrecedente = templates[scadenzaIndex]
 
-          // Se abbiamo una data calcolata, aggiungi la scadenza
-          if (dataScadenza) {
-            scadenzeToInsert.push({
-              progetto_id: progettoId,
-              bando_id: bandoId,
-              cliente_id: formData.cliente_id,
-              titolo: template.nome || template.nome_scadenza,
-              data_scadenza: dataScadenza.toISOString(),
-              stato: 'non_iniziata',
-              priorita: template.priorita || 'media',
-              responsabile_email: template.responsabile_suggerito || 'amministrativo@blm.it',
-              note: `${template.descrizione} - Generata automaticamente da template`,
-              giorni_preavviso: [30, 15, 7, 1]
-            })
-            console.log(`✅ Scadenza "${template.nome || template.nome_scadenza}" calcolata per: ${dataScadenza.toISOString().split('T')[0]}`)
+          if (scadenzaPrecedente && scadenzeGenerate.has(`scadenza_${scadenzaIndex}`)) {
+            dataRiferimento = scadenzeGenerate.get(`scadenza_${scadenzaIndex}`)?.toISOString().split('T')[0]
+            console.log(`   ✅ Usando scadenza precedente ${scadenzaIndex}: ${dataRiferimento}`)
           } else {
-            console.log(`⚠️ Impossibile calcolare scadenza "${template.nome || template.nome_scadenza}" - data di riferimento mancante per evento: ${template.evento_riferimento}`)
+            console.log(`   ⚠️ Scadenza precedente ${scadenzaIndex} non trovata, uso evento base`)
+            // Fallback all'evento base (con priorità al progetto)
+            if (formData.eventi_progetto && bandoData.evento_base_id && formData.eventi_progetto[bandoData.evento_base_id]) {
+              dataRiferimento = formData.eventi_progetto[bandoData.evento_base_id]
+            } else {
+              dataRiferimento = dataBaseCalcolo
+            }
           }
-        }
-
-        // Inserisci le scadenze generate
-        if (scadenzeToInsert.length > 0) {
-          console.log('📝 Inserendo scadenze:', JSON.stringify(scadenzeToInsert, null, 2))
-
-          const { error: insertError } = await supabase
-            .from('scadenze_bandi_scadenze')
-            .insert(scadenzeToInsert)
-
-          if (insertError) {
-            console.error('❌ Errore specifico inserimento scadenze:', insertError)
-            throw insertError
-          }
-          console.log(`✅ Generate ${scadenzeToInsert.length} scadenze automatiche per progetto ${progettoId}`)
         } else {
-          console.log('⚠️ Nessuna scadenza da inserire (nessun template applicabile con dati disponibili)')
+          // Fallback: usa sempre la data base calcolo (con priorità al progetto)
+          if (formData.eventi_progetto && bandoData.evento_base_id && formData.eventi_progetto[bandoData.evento_base_id]) {
+            dataRiferimento = formData.eventi_progetto[bandoData.evento_base_id]
+            console.log(`   ⚠️ Evento non riconosciuto, uso data progetto: ${dataRiferimento}`)
+          } else {
+            dataRiferimento = dataBaseCalcolo
+            console.log(`   ⚠️ Evento non riconosciuto, uso data base bando: ${dataRiferimento}`)
+          }
         }
+
+        if (dataRiferimento) {
+          const dataRif = new Date(dataRiferimento)
+          const dataScadenza = new Date(dataRif)
+          dataScadenza.setDate(dataScadenza.getDate() + (template.giorni_da_evento || 0))
+
+          // Memorizza la scadenza generata per i prossimi template
+          scadenzeGenerate.set(`scadenza_${i}`, dataScadenza)
+
+          console.log(`   📅 Data scadenza calcolata: ${dataScadenza.toISOString().split('T')[0]}`)
+
+          scadenzeToInsert.push({
+            progetto_id: progettoId,
+            bando_id: bandoId,
+            cliente_id: formData.cliente_id,
+            titolo: template.nome,
+            data_scadenza: dataScadenza.toISOString(),
+            stato: 'non_iniziata',
+            priorita: template.priorita || 'media',
+            responsabile_email: template.responsabile_suggerito || 'amministrazione@blmproject.it',
+            note: `${template.descrizione || ''} - Generata automaticamente da template`,
+            giorni_preavviso: [30, 15, 7, 1],
+            obbligatoria: template.obbligatoria || false,
+            tipo_scadenza: template.tipo_scadenza || 'generico'
+          })
+        } else {
+          console.error(`   ❌ Impossibile determinare data di riferimento per template: ${template.nome}`)
+        }
+      }
+
+      // Inserisci le scadenze generate
+      if (scadenzeToInsert.length > 0) {
+        console.log(`💾 Inserendo ${scadenzeToInsert.length} scadenze generate`)
+
+        const { error: insertError } = await supabase
+          .from('scadenze_bandi_scadenze')
+          .insert(scadenzeToInsert)
+
+        if (insertError) {
+          console.error('❌ Errore inserimento scadenze generate:', insertError)
+          throw insertError
+        }
+
+        console.log('✅ Scadenze generate con successo!')
       } else {
-        console.log('⚠️ Nessun template di scadenze configurato per questo bando')
+        console.log('⚠️ Nessuna scadenza da inserire')
       }
+
     } catch (error) {
-      console.error('❌ Errore generazione scadenze:', error)
-      console.error('❌ Dettagli errore:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-        fullError: error
-      })
-      // Non bloccare il salvataggio del progetto se le scadenze falliscono
+      console.error('❌ Errore nella generazione scadenze da template:', error)
+      throw error
     }
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('it-IT', {
-      style: 'currency',
-      currency: 'EUR',
-      maximumFractionDigits: 0
-    }).format(amount)
-  }
-
-  // Funzioni per gestione documenti
-  const loadDocumenti = async (progettoId: string) => {
-    try {
-      let ereditati = []
-      let propri = []
-
-      // Solo per progetti esistenti, carica documenti dal database
-      if (progettoId) {
-        const { data, error } = await supabase
-          .from('scadenze_bandi_documenti_progetto_view')
-          .select('*')
-          .eq('progetto_id', progettoId)
-          .order('created_at', { ascending: false })
-
-        if (error) throw error
-
-        // Separa documenti ereditati da documenti propri
-        ereditati = data?.filter(doc => doc.categoria === 'ereditato') || []
-        propri = data?.filter(doc => doc.categoria !== 'ereditato') || []
-      }
-
-      // Aggiungi template documents multipli da localStorage se disponibili
-      const bandoIdToCheck = progetto?.bando_id || formData.bando_id || bando?.id || bandoSelezionato?.id
-      console.log('🔍 DEBUG: Controllo template multipli per bando ID:', bandoIdToCheck, {
-        progetto_bando_id: progetto?.bando_id,
-        formData_bando_id: formData.bando_id,
-        bando_prop_id: bando?.id,
-        bandoSelezionato_id: bandoSelezionato?.id
-      })
-
-      if (bandoIdToCheck) {
-        // Carica lista template multipli
-        const templatesListKey = `templates_list_${bandoIdToCheck}`
-        const templatesListData = localStorage.getItem(templatesListKey)
-
-        if (templatesListData) {
-          try {
-            const templatesList = JSON.parse(templatesListData)
-            console.log('📋 Template multipli trovati per bando:', bandoIdToCheck, templatesList.length)
-
-            // Carica ogni template dalla sua chiave specifica
-            for (const templateRef of templatesList) {
-              const templateData = localStorage.getItem(`template_${templateRef.template_id}`)
-              if (templateData) {
-                const parsedTemplate = JSON.parse(templateData)
-
-                // Crea un documento virtuale per ogni template
-                const templateDocument = {
-                  id: templateRef.template_id,
-                  nome_file: parsedTemplate.file_name,
-                  categoria: 'template_ereditato',
-                  formato_file: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                  descrizione: `Template salvato il ${new Date(parsedTemplate.saved_at).toLocaleDateString('it-IT')} - ${templateRef.placeholders_count} placeholder`,
-                  caricato_da: 'TEMPLATE_EDITOR',
-                  created_at: parsedTemplate.saved_at || new Date().toISOString(),
-                  auto_compilazione_completata: false,
-                  auto_compilazione_status: 'Template pronto per compilazione',
-                  template_data: parsedTemplate // Include i dati completi per l'auto-compilazione
-                }
-
-                ereditati.push(templateDocument)
-                console.log('📋 Template multiplo aggiunto:', templateDocument.nome_file)
-              }
-            }
-
-            console.log('✅ Caricati', ereditati.length, 'template per bando:', bandoIdToCheck)
-          } catch (parseError) {
-            console.error('Errore parsing templates multipli:', parseError)
-          }
-        } else {
-          // Fallback: usa sistema vecchio per compatibilità
-          const templateKey = `template_${bandoIdToCheck}`
-          const templateData = localStorage.getItem(templateKey)
-
-          if (templateData) {
-            try {
-              const parsedTemplate = JSON.parse(templateData)
-              console.log('📋 Template singolo (compatibilità) trovato per bando:', bandoIdToCheck, parsedTemplate.file_name)
-
-              const templateDocument = {
-                id: `template_${bandoIdToCheck}`,
-                nome_file: parsedTemplate.file_name,
-                categoria: 'template_ereditato',
-                formato_file: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                descrizione: 'Template salvato nell\'editor del bando, pronto per auto-compilazione',
-                caricato_da: 'TEMPLATE_EDITOR',
-                created_at: parsedTemplate.saved_at || new Date().toISOString(),
-                auto_compilazione_completata: false,
-                auto_compilazione_status: 'Template pronto per compilazione',
-                template_data: parsedTemplate
-              }
-
-              ereditati.push(templateDocument)
-            } catch (parseError) {
-              console.error('Errore parsing template compatibility:', parseError)
-            }
-          }
-        }
-      }
-
-      console.log('📋 Setting documenti ereditati:', ereditati.length, 'documenti')
-      console.log('📋 Documenti ereditati completi:', ereditati)
-      setDocumentiEreditati(ereditati)
-      setDocumenti(propri)
-    } catch (error) {
-      console.error('Errore caricamento documenti progetto:', error)
-    }
-  }
-
-  const handleFileUpload = async (files: FileList, categoria: 'proprio' | 'compilato' = 'proprio') => {
-    if (!files.length || !progetto?.id) {
-      alert('Salva prima il progetto, poi potrai caricare i documenti')
-      return
-    }
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files) return
 
     setUploading(true)
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      const fileName = file.name
-      const fileKey = `${Date.now()}-${fileName}`
+    try {
+      const progettoId = progetto?.id || 'temp_' + Date.now()
 
-      try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const fileName = `${Date.now()}_${file.name}`
+
         setUploadProgress(prev => ({ ...prev, [fileName]: 0 }))
 
-        // Upload file to Supabase Storage
-        const filePath = `${progetto.id}/${fileKey}`
-
+        // Upload su Supabase Storage
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('progetti-documenti')
-          .upload(filePath, file)
+          .upload(`${progettoId}/${fileName}`, file)
 
         if (uploadError) throw uploadError
 
-        setUploadProgress(prev => ({ ...prev, [fileName]: 50 }))
+        // Se è un progetto esistente, salva nel database
+        if (progetto?.id) {
+          const { error: dbError } = await supabase
+            .from('scadenze_bandi_documenti_progetto')
+            .insert([{
+              progetto_id: progetto.id,
+              nome_file: file.name,
+              categoria: 'allegato_caricato',
+              formato_file: file.type,
+              dimensione_bytes: file.size,
+              url_file: `${progettoId}/${fileName}`,
+              descrizione: `Documento caricato manualmente: ${file.name}`,
+              caricato_da: 'UTENTE'
+            }])
 
-        // Determina tipo documento dal nome file
-        let tipoDocumento = 'documento_generico'
-        if (fileName.toLowerCase().includes('decreto')) tipoDocumento = 'decreto_concessione'
-        else if (fileName.toLowerCase().includes('sal')) tipoDocumento = 'sal'
-        else if (fileName.toLowerCase().includes('rendicont')) tipoDocumento = 'rendicontazione'
-        else if (fileName.toLowerCase().includes('accettaz')) tipoDocumento = 'accettazione_esiti'
-
-        // Salva record nel database
-        const { data: docData, error: docError } = await supabase
-          .from('scadenze_bandi_documenti_progetto')
-          .insert({
-            progetto_id: progetto.id,
-            nome_file: fileName,
-            nome_originale: fileName,
-            tipo_documento: tipoDocumento,
-            categoria: categoria,
-            formato_file: file.type,
-            dimensione_bytes: file.size,
-            url_file: filePath,
-            descrizione: `Documento caricato il ${new Date().toLocaleDateString('it-IT')}`,
-            caricato_da: 'UTENTE'
-          })
-          .select()
-          .single()
-
-        if (docError) throw docError
+          if (dbError) throw dbError
+        }
 
         setUploadProgress(prev => ({ ...prev, [fileName]: 100 }))
-
-        // Aggiorna lista documenti
-        setDocumenti(prev => [docData, ...prev])
-
-      } catch (error: any) {
-        console.error('Errore upload documento progetto:', error)
-        alert(`Errore caricando ${fileName}: ${error.message || 'Errore sconosciuto'}`)
-      }
-    }
-
-    setUploading(false)
-    setUploadProgress({})
-  }
-
-  const downloadDocument = async (urlPath: string, fileName: string) => {
-    try {
-      console.log('📥 Scaricamento documento:', fileName, 'da:', urlPath)
-
-      // Ottieni URL firmato per il download
-      const { data, error } = await supabase.storage
-        .from('progetti-documenti')
-        .download(urlPath)
-
-      if (error) {
-        console.error('❌ Errore download:', error)
-        alert(`Errore durante il download: ${error.message}`)
-        return
       }
 
-      // Crea URL temporaneo per il download
-      const blob = new Blob([data])
-      const url = URL.createObjectURL(blob)
-
-      // Crea link temporaneo e avvia download
-      const link = document.createElement('a')
-      link.href = url
-      link.download = fileName
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-
-      // Pulisce URL temporaneo
-      URL.revokeObjectURL(url)
-
-      console.log('✅ Download completato:', fileName)
-
-    } catch (error: any) {
-      console.error('❌ Errore download documento:', error)
-      alert(`Errore durante il download: ${error.message || 'Errore sconosciuto'}`)
-    }
-  }
-
-  const autoCompileDocument = async (documentId: string) => {
-    if (!progetto?.id) return
-
-    // Previeni invocazioni multiple
-    if (uploading) {
-      console.log('⚠️ Auto-compilazione già in corso, ignorando richiesta per:', documentId)
-      return
-    }
-
-    try {
-      setUploading(true)
-
-      console.log('🚀 Avvio autocompilazione per documento specifico:', documentId)
-      console.log('📋 Documenti ereditati disponibili:', documentiEreditati.map(d => ({ id: d.id, nome: d.nome_file })))
-
-      // STEP 1: Trova il documento dal bucket del progetto (contiene già i placeholder)
-      const docToCompile = documentiEreditati.find(doc => doc.id === documentId)
-      console.log('📄 Documento da compilare trovato:', docToCompile ? docToCompile.nome_file : 'NON TROVATO')
-
-      if (!docToCompile) {
-        alert('Documento non trovato nella lista ereditati.')
-        return
+      // Ricarica documenti
+      if (progetto?.id) {
+        loadDocumenti(progetto.id)
       }
-
-      // NUOVO: Scarica il documento Word dal bucket del progetto (contiene già i placeholder)
-      let documentWordBuffer: Uint8Array
-
-      try {
-        console.log('📄 Scaricando documento Word dal bucket progetti-documenti...')
-
-        // Il nome del file dovrebbe essere il template del bando
-        const fileName = docToCompile.nome_file
-        const filePath = `${progetto.id}/${fileName}`
-
-        console.log('🔍 DEBUG: Tentativo download file:', {
-          bucket: 'progetti-documenti',
-          filePath: filePath,
-          progettoId: progetto.id,
-          fileName: fileName,
-          docToCompile: docToCompile
-        })
-
-        const { data: fileData, error: downloadError } = await supabase.storage
-          .from('progetti-documenti')
-          .download(filePath)
-
-        if (downloadError) {
-          console.error('❌ Errore download documento dal bucket:', downloadError)
-          console.error('❌ Dettagli errore:', {
-            message: downloadError.message,
-            details: downloadError.details,
-            hint: downloadError.hint,
-            code: downloadError.code
-          })
-          throw new Error('Documento non trovato nel bucket del progetto')
-        }
-
-        documentWordBuffer = new Uint8Array(await fileData.arrayBuffer())
-        console.log('✅ Documento Word scaricato dal bucket:', documentWordBuffer.length, 'bytes')
-
-      } catch (bucketError) {
-        console.warn('⚠️ Fallback al metodo database:', bucketError)
-
-        // Fallback: usa il metodo vecchio se il documento non è nel bucket
-        if (!docToCompile.template_data?.original_docx_base64) {
-          alert('⚠️ Documento non trovato né nel bucket né nel database. Ricrea il template nel BANDO.')
-          return
-        }
-
-        // Converti da base64 a buffer
-        documentWordBuffer = Uint8Array.from(atob(docToCompile.template_data.original_docx_base64), c => c.charCodeAt(0))
-        console.log('📄 Usando documento dal database (fallback)')
-      }
-
-      // STEP 2: Carica dati completi del cliente
-      const { data: clienteCompleto, error: clienteError } = await supabase
-        .from('scadenze_bandi_clienti')
-        .select('*')
-        .eq('id', formData.cliente_id)
-        .single()
-
-      if (clienteError) throw clienteError
-
-      console.log('👤 Dati cliente caricati:', clienteCompleto.denominazione)
-
-      // STEP 3: Prepara dati progetto
-      const progettoData = { ...formData }
-
-      // STEP 4: Compila direttamente il documento Word (che ha già i placeholder dal bucket)
-      console.log('📝 Compilazione documento Word mantenendo formattazione originale...')
-
-      // Prepara tutti i dati disponibili (come nell'API)
-      const allData = {
-        // Dati sistema
-        DATA_ODIERNA: new Date().toLocaleDateString('it-IT'),
-        DATA_COMPILAZIONE: new Date().toLocaleString('it-IT'),
-
-        // Dati cliente (normalizzati in maiuscolo)
-        DENOMINAZIONE: clienteCompleto?.denominazione || clienteCompleto?.DENOMINAZIONE_AZIENDA || '',
-        PARTITA_IVA: clienteCompleto?.partita_iva || clienteCompleto?.PARTITA_IVA || '',
-        CODICE_FISCALE: clienteCompleto?.codice_fiscale || clienteCompleto?.CODICE_FISCALE || '',
-        EMAIL: clienteCompleto?.email || clienteCompleto?.EMAIL_AZIENDA || '',
-        PEC: clienteCompleto?.pec || clienteCompleto?.PEC_AZIENDA || '',
-        TELEFONO: clienteCompleto?.telefono || clienteCompleto?.TELEFONO_AZIENDA || '',
-        SITO_WEB: clienteCompleto?.sito_web || clienteCompleto?.SITO_WEB || 'www.blmproject.com',
-
-        // Legale rappresentante
-        LEGALE_RAPPRESENTANTE_NOME: clienteCompleto?.legale_rappresentante_nome || clienteCompleto?.LEGALE_RAPPRESENTANTE_NOME || '',
-        LEGALE_RAPPRESENTANTE_COGNOME: clienteCompleto?.legale_rappresentante_cognome || clienteCompleto?.LEGALE_RAPPRESENTANTE_COGNOME || '',
-        LEGALE_RAPPRESENTANTE_CF: clienteCompleto?.legale_rappresentante_codice_fiscale || clienteCompleto?.LEGALE_RAPPRESENTANTE_CF || '',
-
-        // Dati progetto se disponibili
-        TITOLO_PROGETTO: progettoData?.titolo_progetto || '',
-        CODICE_PROGETTO: progettoData?.codice_progetto || '',
-        CONTRIBUTO_AMMESSO: progettoData?.contributo_ammesso ? String(progettoData.contributo_ammesso) : '',
-
-        // Include tutti i dati originali
-        ...(clienteCompleto || {}),
-        ...(progettoData || {})
-      }
-
-      // Usa il documento Word scaricato dal bucket (contiene già i placeholder)
-      const originalDocxBuffer = documentWordBuffer
-
-      // Carica il documento con PizZip
-      const zip = new PizZip(originalDocxBuffer)
-
-      // Crea istanza di Docxtemplater
-      const doc = new Docxtemplater(zip, {
-        paragraphLoop: true,
-        linebreaks: true,
-      })
-
-      // DEBUG: Verifica placeholder nel documento originale
-      const originalText = doc.getFullText()
-      console.log('📄 Contenuto documento ORIGINALE (primi 1000 caratteri):', originalText.substring(0, 1000))
-
-      // Cerca placeholder nel formato {PLACEHOLDER}
-      const foundPlaceholders = originalText.match(/\{[A-Z_]+\}/g)
-      if (foundPlaceholders && foundPlaceholders.length > 0) {
-        console.log('✅ Placeholder trovati nel documento originale:', foundPlaceholders)
-        console.log('📊 Numero placeholder nel documento:', foundPlaceholders.length)
-      } else {
-        console.warn('⚠️ PROBLEMA: Nessun placeholder {PLACEHOLDER} trovato nel documento originale!')
-        console.warn('🔍 Il documento deve contenere placeholder nel formato: {DENOMINAZIONE}, {PARTITA_IVA}, ecc.')
-
-        // Cerca pattern alternativi
-        const underscorePlaceholders = originalText.match(/_+/g)
-        const squarePlaceholders = originalText.match(/\[[A-Z_\s]+\]/g)
-
-        if (underscorePlaceholders) {
-          console.log('🔍 Trovati underscore (possibili placeholder):', underscorePlaceholders.slice(0, 10))
-        }
-        if (squarePlaceholders) {
-          console.log('🔍 Trovati placeholder con parentesi quadre:', squarePlaceholders.slice(0, 10))
-        }
-      }
-
-      // DEBUG: Log dei dati disponibili
-      console.log('📋 Dati cliente completi:', clienteCompleto)
-      console.log('📋 Dati progetto:', progettoData)
-      console.log('📋 AllData creato:', allData)
-
-      // Prepara i dati per sostituire i placeholder nel formato {PLACEHOLDER}
-      const docxData = {}
-      for (const [key, value] of Object.entries(allData)) {
-        if (value !== null && value !== undefined && value !== '') {
-          // Docxtemplater usa {KEY} invece di [KEY]
-          docxData[key.toUpperCase()] = String(value)
-        }
-      }
-
-      console.log('🔄 Sostituendo placeholder nel documento Word originale...')
-      console.log('📊 Dati per sostituzione:', Object.keys(docxData).length, 'chiavi')
-      console.log('📊 Chiavi disponibili:', Object.keys(docxData))
-      console.log('📊 Valori per sostituzione:', docxData)
-
-      // Sostituisci i placeholder (API aggiornata)
-      console.log('🔄 Prima di doc.render() - esempio dati:', {
-        DENOMINAZIONE: docxData.DENOMINAZIONE,
-        PARTITA_IVA: docxData.PARTITA_IVA,
-        CODICE_PROGETTO: docxData.CODICE_PROGETTO
-      })
-
-      try {
-        doc.render(docxData)
-        console.log('✅ doc.render() completato senza errori')
-
-        // Verifica se Docxtemplater ha trovato placeholder
-        const info = doc.getFullText()
-        console.log('📄 Contenuto documento dopo render (primi 500 caratteri):', info.substring(0, 500))
-
-        // Cerca ancora placeholder non sostituiti
-        const remainingPlaceholders = info.match(/\{[A-Z_]+\}/g)
-        if (remainingPlaceholders) {
-          console.warn('⚠️ Placeholder non sostituiti trovati nel documento:', remainingPlaceholders)
-        } else {
-          console.log('✅ Nessun placeholder residuo trovato')
-        }
-      } catch (renderError) {
-        console.error('❌ Errore durante doc.render():', renderError)
-        throw renderError
-      }
-
-      let buffer: Uint8Array
-
-      try {
-        // STEP 6: Genera il buffer del documento Word compilato (successo)
-        buffer = doc.getZip().generate({
-          type: 'uint8array',
-          compression: 'DEFLATE',
-        })
-
-        console.log('✅ Documento compilato con formattazione originale preservata')
-
-      } catch (error: any) {
-        console.error('❌ Errore nella renderizzazione template:', error)
-
-        // Se fallisce con Docxtemplater, usa il fallback
-        console.log('⚠️ Fallback: usando creazione documento semplificato...')
-
-        // Nel nuovo flusso non abbiamo più compiled_html, creiamo un documento semplice
-        const simpleDoc = new Document({
-          sections: [{
-            children: [
-              new Paragraph({
-                children: [
-                  new TextRun({
-                    text: `Documento Compilato - ${docToCompile.nome_file}`,
-                    font: 'Calibri',
-                    size: 28,
-                    bold: true,
-                  })
-                ],
-                alignment: AlignmentType.CENTER,
-              }),
-              new Paragraph({
-                children: [
-                  new TextRun({
-                    text: htmlContent.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' '),
-                    font: 'Calibri',
-                    size: 22,
-                  })
-                ],
-              }),
-            ],
-          }],
-        })
-
-        buffer = await Packer.toBuffer(simpleDoc)
-        console.log('✅ Documento creato con fallback (formattazione semplificata)')
-      }
-
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-      const fileName = `COMPILATO_${docToCompile.nome_file.replace(/\.(docx|doc|html|txt)$/i, '')}_${timestamp}.docx`
-
-      console.log('📤 Upload documento Word con formattazione originale...')
-
-      // Crea blob Word (prova prima con MIME type Word specifico)
-      let wordBlob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      })
-
-      let uploadError = null
-      let uploadResult = null
-
-      // Prova prima con MIME type Word
-      try {
-        const result = await supabase.storage
-          .from('progetti-documenti')
-          .upload(`${progetto.id}/${fileName}`, wordBlob, {
-            contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            cacheControl: '3600',
-            upsert: true
-          })
-        uploadError = result.error
-        uploadResult = result
-      } catch (error) {
-        console.log('⚠️ MIME type Word non supportato, provo con text/plain...')
-
-        // Fallback: usa text/plain che sappiamo funziona
-        wordBlob = new Blob([buffer], {
-          type: 'text/plain'
-        })
-
-        const result = await supabase.storage
-          .from('progetti-documenti')
-          .upload(`${progetto.id}/${fileName}`, wordBlob, {
-            contentType: 'text/plain',
-            cacheControl: '3600',
-            upsert: true
-          })
-        uploadError = result.error
-        uploadResult = result
-      }
-
-      if (uploadError) {
-        throw new Error(`Errore upload: ${uploadError.message}`)
-      }
-
-      console.log('✅ Documento caricato con successo!')
-
-      // STEP 7: Aggiorna database con il nuovo documento
-      const formatoFile = wordBlob.type === 'text/plain'
-        ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        : wordBlob.type
-
-      const { data: docData, error: docError } = await supabase
-        .from('scadenze_bandi_documenti_progetto')
-        .insert([{
-          progetto_id: progetto.id,
-          nome_file: fileName,
-          nome_originale: fileName,
-          tipo_documento: 'documento_compilato',
-          categoria: 'compilato',
-          formato_file: formatoFile,
-          dimensione_bytes: wordBlob.size,
-          url_file: `${progetto.id}/${fileName}`,
-          descrizione: `Documento compilato automaticamente da template: ${docToCompile.nome_file}`,
-          caricato_da: 'SISTEMA_AUTOCOMPILAZIONE',
-          auto_compilazione_completata: true,
-          auto_compilazione_status: `✅ Compilato automaticamente dal bucket progetti-documenti`
-        }])
-        .select()
-        .single()
-
-      if (docError) throw docError
-
-      console.log('✅ Database aggiornato con nuovo documento')
-
-      // STEP 8: Ricarica documenti per mostrare il nuovo file
-      await loadDocumenti(progetto.id)
-
-      // STEP 9: Notifica utente
-      let alertMessage = `🎉 Template compilato con successo!\n\n📄 File: ${fileName}\n📊 Documento compilato dal bucket progetti-documenti\n`
-
-      if (foundPlaceholders && foundPlaceholders.length > 0) {
-        alertMessage += `✅ Placeholder Word trovati: ${foundPlaceholders.length}\n`
-        alertMessage += `✅ Documento compilato mantenendo formattazione originale\n`
-      } else {
-        alertMessage += `⚠️ PROBLEMA: Il documento Word non contiene placeholder {PLACEHOLDER}\n`
-        alertMessage += `🔧 SOLUZIONE: Usa l'editor del bando per aggiungere placeholder:\n`
-        alertMessage += `   1. Apri l'editor template del bando\n`
-        alertMessage += `   2. Inserisci placeholder dal pannello laterale\n`
-        alertMessage += `   3. Salva nuovamente il template\n`
-      }
-
-      alertMessage += `\nIl documento compilato è disponibile nella sezione documenti.`
-
-      alert(alertMessage)
-
-    } catch (error: any) {
-      console.error('❌ Errore autocompilazione template:', error)
-      alert(`❌ Errore: ${error.message}`)
+    } catch (error) {
+      console.error('Errore upload:', error)
+      alert('Errore durante l\'upload dei file')
     } finally {
       setUploading(false)
+      setUploadProgress({})
     }
   }
 
-  const deleteDocument = async (docId: string, urlFile: string) => {
+  const handleDeleteDocument = async (docId: string) => {
     try {
-      // Rimuovi da storage
-      const { error: storageError } = await supabase.storage
-        .from('progetti-documenti')
-        .remove([urlFile])
-
-      if (storageError) throw storageError
-
-      // Rimuovi dal database
-      const { error: dbError } = await supabase
+      const { error } = await supabase
         .from('scadenze_bandi_documenti_progetto')
         .delete()
         .eq('id', docId)
 
-      if (dbError) throw dbError
+      if (error) throw error
 
-      // Aggiorna lista
       setDocumenti(prev => prev.filter(doc => doc.id !== docId))
-    } catch (error: any) {
+    } catch (error) {
       console.error('Errore eliminazione documento:', error)
-      alert(`Errore eliminando documento: ${error.message}`)
+      alert('Errore durante l\'eliminazione del documento')
     }
   }
+
+  // Salva i documenti ereditati nel database quando viene creato un progetto
+  const saveDocumentiEreditati = async (progettoId: string) => {
+    try {
+      const documentiDaSalvare = documenti
+        .filter(doc => doc.inherited_from_bando && doc.progetto_id === null)
+        .map(doc => ({
+          progetto_id: progettoId,
+          nome_file: doc.nome_file,
+          categoria: doc.categoria,
+          formato_file: doc.formato_file,
+          dimensione_bytes: doc.dimensione_bytes,
+          url_file: doc.url_file, // Ora punta al bucket progetti-documenti
+          descrizione: doc.descrizione,
+          tipo_documento: doc.tipo_documento || 'template',
+          caricato_da: 'SISTEMA_EREDITA'
+        }))
+
+      if (documentiDaSalvare.length > 0) {
+        console.log(`💾 Salvando ${documentiDaSalvare.length} documenti ereditati nel database...`)
+
+        const { error } = await supabase
+          .from('scadenze_bandi_documenti_progetto')
+          .insert(documentiDaSalvare)
+
+        if (error) throw error
+
+        console.log(`✅ Documenti ereditati salvati nel database per progetto ${progettoId}`)
+      }
+    } catch (error) {
+      console.error('❌ Errore salvataggio documenti ereditati:', error)
+      throw error
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+
+    try {
+      // Prepara i dati per il salvataggio, convertendo stringhe vuote a null per le date
+      const dataToSave = { ...formData }
+
+      // Rimuovi il campo eventi_progetto che non esiste nel database
+      delete (dataToSave as any).eventi_progetto
+
+      // Campi data che devono essere null se vuoti
+      const dateFields = [
+        'data_base_calcolo',
+        'evento_base_id'
+      ]
+
+      dateFields.forEach(field => {
+        if (dataToSave[field as keyof ProgettoFormData] === '') {
+          (dataToSave as any)[field] = null
+        }
+      })
+
+      if (progetto) {
+        // Modifica progetto esistente
+        const { error } = await supabase
+          .from('scadenze_bandi_progetti')
+          .update(dataToSave)
+          .eq('id', progetto.id)
+
+        if (error) throw error
+      } else {
+        // Crea nuovo progetto
+        const { data: newProgetto, error } = await supabase
+          .from('scadenze_bandi_progetti')
+          .insert([dataToSave])
+          .select()
+          .single()
+
+        if (error) throw error
+
+        // Salva i documenti ereditati nel database del progetto
+        await saveDocumentiEreditati(newProgetto.id)
+
+        // Genera scadenze automatiche dal template del bando (solo per nuovi progetti)
+        if (!progetto?.id) {
+          await generateScadenzeFromTemplate(newProgetto.id, formData.bando_id, formData)
+        }
+
+        // Crea struttura Google Drive se connesso
+        if (session?.accessToken) {
+          try {
+            console.log('📁 Creazione struttura Google Drive...')
+
+            // 1. Prima crea/verifica la struttura del bando
+            const bandoData = bando || bandi.find(b => b.id === formData.bando_id)
+            if (bandoData) {
+              const bandoResponse = await fetch('/api/drive/create-bando', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  bandoName: bandoData.nome
+                })
+              })
+
+              if (!bandoResponse.ok) {
+                console.warn('⚠️ Errore creazione struttura bando Google Drive (non bloccante)')
+              } else {
+                console.log('✅ Struttura bando Google Drive verificata')
+              }
+            }
+
+            // 2. Poi crea la struttura del progetto
+            const progettoResponse = await fetch('/api/drive/create-progetto', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                bandoName: bandoData?.nome || 'Bando Sconosciuto',
+                progettoName: formData.titolo_progetto
+              })
+            })
+
+            if (!progettoResponse.ok) {
+              console.warn('⚠️ Errore creazione struttura progetto Google Drive (non bloccante)')
+            } else {
+              const progettoData = await progettoResponse.json()
+              console.log('✅ Struttura progetto Google Drive creata:', progettoData)
+
+              // Copia allegati da bando a progetto
+              try {
+                const copyResponse = await fetch('/api/drive/copy-bando-files', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    bandoName: bandoData?.nome || 'Bando Sconosciuto',
+                    progettoName: formData.titolo_progetto
+                  })
+                })
+
+                if (copyResponse.ok) {
+                  const copyResult = await copyResponse.json()
+                  console.log('📋 Allegati copiati da bando a progetto:', copyResult)
+                } else {
+                  console.warn('⚠️ Errore copia allegati (non bloccante):', await copyResponse.text())
+                }
+              } catch (copyError) {
+                console.warn('⚠️ Errore copia allegati (non bloccante):', copyError)
+              }
+            }
+
+          } catch (driveError) {
+            console.warn('⚠️ Errore Google Drive (non bloccante):', driveError)
+            // Non blocchiamo la creazione del progetto per errori Google Drive
+          }
+        } else {
+          console.log('ℹ️ Google Drive non connesso, struttura non creata')
+        }
+      }
+
+      onProgettoCreated()
+      onClose()
+    } catch (error: any) {
+      console.error('Errore salvataggio progetto:', error)
+      alert(`Errore: ${error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const tabs = [
+    { id: 'generale', label: 'Informazioni Generali', icon: Building2 },
+    { id: 'importi', label: 'Importi e Contributi', icon: Euro },
+    { id: 'scadenze', label: 'Scadenze e Date', icon: Calendar },
+    { id: 'documenti', label: 'Documenti', icon: FileText },
+    { id: 'avanzate', label: 'Impostazioni Avanzate', icon: User }
+  ]
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-6xl w-full h-full max-h-[95vh] flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              {progetto ? 'Modifica Progetto' : 'Nuovo Progetto'}
-            </h2>
-            <p className="text-gray-600">
-              {bando ? `Progetto per: ${bando.nome}` : 'Compila i dettagli del progetto'}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+      <div className="bg-white rounded-lg max-w-6xl w-full h-[95vh] flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900">
+                {progetto ? 'Modifica Progetto' : 'Nuovo Progetto'}
+              </h2>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          {/* Tabs */}
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-              <button
-                onClick={() => setActiveTab('generale')}
-                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'generale'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Generale
-              </button>
-              <button
-                onClick={() => setActiveTab('importi')}
-                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'importi'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Importi
-              </button>
-              <button
-                onClick={() => setActiveTab('scadenze')}
-                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'scadenze'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Scadenze
-              </button>
-              <button
-                onClick={() => setActiveTab('documenti')}
-                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'documenti'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Documenti
-              </button>
-              <button
-                onClick={() => setActiveTab('avanzate')}
-                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'avanzate'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Avanzate
-              </button>
-            </nav>
+            {/* Tabs */}
+            <div className="mt-6 flex space-x-1 overflow-x-auto">
+              {tabs.map((tab) => {
+                const Icon = tab.icon
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as TabType)}
+                    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {tab.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           {/* Form Content */}
-          <div className="mt-4">
-            {activeTab === 'generale' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Bando *
-                    </label>
-                    <select
-                      value={formData.bando_id}
-                      onChange={(e) => setFormData(prev => ({ ...prev, bando_id: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      required
-                      disabled={!!bando}
-                    >
-                      <option value="">Seleziona bando</option>
-                      {bandi.map(bandoItem => (
-                        <option key={bandoItem.id} value={bandoItem.id}>
-                          {bandoItem.nome}
-                        </option>
-                      ))}
-                    </select>
-                    {bando && (
-                      <p className="text-sm text-blue-600 mt-1">
-                        Bando preselezionato: {bando.nome}
-                      </p>
-                    )}
+          <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-6">
+              {activeTab === 'generale' && (
+                <div className="space-y-6">
+                  {/* Selezione Bando e Cliente */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Bando *
+                      </label>
+                      <select
+                        value={formData.bando_id}
+                        onChange={(e) => setFormData({ ...formData, bando_id: e.target.value })}
+                        required
+                        disabled={!!bando}
+                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                      >
+                        <option value="">Seleziona un bando</option>
+                        {bandi.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.nome} - {b.codice_bando}
+                          </option>
+                        ))}
+                      </select>
+                      {bando && (
+                        <p className="mt-1 text-sm text-gray-600">
+                          Bando pre-selezionato: {bando.nome}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Cliente *
+                      </label>
+                      <select
+                        value={formData.cliente_id}
+                        onChange={(e) => setFormData({ ...formData, cliente_id: e.target.value })}
+                        required
+                        disabled={!!cliente}
+                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                      >
+                        <option value="">Seleziona un cliente</option>
+                        {clienti.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.denominazione} - {c.partita_iva}
+                          </option>
+                        ))}
+                      </select>
+                      {cliente && (
+                        <p className="mt-1 text-sm text-gray-600">
+                          Cliente pre-selezionato: {cliente.denominazione}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Cliente *
-                    </label>
-                    <select
-                      value={formData.cliente_id}
-                      onChange={(e) => setFormData(prev => ({ ...prev, cliente_id: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      required
-                    >
-                      <option value="">Seleziona cliente</option>
-                      {clienti.map(cliente => (
-                        <option key={cliente.id} value={cliente.id}>
-                          {cliente.denominazione}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Titolo Progetto *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.titolo_progetto}
-                    onChange={(e) => setFormData(prev => ({ ...prev, titolo_progetto: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Descrizione Progetto
-                  </label>
-                  <textarea
-                    value={formData.descrizione_progetto}
-                    onChange={(e) => setFormData(prev => ({ ...prev, descrizione_progetto: e.target.value }))}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Stato Progetto
-                  </label>
-                  <select
-                    value={formData.stato}
-                    onChange={(e) => setFormData(prev => ({ ...prev, stato: e.target.value as any }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="DECRETO_ATTESO">Decreto Atteso</option>
-                    <option value="DECRETO_RICEVUTO">Decreto Ricevuto</option>
-                    <option value="ACCETTATO">Accettato</option>
-                    <option value="IN_CORSO">In Corso</option>
-                    <option value="COMPLETATO">Completato</option>
-                  </select>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'importi' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Importo Totale Progetto (€)
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.importo_totale_progetto}
-                      onChange={(e) => setFormData(prev => ({ ...prev, importo_totale_progetto: parseFloat(e.target.value) || 0 }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Contributo Ammesso (€)
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.contributo_ammesso}
-                      onChange={(e) => setFormData(prev => ({ ...prev, contributo_ammesso: parseFloat(e.target.value) || 0 }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Percentuale Contributo (%)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.percentuale_contributo}
-                    onChange={(e) => setFormData(prev => ({ ...prev, percentuale_contributo: parseFloat(e.target.value) || 0 }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    min="0"
-                    max="100"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.anticipo_richiedibile}
-                      onChange={(e) => setFormData(prev => ({ ...prev, anticipo_richiedibile: e.target.checked }))}
-                      className="mr-2"
-                    />
-                    <label className="text-sm font-medium text-gray-700">
-                      Anticipo Richiedibile
-                    </label>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Percentuale Anticipo (%)
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.percentuale_anticipo}
-                      onChange={(e) => setFormData(prev => ({ ...prev, percentuale_anticipo: parseFloat(e.target.value) || 0 }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      min="0"
-                      max="100"
-                      disabled={!formData.anticipo_richiedibile}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Numero SAL
-                  </label>
-                  <select
-                    value={formData.numero_sal}
-                    onChange={(e) => setFormData(prev => ({ ...prev, numero_sal: e.target.value as any }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="UNICO">Unico</option>
-                    <option value="DUE">Due SAL</option>
-                    <option value="TRE">Tre SAL</option>
-                  </select>
-                </div>
-              </div>
-            )}
-
-            {/* Placeholder per altre tabs */}
-            {activeTab === 'scadenze' && (
-              <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-900 mb-2">Scadenze generate da template</h4>
-                  <p className="text-sm text-blue-700">
-                    Le scadenze verranno generate automaticamente in base al bando selezionato e alle date del progetto.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Data Pubblicazione Graduatoria
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.data_pubblicazione_graduatoria}
-                      onChange={(e) => setFormData(prev => ({ ...prev, data_pubblicazione_graduatoria: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Data Decreto Concessione
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.data_decreto_concessione}
-                      onChange={(e) => setFormData(prev => ({ ...prev, data_decreto_concessione: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Scadenza Accettazione Esiti
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.scadenza_accettazione_esiti}
-                      onChange={(e) => setFormData(prev => ({ ...prev, scadenza_accettazione_esiti: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Data Avvio Progetto
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.data_avvio_progetto}
-                      onChange={(e) => setFormData(prev => ({ ...prev, data_avvio_progetto: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Data Fine Progetto Prevista
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.data_fine_progetto_prevista}
-                    onChange={(e) => setFormData(prev => ({ ...prev, data_fine_progetto_prevista: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
-                </div>
-
-                {/* Anteprima Scadenze Calcolate */}
-                {(() => {
-                  const scadenzeCalcolate = calcolaScadenzeAnteprima()
-                  return scadenzeCalcolate.length > 0 && (
-                    <div className="mt-6">
-                      <h5 className="font-medium text-gray-900 mb-3">
-                        🗓️ Anteprima Scadenze Calcolate ({scadenzeCalcolate.length})
-                      </h5>
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <div className="space-y-3">
-                          {scadenzeCalcolate.map((scadenza, index) => (
-                            <div
-                              key={index}
-                              className={`flex justify-between items-start p-3 rounded-lg border ${
-                                scadenza.calcolabile
-                                  ? 'bg-white border-green-300'
-                                  : 'bg-yellow-50 border-yellow-300'
-                              }`}
-                            >
-                              <div className="flex-1">
-                                <div className="font-medium text-gray-900">{scadenza.nome}</div>
-                                <div className="text-sm text-gray-600 mt-1">
-                                  Riferimento: {scadenza.evento_riferimento}
-                                  {scadenza.dataRiferimentoUsata && ` (${scadenza.dataRiferimentoUsata})`}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  {scadenza.giorni_da_evento} giorni dall'evento di riferimento
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                {scadenza.calcolabile ? (
-                                  <div className="text-lg font-bold text-green-700">
-                                    {scadenza.dataScadenza}
-                                  </div>
-                                ) : (
-                                  <div className="text-sm text-yellow-700 bg-yellow-100 px-2 py-1 rounded">
-                                    Data non disponibile
-                                  </div>
-                                )}
-                                <div className={`text-xs mt-1 px-2 py-1 rounded ${
-                                  scadenza.priorita === 'alta'
-                                    ? 'bg-red-100 text-red-700'
-                                    : scadenza.priorita === 'media'
-                                    ? 'bg-blue-100 text-blue-700'
-                                    : 'bg-gray-100 text-gray-700'
-                                }`}>
-                                  {scadenza.priorita}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {scadenzeCalcolate.some(s => !s.calcolabile) && (
-                          <div className="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
-                            <div className="text-sm text-yellow-800">
-                              <strong>⚠️ Nota:</strong> Alcune scadenze non possono essere calcolate perché mancano le date di riferimento necessarie.
-                              Compila le date richieste per visualizzare tutte le scadenze.
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="mt-4 p-3 bg-blue-100 border border-blue-300 rounded-lg">
-                          <div className="text-sm text-blue-800">
-                            <strong>💡 Informazione:</strong> {progetto?.id ? 'Queste scadenze sono state generate automaticamente.' : 'Queste scadenze verranno generate automaticamente quando salvi il progetto.'}
-                          </div>
-                        </div>
+                  {/* Codice e Titolo Progetto */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Codice Progetto *
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={formData.codice_progetto}
+                          onChange={(e) => setFormData({ ...formData, codice_progetto: e.target.value })}
+                          required
+                          className="flex-1 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={generateCodiceProgetto}
+                          className="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+                        >
+                          Genera
+                        </button>
                       </div>
                     </div>
-                  )
-                })()}
 
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Titolo Progetto *
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={formData.titolo_progetto}
+                          onChange={(e) => setFormData({ ...formData, titolo_progetto: e.target.value })}
+                          required
+                          className="flex-1 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={updateTitoloProgetto}
+                          className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                        >
+                          Auto
+                        </button>
+                      </div>
+                    </div>
+                  </div>
 
-                {/* Template Information (solo se non ci sono scadenze calcolate) */}
-                {templateScadenze.length > 0 && calcolaScadenzeAnteprima().length === 0 && (
-                  <div className="mt-6">
-                    <h5 className="font-medium text-gray-900 mb-3">Template Scadenze del Bando</h5>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="space-y-2">
-                        {templateScadenze.map((template, index) => (
-                          <div key={template.id || index} className="flex justify-between items-center text-sm">
-                            <span className="font-medium">{template.nome}</span>
-                            <span className="text-gray-500">
-                              {template.giorni_da_evento} {template.unita_tempo || 'giorni'} da {template.evento_riferimento}
-                            </span>
+                  {/* Descrizione */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Descrizione Progetto
+                    </label>
+                    <textarea
+                      value={formData.descrizione_progetto}
+                      onChange={(e) => setFormData({ ...formData, descrizione_progetto: e.target.value })}
+                      rows={4}
+                      className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  {/* Stato */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Stato Progetto *
+                    </label>
+                    <select
+                      value={formData.stato}
+                      onChange={(e) => setFormData({ ...formData, stato: e.target.value as any })}
+                      className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="DECRETO_ATTESO">Decreto Atteso</option>
+                      <option value="DECRETO_RICEVUTO">Decreto Ricevuto</option>
+                      <option value="ACCETTATO">Accettato</option>
+                      <option value="IN_CORSO">In Corso</option>
+                      <option value="COMPLETATO">Completato</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'importi' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Importo Totale Progetto (€) *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.importo_totale_progetto}
+                        onChange={(e) => setFormData({ ...formData, importo_totale_progetto: parseFloat(e.target.value) || 0 })}
+                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Contributo Ammesso (€) *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.contributo_ammesso}
+                        onChange={(e) => setFormData({ ...formData, contributo_ammesso: parseFloat(e.target.value) || 0 })}
+                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Percentuale Contributo (%)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={formData.percentuale_contributo}
+                        onChange={(e) => setFormData({ ...formData, percentuale_contributo: parseFloat(e.target.value) || 0 })}
+                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Numero SAL
+                      </label>
+                      <select
+                        value={formData.numero_sal}
+                        onChange={(e) => setFormData({ ...formData, numero_sal: e.target.value as any })}
+                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="UNICO">Unico SAL</option>
+                        <option value="DUE">Due SAL</option>
+                        <option value="TRE">Tre SAL</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Anticipo */}
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={formData.anticipo_richiedibile}
+                        onChange={(e) => setFormData({ ...formData, anticipo_richiedibile: e.target.checked })}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="font-medium text-gray-900">Anticipo Richiedibile</span>
+                    </label>
+
+                    {formData.anticipo_richiedibile && (
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Percentuale Anticipo (%)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value={formData.percentuale_anticipo}
+                          onChange={(e) => setFormData({ ...formData, percentuale_anticipo: parseInt(e.target.value) || 0 })}
+                          className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'scadenze' && (
+                <div className="space-y-6">
+                  {/* Date Principali */}
+
+                  {/* Sezione Eventi Dinamici del Bando */}
+                  {eventiDelBando.length > 0 && (
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <Calendar className="w-5 h-5 text-blue-600" />
+                        Eventi del Bando
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Per ogni evento del bando, puoi specificare la data di avvenimento effettiva per questo progetto.
+                        Le scadenze concatenate verranno ricalcolate automaticamente in base a queste date reali,
+                        permettendo di identificare eventuali ritardi rispetto alle tempistiche previste.
+                      </p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {eventiDelBando.map((evento) => (
+                          <div key={evento.id} className="space-y-3">
+                            <div className="bg-white p-3 rounded border">
+                              <h4 className="font-medium text-gray-900 mb-2">{evento.nome}</h4>
+                              {evento.descrizione && (
+                                <p className="text-xs text-gray-500 mb-3">{evento.descrizione}</p>
+                              )}
+
+                              {/* Data calcolata dal bando (read-only) */}
+                              <div className="mb-3">
+                                <label className="block text-xs font-medium text-gray-600 mb-1">
+                                  Data dal Bando (calcolata)
+                                </label>
+                                <input
+                                  type="date"
+                                  value={dateCalcolateBando[evento.id] || ''}
+                                  readOnly
+                                  className="w-full p-2 text-sm border border-gray-200 rounded bg-gray-50 text-gray-600"
+                                />
+                              </div>
+
+                              {/* Data specifica del progetto (editabile) - solo se non è l'evento base fisso */}
+                              {evento.nome !== 'Avvio Progetto' && evento.tipo !== 'base_progetto' && (
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    Data Effettiva
+                                    <span className="text-blue-600 ml-1">*</span>
+                                  </label>
+                                  <input
+                                    type="date"
+                                    value={formData.eventi_progetto[evento.id] || ''}
+                                    onChange={(e) => {
+                                      const nuoviEventi = {
+                                        ...formData.eventi_progetto,
+                                        [evento.id]: e.target.value
+                                      }
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        eventi_progetto: nuoviEventi
+                                      }))
+                                    }}
+                                    className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  />
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Se lasciato vuoto, verrà usata la data dal bando
+                                  </p>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
-                      <div className="mt-3 p-3 bg-blue-100 border border-blue-200 rounded">
-                        <div className="text-sm text-blue-800">
-                          Inserisci almeno la "Data Pubblicazione Graduatoria" per vedere l'anteprima delle scadenze calcolate.
+
+                      {eventiDelBando.length === 0 && (
+                        <div className="text-center py-4 text-gray-500">
+                          <Calendar className="mx-auto h-8 w-8 text-gray-400" />
+                          <p className="mt-2 text-sm">Nessun evento configurato per questo bando</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+
+
+                  {/* Scadenze Esistenti */}
+                  {scadenzeSalvate.length > 0 && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <h4 className="font-medium text-gray-900 mb-2">Scadenze calcolate dal template</h4>
+                      <div className="space-y-4">
+                        {scadenzeSalvate.map((scadenza) => (
+                          <div key={scadenza.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                            {/* Header della scadenza */}
+                            <div className="flex justify-between items-start mb-3">
+                              <div>
+                                <h5 className="font-medium text-gray-900">{scadenza.titolo}</h5>
+                                {scadenza.note && (
+                                  <p className="text-xs text-gray-600 mt-1">{scadenza.note}</p>
+                                )}
+                              </div>
+                              <span className="text-sm text-gray-500">
+                                {scadenza.data_scadenza && !isNaN(new Date(scadenza.data_scadenza).getTime())
+                                  ? new Date(scadenza.data_scadenza).toLocaleDateString('it-IT')
+                                  : 'Data non valida'
+                                }
+                              </span>
+                            </div>
+
+                            {/* Campo Data Effettiva */}
+                            <div className="border-t border-gray-100 pt-3">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Data Effettiva *
+                              </label>
+                              <div className="flex gap-2 items-center">
+                                <input
+                                  type="date"
+                                  value={dateEffettiveScadenze[scadenza.id] || ''}
+                                  onChange={(e) => {
+                                    setDateEffettiveScadenze(prev => ({
+                                      ...prev,
+                                      [scadenza.id]: e.target.value
+                                    }))
+                                  }}
+                                  className={`flex-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                    dateEffettiveScadenze[scadenza.id] &&
+                                    scadenza.data_scadenza &&
+                                    !isNaN(new Date(scadenza.data_scadenza).getTime()) &&
+                                    new Date(dateEffettiveScadenze[scadenza.id]) > new Date(scadenza.data_scadenza)
+                                      ? 'bg-red-50 border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500'
+                                      : 'border-gray-300'
+                                  }`}
+                                  placeholder="Inserisci la data di avvenimento effettiva"
+                                />
+                                {dateEffettiveScadenze[scadenza.id] &&
+                                  scadenza.data_scadenza &&
+                                  !isNaN(new Date(scadenza.data_scadenza).getTime()) &&
+                                  new Date(dateEffettiveScadenze[scadenza.id]) > new Date(scadenza.data_scadenza) && (
+                                  <div className="text-red-500" title="Scadenza sforata">
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                  </div>
+                                )}
+                                {dateEffettiveScadenze[scadenza.id] && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setDateEffettiveScadenze(prev => {
+                                        const updated = { ...prev }
+                                        delete updated[scadenza.id]
+                                        return updated
+                                      })
+                                    }}
+                                    className="text-gray-400 hover:text-red-500"
+                                    title="Rimuovi data effettiva"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Se lasciato vuoto, verrà usata la data calcolata dal bando.
+                                Inserendo una data effettiva, le scadenze successive verranno ricalcolate automaticamente.
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'documenti' && (
+                <div className="space-y-6">
+                  {/* Google Drive Status */}
+                  {(
+                    <div className={`border rounded-lg p-4 ${
+                      session?.accessToken
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-yellow-50 border-yellow-200'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded-full ${
+                          session?.accessToken ? 'bg-green-500' : 'bg-yellow-500'
+                        }`}></div>
+                        <div>
+                          <h4 className="text-sm font-medium">
+                            {session?.accessToken
+                              ? `✅ Google Drive connesso come ${session.user?.email}`
+                              : '⚠️ Google Drive non connesso'}
+                          </h4>
+                          <p className="text-xs text-gray-600 mt-1">
+                            {session?.accessToken
+                              ? 'La struttura cartelle verrà creata automaticamente nei Drive Condivisi.'
+                              : 'Connetti Google Drive per creare automaticamente la struttura cartelle.'}
+                          </p>
+                        </div>
+                      </div>
+                      {!session?.accessToken && (
+                        <button
+                          type="button"
+                          onClick={() => signIn('google')}
+                          className="mt-3 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm"
+                        >
+                          🔑 Connetti Google Drive
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Info Section per allegati ereditati */}
+                  {!progetto && documenti.some(doc => doc.inherited_from_bando) && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                        <div>
+                          <h4 className="text-sm font-medium text-blue-900 mb-1">
+                            Allegati da Compilare Ereditati dal Bando
+                          </h4>
+                          <p className="text-sm text-blue-700">
+                            Questo progetto ha ereditato automaticamente gli allegati da compilare dal bando selezionato.
+                            Questi template dovranno essere scaricati, compilati e ricaricati come documenti del progetto.
+                            I documenti di normativa del bando non vengono ereditati.
+                          </p>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'documenti' && (
-              <div className="space-y-6">
-                {/* Documenti Ereditati */}
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
-                    <FileText className="w-5 h-5" />
-                    Documenti Ereditati dal Bando ({documentiEreditati.length})
-                  </h4>
-                  {console.log('🎨 RENDER: documentiEreditati.length =', documentiEreditati.length)}
-                  {console.log('🎨 RENDER: documentiEreditati =', documentiEreditati)}
-
-                  {documentiEreditati.length > 0 ? (
-                    <div className="space-y-2">
-                      {documentiEreditati.map((documento) => (
-                        <div key={documento.id} className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <FileText className="w-4 h-4 text-blue-600" />
-                            <span className="font-medium text-blue-900">{documento.nome_file}</span>
-                            <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                              {documento.categoria}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {progetto?.id && (
-                              <button
-                                onClick={() => autoCompileDocument(documento.id)}
-                                disabled={uploading}
-                                className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 disabled:opacity-50"
-                                title="Auto-compilazione con sistema template"
-                              >
-                                🤖 Auto
-                              </button>
-                            )}
-                            <button
-                              onClick={() => downloadDocument(documento.url_file, documento.nome_file)}
-                              className="text-blue-600 hover:text-blue-800 text-sm"
-                            >
-                              Scarica
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
-                      Nessun documento ereditato dal bando
-                    </div>
                   )}
-                </div>
 
-                {/* Documenti Propri del Progetto */}
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
-                    <FileText className="w-5 h-5" />
-                    Documenti del Progetto
-                  </h4>
-
-                  {documenti.length > 0 ? (
-                    <div className="space-y-2">
-                      {documenti.map((documento) => (
-                        <div key={documento.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <FileText className="w-4 h-4 text-gray-600" />
-                            <span className="font-medium">{documento.nome_file}</span>
-                            <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                              {documento.categoria}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => downloadDocument(documento.url_file, documento.nome_file)}
-                              className="text-blue-600 hover:text-blue-800 text-sm"
-                            >
-                              Scarica
-                            </button>
-                            <button
-                              onClick={() => deleteDocument(documento.id, documento.url_file)}
-                              className="text-red-600 hover:text-red-800 text-sm"
-                            >
-                              Elimina
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
-                      Nessun documento caricato per questo progetto
-                    </div>
+                  {/* Preview Documenti - Solo per progetti esistenti */}
+                  {progetto?.id && (
+                    <DocumentiProgettoPreview
+                      progettoId={progetto.id}
+                      className="mb-6"
+                    />
                   )}
-                </div>
 
-                {/* Upload Area */}
-                {progetto?.id && (
-                  <div>
-                    <h5 className="font-medium text-gray-700 mb-3">Carica Nuovi Documenti</h5>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400">
+                  {/* Upload Section */}
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                    <div className="text-center">
+                      <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Carica Documenti</h3>
+                      <p className="text-gray-600 mb-4">
+                        Seleziona i file da caricare per questo progetto
+                      </p>
                       <input
                         type="file"
                         multiple
-                        onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+                        onChange={handleFileUpload}
+                        disabled={uploading}
                         className="hidden"
                         id="file-upload"
                       />
-                      <label htmlFor="file-upload" className="cursor-pointer">
-                        <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-                        <div className="text-sm text-gray-600">
-                          Clicca per selezionare i file da caricare
-                        </div>
+                      <label
+                        htmlFor="file-upload"
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer inline-block disabled:opacity-50"
+                      >
+                        {uploading ? 'Caricamento...' : 'Seleziona File'}
                       </label>
                     </div>
+
+                    {/* Progress */}
+                    {Object.keys(uploadProgress).length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        {Object.entries(uploadProgress).map(([fileName, progress]) => (
+                          <div key={fileName} className="bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-500 h-2 rounded-full transition-all"
+                              style={{ width: `${progress}%` }}
+                            />
+                            <p className="text-xs text-gray-600 mt-1">{fileName}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
 
-                {/* Auto-Compilation Info */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <h5 className="font-medium text-green-900 mb-2">🤖 Sistema Auto-Compilazione Template</h5>
-                  <div className="text-sm text-green-700 space-y-1">
-                    <p>• I documenti ereditati dal bando possono essere compilati automaticamente</p>
-                    <p>• Il sistema usa i template configurati nella sezione BANDI</p>
-                    <p>• Clicca "Auto" per avviare la compilazione con placeholder predefiniti</p>
-                  </div>
+
+                  {/* Documenti Esistenti */}
+                  {documenti.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-medium text-gray-900">Documenti Caricati</h4>
+                      </div>
+                      <div className="space-y-2">
+                        {documenti.map((doc) => (
+                          <div key={doc.id} className={`flex items-center justify-between p-3 border rounded-lg ${
+                            doc.inherited_from_bando ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
+                          }`}>
+                            <div className="flex items-center gap-3">
+                              <FileText className={`w-5 h-5 ${doc.inherited_from_bando ? 'text-blue-500' : 'text-gray-400'}`} />
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-gray-900">{doc.nome_file}</p>
+                                  {doc.inherited_from_bando && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                      Da Compilare
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                  {doc.categoria} • {doc.formato_file}
+                                  {doc.dimensione_bytes && ` • ${(doc.dimensione_bytes / 1024).toFixed(1)} KB`}
+                                  {doc.inherited_from_bando && ' • Template dal bando'}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {/* Bottone per visualizzare (occhio) */}
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    console.log(`👁️ Visualizzazione documento: ${doc.nome_file}`)
+
+                                    // Se il documento ha un google_drive_id, usa il modal per la preview
+                                    if (doc.google_drive_id) {
+                                      console.log('📄 Aprendo documento nel modal...')
+                                      setPreviewModal({
+                                        isOpen: true,
+                                        documento: {
+                                          nome_file: doc.nome_file,
+                                          google_drive_id: doc.google_drive_id
+                                        }
+                                      })
+                                      return
+                                    }
+
+                                    // Fallback per documenti in Supabase Storage
+                                    const fileType = doc.nome_file.split('.').pop()?.toLowerCase() || ''
+                                    console.log('📄 Tentativo visualizzazione da Supabase Storage...')
+
+                                    // Per DOCX/DOC, crea URL pubblico temporaneo per i viewer
+                                    if (fileType === 'docx' || fileType === 'doc') {
+                                      console.log('📄 Creando URL pubblico temporaneo per viewer...')
+
+                                      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+                                        .from('progetti-documenti')
+                                        .createSignedUrl(doc.url_file, 3600) // 1 ora
+
+                                      if (signedUrlError) {
+                                        console.error('❌ Errore URL firmato:', signedUrlError)
+                                        // Se fallisce Supabase, prova Google Drive come fallback
+                                        if (doc.google_drive_url) {
+                                          console.log('📄 Fallback: aprendo da Google Drive...')
+                                          window.open(doc.google_drive_url, '_blank')
+                                          return
+                                        }
+                                        throw signedUrlError
+                                      }
+
+                                      console.log('✅ URL pubblico temporaneo creato:', signedUrlData.signedUrl)
+
+                                      setDocumentModal({
+                                        open: true,
+                                        title: doc.nome_file,
+                                        url: signedUrlData.signedUrl,
+                                        type: fileType
+                                      })
+
+                                    } else {
+                                      // Per altri file, usa blob come prima
+                                      const { data, error } = await supabase.storage
+                                        .from('progetti-documenti')
+                                        .download(doc.url_file)
+
+                                      if (error) {
+                                        console.error('❌ Errore storage download:', error)
+                                        // Se fallisce Supabase, prova Google Drive come fallback
+                                        if (doc.google_drive_url) {
+                                          console.log('📄 Fallback: aprendo da Google Drive...')
+                                          window.open(doc.google_drive_url, '_blank')
+                                          return
+                                        }
+                                        throw error
+                                      }
+
+                                      const url = URL.createObjectURL(data)
+
+                                      setDocumentModal({
+                                        open: true,
+                                        title: doc.nome_file,
+                                        url: url,
+                                        type: fileType
+                                      })
+                                    }
+
+                                  } catch (error) {
+                                    console.error('❌ Errore visualizzazione documento:', error)
+                                    alert(`Errore nella visualizzazione: ${error.message || 'Errore sconosciuto'}. Il documento potrebbe essere disponibile solo su Google Drive.`)
+                                  }
+                                }}
+                                className="text-blue-600 hover:text-blue-800"
+                                title="Visualizza documento"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+
+                              {/* Bottone per scaricare (download) */}
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    console.log(`💾 Download documento: ${doc.nome_file}`)
+
+                                    const { data, error } = await supabase.storage
+                                      .from('progetti-documenti')
+                                      .download(doc.url_file)
+
+                                    if (error) {
+                                      console.error('❌ Errore storage download:', error)
+                                      throw error
+                                    }
+
+                                    // Download automatico
+                                    const url = URL.createObjectURL(data)
+                                    const a = document.createElement('a')
+                                    a.href = url
+                                    a.download = doc.nome_file
+                                    document.body.appendChild(a)
+                                    a.click()
+                                    document.body.removeChild(a)
+                                    URL.revokeObjectURL(url)
+
+                                    console.log(`✅ Download completato: ${doc.nome_file}`)
+
+                                  } catch (error) {
+                                    console.error('❌ Errore download documento:', error)
+                                    alert(`Errore nel download: ${error.message || 'Errore sconosciuto'}`)
+                                  }
+                                }}
+                                className="text-green-600 hover:text-green-800"
+                                title="Scarica documento"
+                              >
+                                <Download className="w-4 h-4" />
+                              </button>
+                              {!doc.inherited_from_bando && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteDocument(doc.id)}
+                                  className="text-red-600 hover:text-red-800"
+                                  title="Elimina documento"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                              {doc.inherited_from_bando && (
+                                <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                                  Template
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Info */}
+                  {documenti.length === 0 && (
+                    <div className="text-center py-8">
+                      <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Nessun documento</h3>
+                      <p className="text-gray-600">
+                        I documenti caricati appariranno qui
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
-
-            {activeTab === 'avanzate' && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Referente Interno
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.referente_interno}
-                    onChange={(e) => setFormData(prev => ({ ...prev, referente_interno: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Referente Interno
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email_referente_interno}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email_referente_interno: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
-                </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.proroga_richiedibile}
-                    onChange={(e) => setFormData(prev => ({ ...prev, proroga_richiedibile: e.target.checked }))}
-                    className="mr-2"
-                  />
-                  <label className="text-sm font-medium text-gray-700">
-                    Proroga Richiedibile
-                  </label>
-                </div>
-              </div>
-            )}
-          </div>
-
-        </div>
-
-        {/* Footer */}
-        <div className="border-t border-gray-200 p-4">
-          <div className="text-sm text-gray-500">
-            {formData.codice_progetto && (
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Codice: {formData.codice_progetto}
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-            >
-              Annulla
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={loading}
-              className="px-4 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600 disabled:opacity-50 flex items-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Salvataggio...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  {progetto ? 'Aggiorna Progetto' : 'Crea Progetto'}
-                </>
               )}
-            </button>
+
+              {activeTab === 'avanzate' && (
+                <div className="space-y-6">
+                  {/* Referente Interno */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Referente Interno
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.referente_interno}
+                        onChange={(e) => setFormData({ ...formData, referente_interno: e.target.value })}
+                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email Referente Interno
+                      </label>
+                      <input
+                        type="email"
+                        value={formData.email_referente_interno}
+                        onChange={(e) => setFormData({ ...formData, email_referente_interno: e.target.value })}
+                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Opzioni */}
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={formData.proroga_richiedibile}
+                        onChange={(e) => setFormData({ ...formData, proroga_richiedibile: e.target.checked })}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="font-medium text-gray-900">Proroga Richiedibile</span>
+                    </label>
+                  </div>
+
+                  {/* Note */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Note Progetto
+                    </label>
+                    <textarea
+                      value={formData.note_progetto}
+                      onChange={(e) => setFormData({ ...formData, note_progetto: e.target.value })}
+                      rows={4}
+                      className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-gray-200 bg-gray-50">
+              <div className="flex justify-between items-center">
+                {/* Pulsante Elimina (solo nel tab avanzate per progetti esistenti) */}
+                <div>
+                  {activeTab === 'avanzate' && progetto && onDelete ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onDelete && progetto) {
+                          onDelete(progetto.id)
+                        }
+                      }}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors"
+                      disabled={loading}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Elimina Progetto
+                    </button>
+                  ) : (
+                    <div></div>
+                  )}
+                </div>
+
+                {/* Pulsanti standard */}
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                    disabled={loading}
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        {progetto ? 'Salva Modifiche' : 'Crea Progetto'}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </form>
+      </div>
+
+      {/* Modal per visualizzazione documento */}
+      {documentModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full h-[90vh] flex flex-col overflow-hidden">
+            {/* Header Modal */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">{documentModal.title}</h3>
+              <button
+                onClick={() => {
+                  URL.revokeObjectURL(documentModal.url)
+                  setDocumentModal({ open: false, title: '', url: '', type: '' })
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Contenuto Modal */}
+            <div className="flex-1 flex items-center justify-center p-4 bg-gray-50">
+              {documentModal.type === 'pdf' ? (
+                <iframe
+                  src={documentModal.url}
+                  className="w-full h-full border-0"
+                  title={documentModal.title}
+                />
+              ) : ['jpg', 'jpeg', 'png', 'gif'].includes(documentModal.type) ? (
+                <img
+                  src={documentModal.url}
+                  alt={documentModal.title}
+                  className="max-w-full max-h-full object-contain"
+                />
+              ) : (
+                <div className="text-center">
+                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+
+                  {documentModal.type === 'docx' || documentModal.type === 'doc' ? (
+                    <div className="w-full h-full">
+                      <p className="text-gray-800 mb-4 text-center font-medium">
+                        📄 Anteprima documento Word
+                      </p>
+
+                      {/* Google Docs Viewer con URL pubblico temporaneo */}
+                      <div className="space-y-3">
+                        <iframe
+                          src={`https://docs.google.com/gview?url=${encodeURIComponent(documentModal.url)}&embedded=true`}
+                          className="w-full border border-gray-300 rounded"
+                          title={documentModal.title}
+                          style={{ height: '500px' }}
+                        />
+
+                        {/* Info e fallback */}
+                        <div className="text-center p-3 bg-gray-50 rounded border text-sm">
+                          <p className="text-gray-600 mb-2">
+                            🔗 URL temporaneo per anteprima (valido 1 ora)
+                          </p>
+                          {documentModal.title.includes('TEMPLATE') && (
+                            <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                              Template da compilare
+                            </span>
+                          )}
+                          {documentModal.title.includes('COMPILATO') && (
+                            <span className="inline-block bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
+                              ✅ Documento compilato
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : documentModal.type === 'txt' ? (
+                    <div>
+                      <p className="text-gray-800 mb-2 text-lg font-medium">
+                        📝 File di testo
+                      </p>
+                      <iframe
+                        src={documentModal.url}
+                        className="w-full h-96 border border-gray-300 rounded"
+                        title={documentModal.title}
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-gray-600 mb-4">
+                        Anteprima non disponibile per questo tipo di file
+                      </p>
+                      <p className="text-sm text-gray-500 mb-6">
+                        Tipo file: {documentModal.type?.toUpperCase() || 'Sconosciuto'}
+                      </p>
+                      <button
+                        onClick={() => window.open(documentModal.url, '_blank')}
+                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                      >
+                        Apri in nuova scheda
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer Modal */}
+            <div className="flex items-center justify-between p-4 border-t bg-gray-50">
+              <span className="text-sm text-gray-600">
+                Usa i controlli del browser per zoom e navigazione
+              </span>
+              <button
+                onClick={() => window.open(documentModal.url, '_blank')}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center gap-2"
+              >
+                <Eye className="w-4 h-4" />
+                Apri in nuova scheda
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Modal Preview */}
+      <DocumentPreviewModal
+        isOpen={previewModal.isOpen}
+        onClose={() => setPreviewModal({ isOpen: false, documento: null })}
+        title={previewModal.documento?.nome_file || ''}
+        googleDriveId={previewModal.documento?.google_drive_id || ''}
+      />
     </div>
   )
 }

@@ -76,7 +76,6 @@ export default function NuovaAziendaCollegataModal({ isOpen, onClose, onSave }: 
 
     setLoading(true)
     try {
-      console.log('📤 Creazione nuova azienda con dati:', dataToSave)
 
       const { data, error } = await supabase
         .from('scadenze_bandi_clienti')
@@ -89,7 +88,6 @@ export default function NuovaAziendaCollegataModal({ isOpen, onClose, onSave }: 
         throw error
       }
 
-      console.log('✅ Nuova azienda creata:', data)
 
       // Chiama la callback con i dati dell'azienda creata
       onSave(data)

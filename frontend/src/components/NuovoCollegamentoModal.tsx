@@ -107,7 +107,6 @@ const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, c
   }
 
   const handleSave = async () => {
-    console.log('🚀 Inizio validazione form data:', formData)
 
     if (!formData.azienda_collegata_id || formData.azienda_collegata_id === 'NUOVA_AZIENDA') {
       alert('Seleziona un\'azienda collegata valida')
@@ -135,14 +134,12 @@ const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, c
       // Aggiungi i dati dell'azienda collegata per il display
       const aziendaCollegata = clientiDisponibili.find(c => c.id === formData.azienda_collegata_id)
       if (aziendaCollegata) {
-        console.log('👥 Azienda collegata trovata:', aziendaCollegata)
         formData.denominazione_collegata = aziendaCollegata.denominazione
         formData.ula_collegata = aziendaCollegata.ula
         formData.fatturato_collegato = aziendaCollegata.ultimo_fatturato
         formData.attivo_collegato = aziendaCollegata.attivo_bilancio
       }
 
-      console.log('📤 Invio dati al parent:', formData)
       await onSave(formData)
       onClose()
     } catch (error) {

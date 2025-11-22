@@ -5,8 +5,8 @@ export async function GET() {
   try {
     const structure = {
       timestamp: new Date().toISOString(),
-      tables: {},
-      errors: []
+      tables: {} as Record<string, any>,
+      errors: [] as string[]
     }
 
     // Lista delle tabelle da controllare
@@ -22,7 +22,6 @@ export async function GET() {
 
     for (const tableName of tableQueries) {
       try {
-        console.log(`🔍 Analizzando tabella: ${tableName}`)
 
         // Prova a ottenere la struttura facendo una query vuota
         const { data, error, count } = await supabase
@@ -37,7 +36,7 @@ export async function GET() {
         }
 
         // Analizza la struttura dal primo record (se esiste)
-        const columns = {}
+        const columns: Record<string, any> = {}
         if (data && data.length > 0) {
           const firstRecord = data[0]
           Object.keys(firstRecord).forEach(key => {
@@ -57,10 +56,10 @@ export async function GET() {
           sample_data: data ? data.slice(0, 2) : [] // Primi 2 record come esempio
         }
 
-        console.log(`✅ ${tableName}: ${count || 0} records`)
 
       } catch (tableError) {
-        structure.errors.push(`❌ ${tableName}: ${tableError.message}`)
+        const errorMessage = tableError instanceof Error ? tableError.message : String(tableError)
+        structure.errors.push(`❌ ${tableName}: ${errorMessage}`)
         console.error(`Errore tabella ${tableName}:`, tableError)
       }
     }
@@ -69,8 +68,9 @@ export async function GET() {
 
   } catch (error) {
     console.error('❌ Errore generale:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
     return NextResponse.json({
-      error: error.message,
+      error: errorMessage,
       timestamp: new Date().toISOString()
     }, { status: 500 })
   }

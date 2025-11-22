@@ -1,9 +1,10 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Calendar, List, Clock, AlertTriangle, CheckCircle, Plus, Filter } from 'lucide-react'
+import { Calendar, List, Clock, AlertTriangle, CheckCircle, Plus, Filter, CalendarDays } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import CalendarioScadenze from './CalendarioScadenze'
+import CalendarioSettimana from './CalendarioSettimana'
 import ScadenzaForm from './ScadenzaForm'
 
 interface Scadenza {
@@ -26,7 +27,7 @@ interface Scadenza {
   bando_id: string
 }
 
-type ViewMode = 'lista' | 'calendario'
+type ViewMode = 'lista' | 'calendario' | 'settimana'
 
 export default function ScadenzeContent() {
   const [scadenze, setScadenze] = useState<Scadenza[]>([])
@@ -233,7 +234,6 @@ export default function ScadenzeContent() {
         )
 
         if (tutteCompletate) {
-          console.log(`🎉 Tutte le scadenze del progetto ${scadenza.progetto_codice} completate!`)
           // Aggiorna stato progetto se necessario
           await supabase
             .from('scadenze_bandi_progetti')
@@ -244,7 +244,6 @@ export default function ScadenzeContent() {
 
       // Caso 2: Scadenza tipo "contratto" - aggiorna cliente
       if (scadenza.titolo.toLowerCase().includes('contratto') && nuovoStato === 'completata') {
-        console.log(`📋 Contratto completato per cliente ${scadenza.cliente_nome}`)
         // Qui puoi aggiungere logiche specifiche per il cliente
       }
 
@@ -266,7 +265,13 @@ export default function ScadenzeContent() {
 
   // Gestione modal giorno
   const openDayModal = (date: Date) => {
-    setSelectedDate(date.toISOString().split('T')[0])
+    // Usa il fuso orario locale per evitare problemi di conversione UTC
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const localDateString = `${year}-${month}-${day}`
+
+    setSelectedDate(localDateString)
     setShowDayModal(true)
   }
 
@@ -307,45 +312,45 @@ export default function ScadenzeContent() {
 
       {/* Statistiche Rapide */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+        <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-red-600">Urgenti</p>
-              <p className="text-2xl font-bold text-red-900">{urgenti.length}</p>
+              <p className="text-sm font-bold text-red-100 drop-shadow-sm">Urgenti</p>
+              <p className="text-2xl font-black text-white drop-shadow">{urgenti.length}</p>
             </div>
-            <AlertTriangle className="w-8 h-8 text-red-600" />
+            <AlertTriangle className="w-8 h-8 text-red-200 drop-shadow" />
           </div>
         </div>
 
-        <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+        <div className="bg-gradient-to-br from-amber-500 to-yellow-500 p-4 rounded-xl border border-amber-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-orange-600">Imminenti</p>
-              <p className="text-2xl font-bold text-orange-900">{imminenti.length}</p>
+              <p className="text-sm font-bold text-white drop-shadow-sm">Imminenti</p>
+              <p className="text-2xl font-black text-white drop-shadow">{imminenti.length}</p>
             </div>
-            <Clock className="w-8 h-8 text-orange-600" />
+            <Clock className="w-8 h-8 text-white drop-shadow" />
           </div>
         </div>
 
-        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <div className="bg-gradient-to-br from-cyan-500 to-teal-500 p-4 rounded-xl border border-cyan-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Normali</p>
-              <p className="text-2xl font-bold text-gray-900">{normali.length}</p>
+              <p className="text-sm font-bold text-cyan-100 drop-shadow-sm">Normali</p>
+              <p className="text-2xl font-black text-white drop-shadow">{normali.length}</p>
             </div>
-            <Calendar className="w-8 h-8 text-gray-600" />
+            <Calendar className="w-8 h-8 text-cyan-200 drop-shadow" />
           </div>
         </div>
 
-        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+        <div className="bg-gradient-to-br from-emerald-500 to-teal-500 p-4 rounded-xl border border-emerald-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-green-600">Completate</p>
-              <p className="text-2xl font-bold text-green-900">
+              <p className="text-sm font-bold text-emerald-100 drop-shadow-sm">Completate</p>
+              <p className="text-2xl font-black text-white drop-shadow">
                 {scadenze.filter(s => s.stato === 'completata').length}
               </p>
             </div>
-            <CheckCircle className="w-8 h-8 text-green-600" />
+            <CheckCircle className="w-8 h-8 text-emerald-200 drop-shadow" />
           </div>
         </div>
       </div>
@@ -364,6 +369,17 @@ export default function ScadenzeContent() {
           >
             <List className="w-4 h-4" />
             Lista
+          </button>
+          <button
+            onClick={() => setViewMode('settimana')}
+            className={`px-4 py-2 rounded-md flex items-center gap-2 transition-colors ${
+              viewMode === 'settimana'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-blue-600'
+            }`}
+          >
+            <CalendarDays className="w-4 h-4" />
+            Settimana
           </button>
           <button
             onClick={() => setViewMode('calendario')}
@@ -549,6 +565,14 @@ export default function ScadenzeContent() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Vista Settimana */}
+      {viewMode === 'settimana' && (
+        <CalendarioSettimana
+          scadenze={scadenzeFiltrate}
+          onDayClick={openDayModal}
+        />
       )}
 
       {/* Vista Calendario */}
