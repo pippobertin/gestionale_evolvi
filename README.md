@@ -50,9 +50,33 @@ Schema principale:
 
 ## 🔧 Configurazione
 
+### Setup Base
 1. Configurare le variabili d'ambiente in `frontend/.env.local`
 2. Eseguire gli script SQL di setup da `docs/sql/`
 3. Popolare i dati ATECO se necessario
+
+### 🔐 Configurazione Credenziali Google
+Per abilitare l'integrazione con Gmail e Google Drive:
+
+**Opzione 1 - Script Automatico:**
+```bash
+./setup-credentials.sh
+```
+
+**Opzione 2 - Setup Manuale:**
+```bash
+# Copia i file template
+cd frontend
+cp gmail-credentials.example.json gmail-credentials.json
+cp service-account-key.example.json service-account-key.json
+
+# Modifica i file con le tue credenziali Google
+# Segui le istruzioni in SETUP_GOOGLE_CREDENTIALS.md
+```
+
+📖 **Documentazione completa**: Vedi `SETUP_GOOGLE_CREDENTIALS.md` per istruzioni dettagliate sulla configurazione Google Cloud Console.
+
+⚠️ **Importante**: I file delle credenziali reali non vengono mai committati nel repository per sicurezza.
 
 ## 📦 Dipendenze Principali
 
