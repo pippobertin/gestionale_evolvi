@@ -16,12 +16,13 @@ interface User {
 interface AuthContextType {
   user: User | null
   loading: boolean
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; requiresPasswordChange?: boolean }>
   signup: (email: string, password: string, nome: string, cognome: string) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
   isAdmin: () => boolean
   canEdit: (createdBy?: string) => boolean
   canDelete: (createdBy?: string) => boolean
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -135,10 +136,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json()
 
+      console.log('AuthContext login response:', data)
+
       if (response.ok) {
         localStorage.setItem('auth_token', data.token)
-        setUser(data.user)
-        return { success: true }
+
+        // Only set user if password change is NOT required
+        const requiresPasswordChange = data.requiresPasswordChange || false
+        if (!requiresPasswordChange) {
+          console.log('✅ No password change required, setting user')
+          setUser(data.user)
+        } else {
+          console.log('🔄 Password change required, NOT setting user yet')
+          // Store user data temporarily for after password change
+          localStorage.setItem('pending_user_data', JSON.stringify(data.user))
+        }
+
+        const result = {
+          success: true,
+          requiresPasswordChange
+        }
+        console.log('AuthContext returning:', result)
+        return result
       } else {
         return { success: false, error: data.error || 'Errore durante il login' }
       }
@@ -197,6 +216,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        return { success: false, error: 'Non autenticato' }
+      }
+
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ currentPassword, newPassword })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        console.log('🎉 Password changed successfully')
+
+        // Check if there's pending user data from first login
+        const pendingUserData = localStorage.getItem('pending_user_data')
+        if (pendingUserData) {
+          console.log('🔄 Setting user from pending data after password change')
+          const userData = JSON.parse(pendingUserData)
+          setUser({
+            ...userData,
+            first_login_password_change: false
+          })
+          localStorage.removeItem('pending_user_data')
+        } else if (user) {
+          // Update existing user to remove the password change flag
+          setUser({
+            ...user,
+            first_login_password_change: false
+          } as any)
+        }
+
+        // Clear password change session data
+        sessionStorage.removeItem('pendingPasswordChange')
+        sessionStorage.removeItem('passwordChangeData')
+
+        return { success: true }
+      } else {
+        return { success: false, error: data.error || 'Errore durante il cambio password' }
+      }
+    } catch (error) {
+      return { success: false, error: 'Errore di connessione' }
+    }
+  }
+
   const isAdmin = () => {
     return user?.livello_permessi === 'admin'
   }
@@ -222,7 +293,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       isAdmin,
       canEdit,
-      canDelete
+      canDelete,
+      changePassword
     }}>
       {children}
     </AuthContext.Provider>

@@ -77,6 +77,14 @@ export async function POST(request: NextRequest) {
         ip_address: clientIp
       })
 
+    // Debug: logga i dati dell'utente
+    console.log('User data from DB:', {
+      id: utente.id,
+      email: utente.email,
+      first_login_password_change: utente.first_login_password_change,
+      hasField: 'first_login_password_change' in utente
+    })
+
     // Prepara dati utente (senza password_hash)
     const userData = {
       id: utente.id,
@@ -84,13 +92,18 @@ export async function POST(request: NextRequest) {
       nome: utente.nome,
       cognome: utente.cognome,
       livello_permessi: utente.livello_permessi,
-      nome_completo: `${utente.nome} ${utente.cognome}`
+      nome_completo: `${utente.nome} ${utente.cognome}`,
+      first_login_password_change: utente.first_login_password_change || false
     }
+
+    const requiresPasswordChange = utente.first_login_password_change || false
+    console.log('Sending requiresPasswordChange:', requiresPasswordChange)
 
     return NextResponse.json({
       success: true,
       token,
-      user: userData
+      user: userData,
+      requiresPasswordChange
     })
 
   } catch (error) {

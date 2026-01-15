@@ -1,38 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import jwt from 'jsonwebtoken'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { supabase } from '@/lib/supabase'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase configuration')
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Token mancante' }, { status: 401 })
+    const { id } = await params
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
     }
 
-    const token = authHeader.substring(7)
     const body = await request.json()
 
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any
+    // Verifica se l'utente è admin
+    const { data: admin, error: adminError } = await supabase
+      .from('scadenze_bandi_utenti')
+      .select('id, livello_permessi')
+      .eq('email', session.user.email)
+      .single()
 
-      const { data: admin, error: adminError } = await supabase
-        .from('scadenze_bandi_utenti')
-        .select('livello_permessi')
-        .eq('id', decoded.userId)
-        .single()
-
-      if (adminError || admin.livello_permessi !== 'admin') {
-        return NextResponse.json({ error: 'Accesso non autorizzato' }, { status: 403 })
-      }
+    if (adminError || admin.livello_permessi !== 'admin') {
+      return NextResponse.json({ error: 'Accesso non autorizzato - Solo amministratori' }, { status: 403 })
+    }
 
       const updates: any = { updated_at: new Date().toISOString() }
 
@@ -50,59 +41,51 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       const { data, error } = await supabase
         .from('scadenze_bandi_utenti')
         .update(updates)
-        .eq('id', params.id)
+        .eq('id', id)
         .select()
         .single()
 
       if (error) throw error
 
       return NextResponse.json({ user: data, message: 'Utente aggiornato con successo' })
-    } catch (jwtError) {
-      return NextResponse.json({ error: 'Token non valido' }, { status: 401 })
-    }
   } catch (error) {
     console.error('Errore nell\'aggiornamento utente:', error)
     return NextResponse.json({ error: 'Errore del server' }, { status: 500 })
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Token mancante' }, { status: 401 })
+    const { id } = await params
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
     }
 
-    const token = authHeader.substring(7)
+    // Verifica se l'utente è admin
+    const { data: admin, error: adminError } = await supabase
+      .from('scadenze_bandi_utenti')
+      .select('id, livello_permessi')
+      .eq('email', session.user.email)
+      .single()
 
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any
+    if (adminError || admin.livello_permessi !== 'admin') {
+      return NextResponse.json({ error: 'Accesso non autorizzato - Solo amministratori' }, { status: 403 })
+    }
 
-      const { data: admin, error: adminError } = await supabase
-        .from('scadenze_bandi_utenti')
-        .select('livello_permessi')
-        .eq('id', decoded.userId)
-        .single()
-
-      if (adminError || admin.livello_permessi !== 'admin') {
-        return NextResponse.json({ error: 'Accesso non autorizzato' }, { status: 403 })
-      }
-
-      if (decoded.userId === params.id) {
-        return NextResponse.json({ error: 'Non puoi eliminare il tuo account' }, { status: 400 })
-      }
+    if (admin.id === id) {
+      return NextResponse.json({ error: 'Non puoi eliminare il tuo account' }, { status: 400 })
+    }
 
       const { error } = await supabase
         .from('scadenze_bandi_utenti')
         .delete()
-        .eq('id', params.id)
+        .eq('id', id)
 
       if (error) throw error
 
       return NextResponse.json({ message: 'Utente eliminato con successo' })
-    } catch (jwtError) {
-      return NextResponse.json({ error: 'Token non valido' }, { status: 401 })
-    }
   } catch (error) {
     console.error('Errore nell\'eliminazione utente:', error)
     return NextResponse.json({ error: 'Errore del server' }, { status: 500 })

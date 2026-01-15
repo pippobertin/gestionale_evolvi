@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import {
   Users,
   UserCheck,
@@ -11,7 +12,8 @@ import {
   MoreHorizontal,
   AlertTriangle,
   CheckCircle,
-  XCircle
+  XCircle,
+  UserPlus
 } from 'lucide-react'
 import { LoadingSpinner } from './shared'
 
@@ -28,26 +30,38 @@ interface User {
 }
 
 export default function UserManagement() {
+  const { data: session, status } = useSession()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [newUserData, setNewUserData] = useState({
+    nome: '',
+    cognome: '',
+    email: '',
+    livello_permessi: 'collaboratore' as 'admin' | 'collaboratore'
+  })
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [temporaryPassword, setTemporaryPassword] = useState('')
+  const [createdUserEmail, setCreatedUserEmail] = useState('')
 
   useEffect(() => {
-    fetchUsers()
-  }, [])
+    if (session) {
+      fetchUsers()
+    }
+  }, [session])
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem('auth_token')
-      const response = await fetch('/api/admin/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      if (!session) {
+        setError('Sessione non valida')
+        return
+      }
 
+      const response = await fetch('/api/admin/users')
       const data = await response.json()
 
       if (!response.ok) {
@@ -65,11 +79,9 @@ export default function UserManagement() {
   const updateUser = async (userId: string, updates: Partial<User>) => {
     setActionLoading(userId)
     try {
-      const token = localStorage.getItem('auth_token')
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(updates)
@@ -94,12 +106,8 @@ export default function UserManagement() {
   const deleteUser = async (userId: string) => {
     setActionLoading(userId)
     try {
-      const token = localStorage.getItem('auth_token')
       const response = await fetch(`/api/admin/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        method: 'DELETE'
       })
 
       const data = await response.json()
@@ -110,6 +118,53 @@ export default function UserManagement() {
 
       setUsers(prev => prev.filter(user => user.id !== userId))
       setShowDeleteModal(null)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Errore del server')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const createUser = async () => {
+    if (!newUserData.nome || !newUserData.cognome || !newUserData.email) {
+      setError('Tutti i campi sono obbligatori')
+      return
+    }
+
+    setActionLoading('creating')
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newUserData)
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Errore nella creazione utente')
+      }
+
+      // Ricarica la lista utenti
+      await fetchUsers()
+
+      // Mostra la password temporanea
+      setTemporaryPassword(data.temporaryPassword)
+      setCreatedUserEmail(newUserData.email)
+      setShowPasswordModal(true)
+
+      // Reset form e chiudi modal
+      setNewUserData({
+        nome: '',
+        cognome: '',
+        email: '',
+        livello_permessi: 'collaboratore'
+      })
+      setShowAddModal(false)
+      setError('')
+
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Errore del server')
     } finally {
@@ -157,8 +212,17 @@ export default function UserManagement() {
             <p className="text-gray-600">Gestisci utenti, permessi e accessi</p>
           </div>
         </div>
-        <div className="text-sm text-gray-500">
-          {users.length} utenti totali
+        <div className="flex items-center space-x-4">
+          <div className="text-sm text-gray-500">
+            {users.length} utenti totali
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Aggiungi Utente</span>
+          </button>
         </div>
       </div>
 
@@ -350,6 +414,158 @@ export default function UserManagement() {
                   <Trash2 className="w-4 h-4" />
                 )}
                 <span>Elimina</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add User Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <UserPlus className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Aggiungi Nuovo Utente</h3>
+                <p className="text-sm text-gray-500">Inserisci i dati del nuovo utente</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome *
+                </label>
+                <input
+                  type="text"
+                  value={newUserData.nome}
+                  onChange={(e) => setNewUserData({...newUserData, nome: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Nome utente"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Cognome *
+                </label>
+                <input
+                  type="text"
+                  value={newUserData.cognome}
+                  onChange={(e) => setNewUserData({...newUserData, cognome: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Cognome utente"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  value={newUserData.email}
+                  onChange={(e) => setNewUserData({...newUserData, email: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="email@esempio.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Livello Permessi
+                </label>
+                <select
+                  value={newUserData.livello_permessi}
+                  onChange={(e) => setNewUserData({...newUserData, livello_permessi: e.target.value as 'admin' | 'collaboratore'})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="collaboratore">Collaboratore</option>
+                  <option value="admin">Amministratore</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowAddModal(false)
+                  setNewUserData({
+                    nome: '',
+                    cognome: '',
+                    email: '',
+                    livello_permessi: 'collaboratore'
+                  })
+                  setError('')
+                }}
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={createUser}
+                disabled={actionLoading === 'creating' || !newUserData.nome || !newUserData.cognome || !newUserData.email}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
+              >
+                {actionLoading === 'creating' ? (
+                  <LoadingSpinner size="small" />
+                ) : (
+                  <UserPlus className="w-4 h-4" />
+                )}
+                <span>Crea Utente</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Password Display Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Utente Creato con Successo</h3>
+                <p className="text-sm text-gray-500">Ecco le credenziali temporanee</p>
+              </div>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center space-x-2 mb-3">
+                <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                <span className="text-sm font-medium text-yellow-800">Password Temporanea</span>
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <span className="text-sm text-gray-600">Email: </span>
+                  <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{createdUserEmail}</span>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">Password: </span>
+                  <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded font-bold">{temporaryPassword}</span>
+                </div>
+              </div>
+              <div className="mt-3 text-xs text-yellow-700">
+                ⚠️ L'utente dovrà cambiare questa password al primo accesso
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false)
+                  setTemporaryPassword('')
+                  setCreatedUserEmail('')
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Ho Preso Nota
               </button>
             </div>
           </div>

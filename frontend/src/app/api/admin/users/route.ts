@@ -1,51 +1,117 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import jwt from 'jsonwebtoken'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase configuration')
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { supabase } from '@/lib/supabase'
+import bcrypt from 'bcrypt'
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Token mancante' }, { status: 401 })
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
     }
 
-    const token = authHeader.substring(7)
+    // Verifica se l'utente è admin
+    const { data: user, error: userError } = await supabase
+      .from('scadenze_bandi_utenti')
+      .select('livello_permessi')
+      .eq('email', session.user.email)
+      .single()
 
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any
-
-      const { data: admin, error: adminError } = await supabase
-        .from('scadenze_bandi_utenti')
-        .select('livello_permessi')
-        .eq('id', decoded.userId)
-        .single()
-
-      if (adminError || admin.livello_permessi !== 'admin') {
-        return NextResponse.json({ error: 'Accesso non autorizzato' }, { status: 403 })
-      }
-
-      const { data: users, error } = await supabase
-        .from('scadenze_bandi_utenti')
-        .select('id, email, nome, cognome, livello_permessi, attivo, created_at, updated_at, ultimo_accesso')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      return NextResponse.json({ users })
-    } catch (jwtError) {
-      return NextResponse.json({ error: 'Token non valido' }, { status: 401 })
+    if (userError || user?.livello_permessi !== 'admin') {
+      return NextResponse.json({ error: 'Accesso non autorizzato - Solo amministratori' }, { status: 403 })
     }
+
+    // Recupera tutti gli utenti
+    const { data: users, error } = await supabase
+      .from('scadenze_bandi_utenti')
+      .select('id, email, nome, cognome, livello_permessi, attivo, created_at, updated_at, ultimo_accesso')
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+
+    return NextResponse.json({ users })
+
   } catch (error) {
     console.error('Errore nel recupero utenti:', error)
+    return NextResponse.json({ error: 'Errore del server' }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
+    }
+
+    // Verifica se l'utente è admin
+    const { data: admin, error: adminError } = await supabase
+      .from('scadenze_bandi_utenti')
+      .select('livello_permessi')
+      .eq('email', session.user.email)
+      .single()
+
+    if (adminError || admin?.livello_permessi !== 'admin') {
+      return NextResponse.json({ error: 'Accesso non autorizzato - Solo amministratori' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { nome, cognome, email, livello_permessi } = body
+
+    // Validazione input
+    if (!nome || !cognome || !email) {
+      return NextResponse.json({ error: 'Nome, cognome ed email sono obbligatori' }, { status: 400 })
+    }
+
+    if (!['admin', 'collaboratore'].includes(livello_permessi)) {
+      return NextResponse.json({ error: 'Livello permessi non valido' }, { status: 400 })
+    }
+
+    // Controlla se l'email esiste già
+    const { data: existingUser, error: checkError } = await supabase
+      .from('scadenze_bandi_utenti')
+      .select('id')
+      .eq('email', email)
+      .single()
+
+    if (existingUser) {
+      return NextResponse.json({ error: 'Un utente con questa email esiste già' }, { status: 409 })
+    }
+
+    // Genera password temporanea: cognome + ! (tutto minuscolo)
+    const temporaryPassword = cognome.toLowerCase().trim() + '!'
+    const passwordHash = await bcrypt.hash(temporaryPassword, 10)
+
+    // Crea nuovo utente
+    const { data: newUser, error: createError } = await supabase
+      .from('scadenze_bandi_utenti')
+      .insert([{
+        nome: nome.trim(),
+        cognome: cognome.trim(),
+        email: email.toLowerCase().trim(),
+        livello_permessi,
+        password_hash: passwordHash,
+        first_login_password_change: true, // Deve cambiare password al primo accesso
+        attivo: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }])
+      .select()
+      .single()
+
+    if (createError) throw createError
+
+    return NextResponse.json({
+      user: newUser,
+      temporaryPassword,
+      message: `Utente creato con successo. Password temporanea: ${temporaryPassword}`
+    })
+
+  } catch (error) {
+    console.error('Errore nella creazione utente:', error)
     return NextResponse.json({ error: 'Errore del server' }, { status: 500 })
   }
 }
