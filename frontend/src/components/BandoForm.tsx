@@ -684,14 +684,12 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
       await saveTemplateScadenze(bandoId)
 
       // Crea struttura Google Drive SOLO per nuovi bandi (non per modifiche)
-      if (!bando?.id && session?.accessToken) {
+      if (!bando?.id) {
         try {
-          const token = localStorage.getItem('auth_token')
           const bandoResponse = await fetch('/api/drive/create-bando', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({ bandoName: dataToSave.nome })
           })

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useSession } from 'next-auth/react'
 
 interface User {
   id: string
@@ -28,14 +29,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const { data: session, status } = useSession()
 
   useEffect(() => {
     // Controlla se c'è una sessione salvata
     checkSession()
-  }, [])
+  }, [session, status])
 
   const checkSession = async () => {
     try {
+      // Se c'è una sessione Google OAuth attiva
+      if (session?.user) {
+        // Crea o ottieni utente dal database usando l'email di Google
+        await handleGoogleUser(session.user)
+        setLoading(false)
+        return
+      }
+
       const token = localStorage.getItem('auth_token')
       if (!token) {
         setLoading(false)
@@ -60,6 +70,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('auth_token')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGoogleUser = async (googleUser: any) => {
+    try {
+      // Cerca utente esistente per email
+      const { data: existingUser, error } = await supabase
+        .from('scadenze_bandi_utenti')
+        .select('*')
+        .eq('email', googleUser.email)
+        .single()
+
+      if (existingUser) {
+        // Utente esiste, imposta la sessione
+        setUser({
+          id: existingUser.id,
+          email: existingUser.email,
+          nome: existingUser.nome,
+          cognome: existingUser.cognome,
+          livello_permessi: existingUser.livello_permessi,
+          nome_completo: `${existingUser.nome} ${existingUser.cognome}`
+        })
+      } else {
+        // Nuovo utente Google, crealo nel database
+        const [nome, cognome] = (googleUser.name || '').split(' ')
+        const { data: newUser, error: insertError } = await supabase
+          .from('scadenze_bandi_utenti')
+          .insert({
+            email: googleUser.email,
+            nome: nome || googleUser.given_name || 'Nome',
+            cognome: cognome || googleUser.family_name || 'Cognome',
+            livello_permessi: 'collaboratore',
+            password_hash: null
+          })
+          .select()
+          .single()
+
+        if (newUser) {
+          setUser({
+            id: newUser.id,
+            email: newUser.email,
+            nome: newUser.nome,
+            cognome: newUser.cognome,
+            livello_permessi: newUser.livello_permessi,
+            nome_completo: `${newUser.nome} ${newUser.cognome}`
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Errore gestione utente Google:', error)
     }
   }
 
@@ -113,6 +173,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      // Se c'è una sessione NextAuth attiva
+      if (session) {
+        const { signOut } = await import('next-auth/react')
+        await signOut({ redirect: false })
+      }
+
+      // Logout tradizionale
       const token = localStorage.getItem('auth_token')
       if (token) {
         await fetch('/api/auth/logout', {

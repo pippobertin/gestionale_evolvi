@@ -28,7 +28,7 @@ interface ResponsabileData {
 
 interface ResponsableSelectorProps {
   value?: ResponsabileData
-  onChange: (responsabile: ResponsabileData | null) => void
+  onChange: (responsabile: ResponsabileData | undefined) => void
   className?: string
 }
 
@@ -52,7 +52,12 @@ export default function ResponsableSelector({ value, onChange, className = '' }:
         .select('*')
         .order('nome')
 
-      if (utentiError) throw utentiError
+      if (utentiError) {
+        console.warn('Tabella scadenze_bandi_utenti non trovata:', utentiError)
+        setUtenti([])
+      } else {
+        setUtenti(utentiData || [])
+      }
 
       // Carica gruppi
       const { data: gruppiData, error: gruppiError } = await supabase
@@ -61,12 +66,16 @@ export default function ResponsableSelector({ value, onChange, className = '' }:
         .eq('attivo', true)
         .order('nome')
 
-      if (gruppiError) throw gruppiError
+      if (gruppiError) {
+        console.warn('Tabella scadenze_bandi_gruppi_utenti non trovata:', gruppiError)
+        setGruppi([])
+      } else {
+        setGruppi(gruppiData || [])
+      }
 
-      setUtenti(utentiData || [])
-      setGruppi(gruppiData || [])
     } catch (error) {
       console.error('Errore caricamento responsabili:', error)
+      console.error('Error details:', JSON.stringify(error, null, 2))
     } finally {
       setLoading(false)
     }
@@ -96,7 +105,7 @@ export default function ResponsableSelector({ value, onChange, className = '' }:
   }
 
   const handleClear = () => {
-    onChange(null)
+    onChange(undefined)
     setIsOpen(false)
   }
 
@@ -112,15 +121,15 @@ export default function ResponsableSelector({ value, onChange, className = '' }:
         </span>
         <div className="flex items-center space-x-2">
           {value && (
-            <button
+            <div
               onClick={(e) => {
                 e.stopPropagation()
                 handleClear()
               }}
-              className="p-1 hover:bg-gray-100 rounded"
+              className="p-1 hover:bg-gray-100 rounded cursor-pointer"
             >
               <X className="h-3 w-3 text-gray-400" />
-            </button>
+            </div>
           )}
           <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </div>

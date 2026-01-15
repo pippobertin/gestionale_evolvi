@@ -379,127 +379,166 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-            <Building2 className="w-6 h-6 text-primary-600" />
+      {/* Header and Search - Sticky Section */}
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 pb-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+              <Building2 className="w-6 h-6 text-primary-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Gestione Clienti</h2>
+              <p className="text-gray-600">{filteredClienti.length} clienti trovati</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Gestione Clienti</h2>
-            <p className="text-gray-600">{filteredClienti.length} clienti trovati</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {isSelectMode ? (
-            <>
-              {selectedClientiForDelete.size > 0 && (
+          <div className="flex items-center gap-3">
+            {isSelectMode ? (
+              <>
+                {selectedClientiForDelete.size > 0 && (
+                  <button
+                    onClick={handleBulkDelete}
+                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Elimina ({selectedClientiForDelete.size})
+                  </button>
+                )}
                 <button
-                  onClick={handleBulkDelete}
-                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                  onClick={() => {
+                    setIsSelectMode(false)
+                    setSelectedClientiForDelete(new Set())
+                  }}
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg"
                 >
-                  <Trash2 className="w-4 h-4" />
-                  Elimina ({selectedClientiForDelete.size})
+                  Annulla
                 </button>
-              )}
-              <button
-                onClick={() => {
-                  setIsSelectMode(false)
-                  setSelectedClientiForDelete(new Set())
-                }}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg"
-              >
-                Annulla
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => setIsSelectMode(true)}
-                className="bg-gradient-to-br from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg"
-              >
-                <CheckSquare className="w-4 h-4" />
-                Seleziona
-              </button>
-              <button
-                onClick={handleImportCSV}
-                className="bg-gradient-to-br from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg"
-              >
-                <Upload className="w-4 h-4" />
-                Importa CSV
-              </button>
-              <button
-                onClick={handleNuovoCliente}
-                className="btn-primary flex items-center space-x-2"
-              >
-                <Plus className="w-5 h-5" />
-                <span>Nuovo Cliente</span>
-              </button>
-            </>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setIsSelectMode(true)}
+                  className="bg-gradient-to-br from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg"
+                >
+                  <CheckSquare className="w-4 h-4" />
+                  Seleziona
+                </button>
+                <button
+                  onClick={handleImportCSV}
+                  className="bg-gradient-to-br from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg"
+                >
+                  <Upload className="w-4 h-4" />
+                  Importa CSV
+                </button>
+                <button
+                  onClick={handleNuovoCliente}
+                  className="btn-primary flex items-center space-x-2"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span>Nuovo Cliente</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Filtri e Ricerca */}
+        <div className="card p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+            {/* Ricerca */}
+            <div className="flex-1 relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Cerca per denominazione, P.IVA o email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input pl-10"
+              />
+            </div>
+
+            {/* Toggle Filtri */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="btn-secondary flex items-center space-x-2"
+            >
+              <Filter className="w-4 h-4" />
+              <span>Filtri</span>
+            </button>
+          </div>
+
+          {/* Filtri Avanzati */}
+          {showFilters && (
+            <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Dimensione</label>
+                <select
+                  value={selectedDimensione}
+                  onChange={(e) => setSelectedDimensione(e.target.value)}
+                  className="input"
+                >
+                  <option value="all">Tutte le dimensioni</option>
+                  <option value="MICRO">Micro</option>
+                  <option value="PICCOLA">Piccola</option>
+                  <option value="MEDIA">Media</option>
+                  <option value="GRANDE">Grande</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Categoria Evolvi</label>
+                <select
+                  value={selectedCategoria}
+                  onChange={(e) => setSelectedCategoria(e.target.value)}
+                  className="input"
+                >
+                  <option value="all">Tutte le categorie</option>
+                  <option value="BASE">Base</option>
+                  <option value="PREMIUM">Premium</option>
+                  <option value="BUSINESS">Business</option>
+                  <option value="ENTERPRISE">Enterprise</option>
+                </select>
+              </div>
+            </div>
           )}
-        </div>
-      </div>
 
-      {/* Filtri e Ricerca */}
-      <div className="card p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-          {/* Ricerca */}
-          <div className="flex-1 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
-              <Search className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Cerca per denominazione, P.IVA o email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input pl-10"
-            />
-          </div>
-
-          {/* Toggle Filtri */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="btn-secondary flex items-center space-x-2"
-          >
-            <Filter className="w-4 h-4" />
-            <span>Filtri</span>
-          </button>
-        </div>
-
-        {/* Filtri Avanzati */}
-        {showFilters && (
-          <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Dimensione</label>
-              <select
-                value={selectedDimensione}
-                onChange={(e) => setSelectedDimensione(e.target.value)}
-                className="input"
-              >
-                <option value="all">Tutte le dimensioni</option>
-                <option value="MICRO">Micro</option>
-                <option value="PICCOLA">Piccola</option>
-                <option value="MEDIA">Media</option>
-                <option value="GRANDE">Grande</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Categoria Evolvi</label>
-              <select
-                value={selectedCategoria}
-                onChange={(e) => setSelectedCategoria(e.target.value)}
-                className="input"
-              >
-                <option value="all">Tutte le categorie</option>
-                <option value="BASE">Base</option>
-                <option value="PREMIUM">Premium</option>
-                <option value="BUSINESS">Business</option>
-                <option value="ENTERPRISE">Enterprise</option>
-              </select>
+          {/* Alphabet Navigation */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex flex-wrap justify-center gap-1">
+              {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map(letter => {
+                const hasClienti = filteredClienti.some(c =>
+                  c.denominazione?.toUpperCase().startsWith(letter)
+                )
+                return (
+                  <button
+                    key={letter}
+                    onClick={() => {
+                      const firstClient = filteredClienti.find(c =>
+                        c.denominazione?.toUpperCase().startsWith(letter)
+                      )
+                      if (firstClient) {
+                        const element = document.getElementById(`client-${firstClient.id}`)
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                        }
+                      }
+                    }}
+                    disabled={!hasClienti}
+                    className={`w-8 h-8 rounded-md text-sm font-medium transition-all ${
+                      hasClienti
+                        ? 'bg-primary-100 text-primary-700 hover:bg-primary-200 cursor-pointer'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title={hasClienti ? `Vai alla lettera ${letter}` : `Nessun cliente per la lettera ${letter}`}
+                  >
+                    {letter}
+                  </button>
+                )
+              })}
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Lista Clienti */}
@@ -551,7 +590,7 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
               </thead>
               <tbody>
                 {filteredClienti.map((cliente) => (
-                  <tr key={cliente.id} className="hover:bg-gray-50 cursor-pointer transition-colors duration-150"
+                  <tr key={cliente.id} id={`client-${cliente.id}`} className="hover:bg-gray-50 cursor-pointer transition-colors duration-150"
                       onClick={() => !isSelectMode && handleDettaglioCliente(cliente.id)}>
                     {isSelectMode && (
                       <td className="px-1 py-2 w-12">

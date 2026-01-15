@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import SessionProvider from '@/components/SessionProvider'
+import AutoSchedulerProvider from '@/components/AutoSchedulerProvider'
 
 export const metadata: Metadata = {
   title: 'Gestionale Evolvi',
@@ -16,7 +17,9 @@ export default function RootLayout({
     <html lang="it">
       <body className="antialiased">
         <SessionProvider>
-          {children}
+          <AutoSchedulerProvider>
+            {children}
+          </AutoSchedulerProvider>
         </SessionProvider>
       </body>
     </html>

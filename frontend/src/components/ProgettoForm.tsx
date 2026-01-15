@@ -889,6 +889,45 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
         }
 
         console.log('✅ Scadenze generate con successo!')
+
+        // Crea eventi Google Calendar per ogni scadenza inserita
+        console.log('📅 Creazione eventi Google Calendar...')
+        try {
+          const { CalendarService } = await import('@/lib/notifications/calendarService')
+
+          let eventiCreati = 0
+          for (const scadenza of scadenzeToInsert) {
+            try {
+              const selectedCliente = cliente || clienti.find(c => c.id === formData.cliente_id)
+              const nomeCliente = selectedCliente?.denominazione || 'Cliente non specificato'
+
+              const eventId = await CalendarService.createScadenzaEvent({
+                id: `temp_${Date.now()}_${Math.random()}`,
+                titolo: scadenza.titolo,
+                descrizione: scadenza.note,
+                dataScadenza: scadenza.data_scadenza,
+                priorita: scadenza.priorita,
+                clienteNome: nomeCliente,
+                progettoTitolo: formData.titolo_progetto,
+                responsabileEmail: scadenza.responsabile_email,
+                note: scadenza.note
+              })
+
+              if (eventId) {
+                console.log(`✅ Evento Calendar creato per: ${scadenza.titolo}`)
+                eventiCreati++
+              } else {
+                console.warn(`⚠️ Errore creazione evento Calendar per: ${scadenza.titolo}`)
+              }
+            } catch (calendarError) {
+              console.error(`❌ Errore Calendar per ${scadenza.titolo}:`, calendarError)
+            }
+          }
+
+          console.log(`📅 Eventi Calendar creati: ${eventiCreati}/${scadenzeToInsert.length}`)
+        } catch (importError) {
+          console.error('❌ Errore import CalendarService:', importError)
+        }
       } else {
         console.log('⚠️ Nessuna scadenza da inserire')
       }
@@ -1016,17 +1055,10 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
       // Rimuovi il campo eventi_progetto che non esiste nel database
       delete (dataToSave as any).eventi_progetto
 
-      // Campi data che devono essere null se vuoti
-      const dateFields = [
-        'data_base_calcolo',
-        'evento_base_id'
-      ]
-
-      dateFields.forEach(field => {
-        if (dataToSave[field as keyof ProgettoFormData] === '') {
-          (dataToSave as any)[field] = null
-        }
-      })
+      // Gestisci solo il campo evento_base_id se vuoto (data_base_calcolo deve rimanere)
+      if (dataToSave.evento_base_id === '') {
+        (dataToSave as any).evento_base_id = null
+      }
 
       if (progetto) {
         // Modifica progetto esistente
@@ -1054,10 +1086,9 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
           await generateScadenzeFromTemplate(newProgetto.id, formData.bando_id, formData)
         }
 
-        // Crea struttura Google Drive se connesso
-        if (session?.accessToken) {
-          try {
-            console.log('📁 Creazione struttura Google Drive...')
+        // Crea struttura Google Drive (usa Service Account, sempre disponibile)
+        try {
+          console.log('📁 Creazione struttura Google Drive...')
 
             // 1. Prima crea/verifica la struttura del bando
             const bandoData = bando || bandi.find(b => b.id === formData.bando_id)
@@ -1119,9 +1150,6 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
             console.warn('⚠️ Errore Google Drive (non bloccante):', driveError)
             // Non blocchiamo la creazione del progetto per errori Google Drive
           }
-        } else {
-          console.log('ℹ️ Google Drive non connesso, struttura non creata')
-        }
       }
 
       onProgettoCreated()
@@ -1458,12 +1486,11 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                               {evento.nome !== 'Avvio Progetto' && evento.tipo !== 'base_progetto' && (
                                 <div>
                                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                                    Data Effettiva
-                                    <span className="text-blue-600 ml-1">*</span>
+                                    Data Effettiva (opzionale)
                                   </label>
                                   <input
                                     type="date"
-                                    value={formData.eventi_progetto[evento.id] || ''}
+                                    value={formData.eventi_progetto[evento.id] || dateCalcolateBando[evento.id] || ''}
                                     onChange={(e) => {
                                       const nuoviEventi = {
                                         ...formData.eventi_progetto,
@@ -1475,9 +1502,10 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                                       }))
                                     }}
                                     className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder={dateCalcolateBando[evento.id] || "Data dal bando"}
                                   />
                                   <p className="text-xs text-gray-500 mt-1">
-                                    Se lasciato vuoto, verrà usata la data dal bando
+                                    Viene usata automaticamente la data dal bando. Modifica solo se la data effettiva è diversa.
                                   </p>
                                 </div>
                               )}
@@ -1589,37 +1617,18 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                 <div className="space-y-6">
                   {/* Google Drive Status */}
                   {(
-                    <div className={`border rounded-lg p-4 ${
-                      session?.accessToken
-                        ? 'bg-green-50 border-green-200'
-                        : 'bg-yellow-50 border-yellow-200'
-                    }`}>
+                    <div className="border rounded-lg p-4 bg-green-50 border-green-200">
                       <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 rounded-full ${
-                          session?.accessToken ? 'bg-green-500' : 'bg-yellow-500'
-                        }`}></div>
+                        <div className="w-5 h-5 rounded-full bg-green-500"></div>
                         <div>
                           <h4 className="text-sm font-medium">
-                            {session?.accessToken
-                              ? `✅ Google Drive connesso come ${session.user?.email}`
-                              : '⚠️ Google Drive non connesso'}
+                            ✅ Google Drive connesso (Service Account)
                           </h4>
                           <p className="text-xs text-gray-600 mt-1">
-                            {session?.accessToken
-                              ? 'La struttura cartelle verrà creata automaticamente nei Drive Condivisi.'
-                              : 'Connetti Google Drive per creare automaticamente la struttura cartelle.'}
+                            La struttura cartelle viene creata automaticamente nei Drive Condivisi.
                           </p>
                         </div>
                       </div>
-                      {!session?.accessToken && (
-                        <button
-                          type="button"
-                          onClick={() => signIn('google')}
-                          className="mt-3 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm"
-                        >
-                          🔑 Connetti Google Drive
-                        </button>
-                      )}
                     </div>
                   )}
 

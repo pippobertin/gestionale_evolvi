@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { getServerSession } from 'next-auth/next'
 import { findOrCreateSharedDrive, listSharedDriveFiles, deleteDriveFolder } from '@/lib/googleDrive'
-import { authOptions } from '../auth/[...nextauth]'
+import { authOptions } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 
 export default async function handler(

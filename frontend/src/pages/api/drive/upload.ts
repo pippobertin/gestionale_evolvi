@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { getServerSession } from 'next-auth/next'
 import { uploadFileToDrive, createDriveFolder } from '@/lib/googleDrive'
-import { authOptions } from '../auth/[...nextauth]'
+import { authOptions } from '@/lib/auth'
 
 export default async function handler(
   req: NextApiRequest,

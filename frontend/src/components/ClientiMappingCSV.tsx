@@ -56,11 +56,11 @@ export default function ClientiMappingCSV({ isOpen, onClose, onImportComplete }:
   // Mapping automatico suggerito basato sui CSV reali
   const createSuggestedMapping = (headers: string[]): ColumnMapping[] => {
     const suggestions: { [key: string]: string } = {
-      // Mapping corretto basato sui CSV reali - versione completa
+      // Mapping corretto basato sui nomi delle colonne reali
       'Nome Azienda': 'denominazione',
       'Partita IVA': 'partita_iva',
       'REA': 'rea',
-      'Azienda_Codice_Fiscale': 'codice_fiscale',  // Codice fiscale dell'azienda
+      'Azienda_Codice Fiscale': 'codice_fiscale',  // Codice fiscale dell'azienda
       'ATECO': 'ateco_2025',
       'Email': 'email',
       'Data di Costituzione': 'data_costituzione',
@@ -74,7 +74,7 @@ export default function ClientiMappingCSV({ isOpen, onClose, onImportComplete }:
       'Scadenza Evolvi': 'scadenza_evolvi',
       'Estremi di Iscrizione al RUNTS': 'estremi_iscrizione_runts',
       'Indirizzo (Fatturazione)': 'indirizzo_fatturazione',
-      'BOX (fatturazione)': 'cap_fatturazione',  // QUESTA È LA MAPPATURA CORRETTA DAL CSV
+      'BOX (fatturazione)': 'cap_fatturazione',
       'Città (Fatturazione)': 'citta_fatturazione',
       'Provincia (Fatturazione)': 'provincia_fatturazione',
       'Descrizione': 'descrizione',
@@ -87,10 +87,10 @@ export default function ClientiMappingCSV({ isOpen, onClose, onImportComplete }:
       'N° DIPENDENTI': 'numero_dipendenti',
       'N° COLLABORATORI ESTERNI': 'numero_collaboratori',
 
-      // Legale rappresentante - campi dal CSV reale
+      // Legale rappresentante - mapping corretto come specificato
       'Cognome': 'legale_rappresentante_cognome',
       'Nome': 'legale_rappresentante_nome',
-      'Codice Fiscale': 'legale_rappresentante_codice_fiscale', // Secondo "Codice Fiscale" nel CSV
+      'Codice Fiscale': 'legale_rappresentante_codice_fiscale', // Campo "Codice_Fiscale" del CSV -> codice fiscale del legale rappresentante
       'Luogo di Nascita': 'legale_rappresentante_luogo_nascita',
       'Data di Nascita': 'legale_rappresentante_data_nascita',
       'Email Legale Rappresentante': 'legale_rappresentante_email',
@@ -501,7 +501,7 @@ export default function ClientiMappingCSV({ isOpen, onClose, onImportComplete }:
                     {Object.entries(results.skippedBreakdown).map(([reason, count]) => (
                       <div key={reason} className="flex justify-between">
                         <span className="text-blue-700">{reason}:</span>
-                        <span className="font-medium text-blue-900">{count}</span>
+                        <span className="font-medium text-blue-900">{String(count)}</span>
                       </div>
                     ))}
                   </div>

@@ -78,7 +78,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
 
   const [loading, setLoading] = useState(false)
   const [entitaSelezionata, setEntitaSelezionata] = useState<'cliente' | 'bando' | 'progetto' | ''>('')
-  const [responsabile, setResponsabile] = useState<ResponsabileData | null>(null)
+  const [responsabile, setResponsabile] = useState<ResponsabileData | undefined>(undefined)
 
   // Dati per i dropdown
   const [clienti, setClienti] = useState<Cliente[]>([])
@@ -196,6 +196,65 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
     }))
   }
 
+  const createCalendarEvent = async (scadenzaId: string, dataScadenza: ScadenzaFormData) => {
+    try {
+      // Recupera informazioni aggiuntive per l'evento calendario
+      let clienteNome = 'N/A'
+      let progettoTitolo = 'N/A'
+      let responsabileEmail = dataScadenza.responsabile_email || 'info@blmproject.com'
+
+      // Recupera nome cliente se presente
+      if (dataScadenza.cliente_id) {
+        const cliente = clienti.find(c => c.id === dataScadenza.cliente_id)
+        if (cliente) clienteNome = cliente.denominazione
+      }
+
+      // Recupera titolo progetto se presente
+      if (dataScadenza.progetto_id) {
+        const progetto = progetti.find(p => p.id === dataScadenza.progetto_id)
+        if (progetto) progettoTitolo = progetto.titolo_progetto
+      }
+
+      // Se c'è un responsabile personalizzato, cerca la sua email
+      if (responsabile) {
+        if (responsabile.tipo === 'utente' && responsabile.utente_id) {
+          try {
+            const { data: utente } = await supabase
+              .from('scadenze_bandi_utenti')
+              .select('email')
+              .eq('id', responsabile.utente_id)
+              .single()
+
+            if (utente?.email) responsabileEmail = utente.email
+          } catch (e) {
+            console.warn('Email responsabile non trovata, uso default')
+          }
+        }
+      }
+
+      // Importa dinamicamente CalendarService
+      const { CalendarService } = await import('@/lib/notifications/calendarService')
+
+      await CalendarService.createScadenzaEvent({
+        id: scadenzaId,
+        titolo: dataScadenza.titolo,
+        descrizione: dataScadenza.note || '',
+        dataScadenza: dataScadenza.data_scadenza,
+        priorita: dataScadenza.priorita,
+        clienteNome,
+        progettoTitolo,
+        responsabileEmail,
+        note: dataScadenza.note
+      })
+
+      console.log('✅ Evento calendario creato per scadenza:', scadenzaId)
+
+    } catch (error) {
+      console.error('❌ Errore creazione evento calendario:', error)
+      throw error
+    }
+  }
+
   const handleSave = async () => {
     if (!formData.titolo || !formData.data_scadenza) {
       alert('Inserisci almeno titolo e data scadenza')
@@ -260,6 +319,20 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
         if (responsabileError) throw responsabileError
       }
 
+      // Crea evento calendario se è una nuova scadenza
+      if (!scadenza && scadenzaId) {
+        try {
+          await createCalendarEvent(scadenzaId, dataToSave)
+        } catch (calError) {
+          console.warn('Evento calendario non creato:', calError)
+          // Mostra messaggio informativo all'utente
+          if (calError instanceof Error && calError.message.includes('insufficient_permissions_calendar')) {
+            alert('Scadenza salvata! Per abilitare gli eventi calendario, fare logout e login nuovamente per concedere i permessi del calendario a Google.')
+          }
+          // Non bloccchiamo il salvataggio se fallisce solo il calendario
+        }
+      }
+
       onScadenzaCreata()
       onClose()
     } catch (error) {
@@ -295,7 +368,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
                 {scadenza ? 'Modifica Scadenza' : 'Nuova Scadenza'}
               </h2>
               <p className="text-gray-600 text-sm">
-                Crea una scadenza collegata a cliente, bando o progetto
+                Crea una scadenza generica o collegata a cliente, bando o progetto
               </p>
             </div>
           </div>
@@ -312,9 +385,22 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
           {/* Selezione Entità */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              Collega scadenza a: *
+              Collega scadenza a: (opzionale)
             </label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <button
+                type="button"
+                onClick={() => handleEntitaChange('')}
+                className={`p-4 rounded-lg border-2 transition-all ${
+                  entitaSelezionata === ''
+                    ? 'border-gray-500 bg-gray-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <AlertTriangle className="w-6 h-6 mx-auto mb-2 text-gray-600" />
+                <div className="text-sm font-medium">Nessuna</div>
+                <div className="text-xs text-gray-500">Scadenza generica</div>
+              </button>
               <button
                 type="button"
                 onClick={() => handleEntitaChange('cliente')}
@@ -533,7 +619,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
           <button
             onClick={handleSave}
             className="btn-primary flex items-center space-x-2"
-            disabled={loading || !entitaSelezionata || !formData.titolo || !formData.data_scadenza}
+            disabled={loading || !formData.titolo || !formData.data_scadenza}
           >
             <Save className="w-4 h-4" />
             <span>{loading ? 'Salvataggio...' : 'Salva Scadenza'}</span>

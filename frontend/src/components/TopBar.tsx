@@ -9,13 +9,14 @@ import {
   HelpCircle,
   Moon,
   LogOut,
-  MessageSquare,
+  Mail,
   Cloud,
   CloudOff
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useGoogleDriveStatus } from '@/hooks/useGoogleDriveStatus'
+import EmailClient from './EmailClient'
 
 interface TopBarProps {
   title: string
@@ -27,6 +28,7 @@ export default function TopBar({ title, breadcrumb = [] }: TopBarProps) {
   const { isConnected: isGoogleDriveConnected, loading: googleDriveLoading } = useGoogleDriveStatus()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+  const [showEmailClient, setShowEmailClient] = useState(false)
 
   const handleLogout = async () => {
     await logout()
@@ -135,11 +137,15 @@ export default function TopBar({ title, breadcrumb = [] }: TopBarProps) {
               <Moon className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
             </button>
 
-            {/* Messages */}
-            <button className="p-2.5 hover:bg-white/20 rounded-lg transition-colors duration-200 group relative">
-              <MessageSquare className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
-              <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold border-2 border-white shadow-lg">
-                3
+            {/* Email */}
+            <button
+              onClick={() => setShowEmailClient(true)}
+              className="p-2.5 hover:bg-white/20 rounded-lg transition-colors duration-200 group relative"
+              title="Centro Email"
+            >
+              <Mail className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
+              <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold border-2 border-white shadow-lg">
+                5
               </span>
             </button>
 
@@ -258,6 +264,12 @@ export default function TopBar({ title, breadcrumb = [] }: TopBarProps) {
           </div>
         </div>
       </div>
+
+      {/* Email Client Modal */}
+      <EmailClient
+        isOpen={showEmailClient}
+        onClose={() => setShowEmailClient(false)}
+      />
     </div>
   )
 }

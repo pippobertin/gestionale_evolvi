@@ -39,13 +39,61 @@ export default function SchedulerManager() {
   const fetchStatus = async () => {
     try {
       const response = await fetch('/api/notifications/scheduler')
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
       const data = await response.json()
-      if (data.success) {
-        setStatus(data.data.status)
-        setTempConfig(data.data.config)
+
+      if (data?.success) {
+        // La nuova API ritorna data.data.status e data.data.config
+        const statusInfo = data.data?.status
+        const configInfo = data.data?.config
+
+        if (statusInfo && configInfo) {
+          setStatus(statusInfo)
+          setTempConfig(configInfo)
+        } else {
+          console.warn('⚠️ Struttura API incompleta:', data)
+          // Fallback con valori di default
+          setStatus({
+            active: false,
+            runningJobs: 0,
+            nextScadenzeCheck: null,
+            nextWeeklyDigest: null
+          })
+          setTempConfig({
+            scadenzeNotifications: {
+              enabled: true,
+              interval: 60,
+              times: ['09:00', '14:00', '18:00']
+            },
+            weeklyDigest: {
+              enabled: true,
+              dayOfWeek: 1,
+              time: '08:00'
+            },
+            emailQueue: {
+              enabled: true,
+              interval: 5,
+              batchSize: 10
+            }
+          })
+        }
+      } else {
+        throw new Error(data?.error || 'Risposta API non valida')
       }
     } catch (error) {
       console.error('Errore recupero status:', error)
+      // Imposta valori di default in caso di errore
+      setStatus({
+        active: false,
+        runningJobs: 0,
+        nextScadenzeCheck: null,
+        nextWeeklyDigest: null
+      })
+      setTempConfig(null)
     } finally {
       setLoading(false)
     }

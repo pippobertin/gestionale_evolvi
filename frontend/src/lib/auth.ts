@@ -1,4 +1,4 @@
-import NextAuth, { AuthOptions } from "next-auth"
+import { AuthOptions } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 
 async function refreshAccessToken(token: any) {
@@ -28,7 +28,7 @@ async function refreshAccessToken(token: any) {
       ...token,
       accessToken: refreshedTokens.access_token,
       accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
-      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken, // Fall back to old refresh token
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
     }
   } catch (error) {
     console.error('Error refreshing access token:', error)
@@ -53,7 +53,9 @@ export const authOptions: AuthOptions = {
             'https://www.googleapis.com/auth/gmail.send',
             'https://www.googleapis.com/auth/drive',
             'https://www.googleapis.com/auth/drive.file',
-            'https://www.googleapis.com/auth/drive.readonly'
+            'https://www.googleapis.com/auth/drive.readonly',
+            'https://www.googleapis.com/auth/calendar',
+            'https://www.googleapis.com/auth/calendar.events'
           ].join(' '),
           access_type: "offline",
           prompt: "consent",
@@ -63,24 +65,20 @@ export const authOptions: AuthOptions = {
   ],
   callbacks: {
     async jwt({ token, account }) {
-      // Persist the OAuth access_token and refresh_token to the token right after signin
       if (account) {
         token.accessToken = account.access_token
         token.refreshToken = account.refresh_token
         token.accessTokenExpires = account.expires_at ? account.expires_at * 1000 : Date.now() + 3600 * 1000
       }
 
-      // Return previous token if the access token has not expired yet
       if (Date.now() < (token.accessTokenExpires as number)) {
         return token
       }
 
-      // Access token has expired, try to update it
       console.log('🔄 Token scaduto, tentativo refresh automatico...')
       return refreshAccessToken(token)
     },
     async session({ session, token }) {
-      // Send properties to the client
       session.accessToken = token.accessToken
       session.refreshToken = token.refreshToken
       session.error = token.error
@@ -88,8 +86,6 @@ export const authOptions: AuthOptions = {
     },
   },
   pages: {
-    signIn: '/auth/signin',
+    signIn: '/',
   }
 }
-
-export default NextAuth(authOptions)

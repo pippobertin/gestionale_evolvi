@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Calendar, List, Clock, AlertTriangle, CheckCircle, Plus, Filter, CalendarDays } from 'lucide-react'
+import { Calendar, List, Clock, AlertTriangle, CheckCircle, Plus, Filter, CalendarDays, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import CalendarioScadenze from './CalendarioScadenze'
 import CalendarioSettimana from './CalendarioSettimana'
@@ -46,6 +46,8 @@ export default function ScadenzeContent() {
   const [calendarioMesi, setCalendarioMesi] = useState<number>(1) // 1, 2, 3, 12 mesi
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [showDayModal, setShowDayModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [scadenzaDaEliminare, setScadenzaDaEliminare] = useState<Scadenza | null>(null)
 
   // Carica scadenze
   useEffect(() => {
@@ -184,6 +186,82 @@ export default function ScadenzeContent() {
     } else {
       await updateScadenzaStato(scadenza.id, nuovoStato)
     }
+  }
+
+  // Gestione eliminazione scadenza
+  const handleDeleteScadenza = (scadenza: Scadenza) => {
+    setScadenzaDaEliminare(scadenza)
+    setShowDeleteModal(true)
+  }
+
+  const confirmDeleteScadenza = async () => {
+    if (!scadenzaDaEliminare) return
+
+    try {
+      // Elimina prima i responsabili associati
+      await supabase
+        .from('scadenze_bandi_responsabili_scadenze')
+        .delete()
+        .eq('scadenza_id', scadenzaDaEliminare.id)
+
+      // Elimina eventuali eventi calendario associati
+      await supabase
+        .from('scadenze_bandi_calendar_events')
+        .delete()
+        .eq('entity_id', scadenzaDaEliminare.id)
+        .eq('event_type', 'scadenza')
+
+      // Elimina la scadenza
+      const { error } = await supabase
+        .from('scadenze_bandi_scadenze')
+        .delete()
+        .eq('id', scadenzaDaEliminare.id)
+
+      if (error) throw error
+
+      // Elimina evento dal calendario Google se esiste
+      try {
+        console.log('🔍 Tentativo eliminazione evento calendario per scadenza:', scadenzaDaEliminare.id)
+        const { CalendarService } = await import('@/lib/notifications/calendarService')
+
+        // Prima prova l'eliminazione normale
+        const success = await CalendarService.deleteEvent(scadenzaDaEliminare.id, 'scadenza')
+
+        if (success) {
+          console.log('✅ Evento calendario eliminato con successo')
+        } else {
+          console.warn('⚠️ Evento non trovato nel DB, provo eliminazione orfana...')
+          // Se non trovato nel database, prova la pulizia eventi orfani
+          const orphanSuccess = await CalendarService.deleteOrphanCalendarEvents(
+            scadenzaDaEliminare.id,
+            scadenzaDaEliminare.titolo
+          )
+          if (orphanSuccess) {
+            console.log('✅ Eventi orfani eliminati con successo')
+          }
+        }
+      } catch (calError) {
+        console.error('❌ Errore eliminazione evento calendario:', calError)
+      }
+
+      // Ricarica le scadenze
+      fetchScadenze()
+
+      // Chiudi ENTRAMBI i modal dopo eliminazione
+      setShowDeleteModal(false)
+      setScadenzaDaEliminare(null)
+      setShowDayModal(false)
+      setSelectedDate(null)
+
+    } catch (error) {
+      console.error('Errore eliminazione scadenza:', error)
+      alert('Errore durante l\'eliminazione della scadenza')
+    }
+  }
+
+  const cancelDeleteScadenza = () => {
+    setShowDeleteModal(false)
+    setScadenzaDaEliminare(null)
   }
 
   // Aggiorna stato scadenza con cascata
@@ -663,6 +741,65 @@ export default function ScadenzeContent() {
         </div>
       )}
 
+      {/* Modal Conferma Eliminazione */}
+      {showDeleteModal && scadenzaDaEliminare && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900 text-red-600">
+                🗑️ Elimina Scadenza
+              </h3>
+              <button
+                onClick={cancelDeleteScadenza}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-sm text-gray-600 mb-3">
+                Sei sicuro di voler eliminare definitivamente questa scadenza?
+              </p>
+
+              <div className="bg-gray-50 p-3 rounded-lg border-l-4 border-red-400">
+                <p className="font-medium text-gray-900">{scadenzaDaEliminare.titolo}</p>
+                <p className="text-sm text-gray-600">
+                  📅 Scadenza: {new Date(scadenzaDaEliminare.data_scadenza).toLocaleDateString('it-IT')}
+                </p>
+                {scadenzaDaEliminare.cliente_nome && (
+                  <p className="text-sm text-gray-600">
+                    🏢 Cliente: {scadenzaDaEliminare.cliente_nome}
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
+                <p className="text-sm text-red-800">
+                  <strong>⚠️ Attenzione:</strong> Questa azione non può essere annullata.
+                  La scadenza e tutti i dati associati saranno eliminati definitivamente.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={cancelDeleteScadenza}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={confirmDeleteScadenza}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                🗑️ Elimina Definitivamente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Scadenze del Giorno */}
       {showDayModal && selectedDate && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -720,7 +857,7 @@ export default function ScadenzeContent() {
                           </div>
                         </div>
 
-                        <div className="ml-4">
+                        <div className="ml-4 flex flex-col gap-2">
                           <select
                             value={scadenza.stato}
                             onChange={(e) => handleStatoChange(scadenza, e.target.value)}
@@ -730,6 +867,15 @@ export default function ScadenzeContent() {
                             <option value="in_corso">In corso</option>
                             <option value="completata">Completata</option>
                           </select>
+
+                          <button
+                            onClick={() => handleDeleteScadenza(scadenza)}
+                            className="flex items-center justify-center gap-1 px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded border border-red-200 hover:border-red-300 transition-colors"
+                            title="Elimina scadenza"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            <span>Elimina</span>
+                          </button>
                         </div>
                       </div>
                     </div>

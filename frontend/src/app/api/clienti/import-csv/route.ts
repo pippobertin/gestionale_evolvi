@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     const skippedReasons: { [key: string]: number } = {
       'empty_denominazione': 0,
       'duplicate_piva': 0,
-      'duplicate_name': 0,
+      'invalid_text': 0,
       'insert_error': 0
     }
 
@@ -34,9 +34,42 @@ export async function POST(req: NextRequest) {
           continue
         }
 
-        // Verifica se il cliente esiste già (per P.IVA o denominazione)
+        // Salta righe che non sembrano aziende valide
+        const denominazione = clienteData.denominazione.toLowerCase().trim()
+
+        // Skip se la denominazione è troppo lunga (probabilmente una descrizione)
+        if (denominazione.length > 100) {
+          skippedReasons.invalid_text++
+          console.log(`Riga ${i + 1}: Saltato testo troppo lungo: ${clienteData.denominazione.substring(0, 50)}...`)
+          continue
+        }
+
+        // Skip se contiene parole che indicano che non è un'azienda
+        const skipKeywords = [
+          'un grande punto di forza',
+          'le informazioni contenute',
+          'circa l\'85%',
+          'in francia e spagna',
+          'giornalista',
+          'responsabile',
+          'segretaria',
+          'consulente',
+          'attendiamo copia',
+          'come concordato',
+          '347.910',
+          'bertin@blm',
+          '_____'
+        ]
+
+        if (skipKeywords.some(keyword => denominazione.includes(keyword))) {
+          skippedReasons.invalid_text++
+          console.log(`Riga ${i + 1}: Saltato testo non valido: ${clienteData.denominazione}`)
+          continue
+        }
+
+        // Verifica se il cliente esiste già (SOLO per P.IVA se presente)
         let existingClient = null
-        if (clienteData.partita_iva) {
+        if (clienteData.partita_iva && clienteData.partita_iva.length > 0) {
           const { data: existingByPiva } = await supabase
             .from('scadenze_bandi_clienti')
             .select('id, denominazione')
@@ -45,28 +78,22 @@ export async function POST(req: NextRequest) {
           existingClient = existingByPiva
         }
 
-        if (!existingClient) {
-          const { data: existingByName } = await supabase
-            .from('scadenze_bandi_clienti')
-            .select('id, denominazione')
-            .eq('denominazione', clienteData.denominazione)
-            .single()
-          existingClient = existingByName
+        if (existingClient) {
+          skippedReasons.duplicate_piva++
+          console.log(`Cliente già esistente (P.IVA: ${clienteData.partita_iva}): ${clienteData.denominazione}`)
+          continue
         }
 
-        if (existingClient) {
-          if (clienteData.partita_iva) {
-            skippedReasons.duplicate_piva++
-          } else {
-            skippedReasons.duplicate_name++
-          }
-          console.log(`Cliente già esistente: ${clienteData.denominazione}`)
-          continue
+        // Debug logging per aziende specifiche
+        if (clienteData.denominazione && clienteData.denominazione.includes('365')) {
+          console.log(`DEBUG - Importando 365: P.IVA=${clienteData.partita_iva}, Nome=${clienteData.denominazione}`)
         }
 
         // Aggiungi metadati
         clienteData.creato_da = 'Importazione CSV'
         clienteData.created_at = new Date().toISOString()
+
+        // ATECO saltato temporaneamente per evitare errori FK
 
         // Inserisci nel database
         const { data: insertedClient, error: insertError } = await supabase
@@ -86,13 +113,21 @@ export async function POST(req: NextRequest) {
 
       } catch (error: any) {
         skippedReasons.insert_error++
-        const errorMsg = `Riga ${i + 1}: ${error.message || 'Errore sconosciuto'}`
+        const errorMsg = `Riga ${i + 1} (${row['Nome Azienda'] || 'N/A'}): ${error.message || 'Errore sconosciuto'}`
         console.error(errorMsg, error)
         errors.push(errorMsg)
       }
     }
 
     const totalSkipped = Object.values(skippedReasons).reduce((a, b) => a + b, 0)
+
+    console.log(`\n=== RISULTATI IMPORTAZIONE ===`)
+    console.log(`Totale righe CSV: ${csvData.length}`)
+    console.log(`Importati: ${importedClients.length}`)
+    console.log(`Saltati: ${totalSkipped}`)
+    console.log(`Errori: ${errors.length}`)
+    console.log(`Dettaglio saltati:`, skippedReasons)
+    console.log(`===============================\n`)
 
     return Response.json({
       success: true,
@@ -102,9 +137,9 @@ export async function POST(req: NextRequest) {
         errors: errors.length,
         skipped: totalSkipped,
         skippedBreakdown: {
-          'Righe vuote': skippedReasons.empty_denominazione,
+          'Righe vuote/senza nome': skippedReasons.empty_denominazione,
+          'Testi non validi': skippedReasons.invalid_text,
           'Duplicati P.IVA': skippedReasons.duplicate_piva,
-          'Duplicati nome': skippedReasons.duplicate_name,
           'Errori inserimento': skippedReasons.insert_error
         },
         errorDetails: errors,
@@ -127,14 +162,14 @@ function mapCsvToCliente(row: any, mapping: any): any {
 
   // Usa il mapping personalizzato fornito dal frontend
   for (const [csvColumn, dbColumn] of Object.entries(mapping)) {
-    const value = row[csvColumn]
-    if (!value || value.trim() === '') continue
+    const value = row[csvColumn as string]
+    if (!value || String(value).trim() === '') continue
 
     const cleanValue = String(value).trim()
 
     // Applica trasformazioni specifiche per tipo di campo
     try {
-      switch (dbColumn) {
+      switch (String(dbColumn)) {
         // Campi numerici
         case 'numero_dipendenti':
         case 'numero_volontari':
@@ -143,7 +178,7 @@ function mapCsvToCliente(row: any, mapping: any): any {
         case 'ula':
           const intValue = parseInt(cleanValue.replace(/[.,]/g, ''))
           if (!isNaN(intValue)) {
-            cliente[dbColumn] = intValue
+            cliente[String(dbColumn)] = intValue
           }
           break
 
@@ -153,14 +188,37 @@ function mapCsvToCliente(row: any, mapping: any): any {
           const numericValue = cleanValue.replace(/[^\d.,]/g, '').replace(',', '.')
           const floatValue = parseFloat(numericValue)
           if (!isNaN(floatValue)) {
-            cliente[dbColumn] = floatValue
+            cliente[String(dbColumn)] = floatValue
           }
           break
 
-        // Mapping specifici per coordinate bancarie
+        // Mapping specifici per coordinate bancarie - estrai anche nome banca
         case 'coordinate_bancarie':
+          cliente[String(dbColumn)] = cleanValue
+
+          // Se è un IBAN italiano, estrai il nome della banca dal codice ABI e CAB
+          if (cleanValue && cleanValue.startsWith('IT') && cleanValue.length >= 15) {
+            const abi = cleanValue.substring(5, 10) // Caratteri 6-10 (ABI)
+            const cab = cleanValue.substring(10, 15) // Caratteri 11-15 (CAB)
+
+            const nomeBanca = getBankNameFromABI(abi)
+            const nomeFiliale = getLocationFromCAB(cab)
+
+            if (nomeBanca && nomeFiliale) {
+              // Formato: "Nome Banca - Filiale di Città"
+              cliente.banca_filiale = `${nomeBanca} - Filiale di ${nomeFiliale}`
+            } else if (nomeBanca) {
+              // Solo banca riconosciuta
+              cliente.banca_filiale = `${nomeBanca} - Filiale ${cab}`
+            } else {
+              // Banca non riconosciuta
+              cliente.banca_filiale = `Banca ABI ${abi} - Filiale ${cab}`
+            }
+          }
+          break
+
         case 'iban':
-          cliente[dbColumn] = cleanValue
+          cliente[String(dbColumn)] = cleanValue
           break
 
         // Date
@@ -187,7 +245,7 @@ function mapCsvToCliente(row: any, mapping: any): any {
           }
 
           if (date && !isNaN(date.getTime())) {
-            cliente[dbColumn] = date.toISOString().split('T')[0] // Solo data
+            cliente[String(dbColumn)] = date.toISOString().split('T')[0] // Solo data
           }
           break
 
@@ -195,7 +253,7 @@ function mapCsvToCliente(row: any, mapping: any): any {
         case 'created_at':
           const dateTime = new Date(cleanValue)
           if (!isNaN(dateTime.getTime())) {
-            cliente[dbColumn] = dateTime.toISOString() // Data e ora
+            cliente[String(dbColumn)] = dateTime.toISOString() // Data e ora
           }
           break
 
@@ -203,32 +261,29 @@ function mapCsvToCliente(row: any, mapping: any): any {
         case 'dimensione':
           const dimensione = cleanValue.toUpperCase()
           if (['MICRO', 'PICCOLA', 'MEDIA', 'GRANDE'].includes(dimensione)) {
-            cliente[dbColumn] = dimensione
+            cliente[String(dbColumn)] = dimensione
           }
           break
 
         // Categoria Evolvi (mapping speciale)
         case 'categoria_evolvi':
           if (cleanValue.includes('SPOT')) {
-            cliente[dbColumn] = 'BASE'
+            cliente[String(dbColumn)] = 'BASE'
           } else if (cleanValue.includes('PREMIUM')) {
-            cliente[dbColumn] = 'PREMIUM'
+            cliente[String(dbColumn)] = 'PREMIUM'
           } else if (cleanValue.includes('BUSINESS')) {
-            cliente[dbColumn] = 'BUSINESS'
+            cliente[String(dbColumn)] = 'BUSINESS'
           } else if (cleanValue.includes('ENTERPRISE')) {
-            cliente[dbColumn] = 'ENTERPRISE'
+            cliente[String(dbColumn)] = 'ENTERPRISE'
           } else {
-            cliente[dbColumn] = 'BASE'
+            cliente[String(dbColumn)] = 'BASE'
           }
           break
 
-        // Codice ATECO (split se presente tab)
+        // Codice ATECO (split se presente tab) - salta sempre per evitare errori FK
         case 'ateco_2025':
-          const atecoParts = cleanValue.split('\t')
-          cliente[dbColumn] = atecoParts[0].trim()
-          if (atecoParts.length > 1 && atecoParts[1]) {
-            cliente.ateco_descrizione = atecoParts[1].trim()
-          }
+          // Saltiamo completamente il campo ATECO per evitare errori di foreign key
+          // I codici verranno aggiunti manualmente in seguito
           break
 
         // Campi legale rappresentante
@@ -241,7 +296,7 @@ function mapCsvToCliente(row: any, mapping: any): any {
         case 'legale_rappresentante_indirizzo':
         case 'legale_rappresentante_citta':
         case 'legale_rappresentante_cap':
-          cliente[dbColumn] = cleanValue
+          cliente[String(dbColumn)] = cleanValue
           break
 
         // Legale rappresentante (combinazione nome+cognome se disponibile) - campo legacy
@@ -250,25 +305,35 @@ function mapCsvToCliente(row: any, mapping: any): any {
           if (csvColumn === 'Cognome' && row['Nome']) {
             const nome = String(row['Nome']).trim()
             if (nome) {
-              cliente[dbColumn] = `${cleanValue} ${nome}`
+              cliente[String(dbColumn)] = `${cleanValue} ${nome}`
             } else {
-              cliente[dbColumn] = cleanValue
+              cliente[String(dbColumn)] = cleanValue
             }
           } else if (csvColumn === 'Nome' && row['Cognome']) {
             const cognome = String(row['Cognome']).trim()
             if (cognome) {
-              cliente[dbColumn] = `${cognome} ${cleanValue}`
+              cliente[String(dbColumn)] = `${cognome} ${cleanValue}`
             } else {
-              cliente[dbColumn] = cleanValue
+              cliente[String(dbColumn)] = cleanValue
             }
           } else {
-            cliente[dbColumn] = cleanValue
+            cliente[String(dbColumn)] = cleanValue
+          }
+          break
+
+        // Partita IVA - aggiungi zeri iniziali per arrivare a 11 caratteri
+        case 'partita_iva':
+          // Rimuovi spazi e caratteri non numerici, poi aggiungi padding
+          const pivaClean = cleanValue.replace(/[^0-9]/g, '')
+          if (pivaClean && pivaClean.length > 0) {
+            // Padding a sinistra con zeri fino a 11 caratteri
+            cliente[String(dbColumn)] = pivaClean.padStart(11, '0')
           }
           break
 
         // Campi testo normali
         default:
-          cliente[dbColumn] = cleanValue
+          cliente[String(dbColumn)] = cleanValue
           break
       }
     } catch (e) {
@@ -278,4 +343,202 @@ function mapCsvToCliente(row: any, mapping: any): any {
   }
 
   return cliente
+}
+
+function getBankNameFromABI(abi: string): string | null {
+  // Mappa dei codici ABI principali alle banche italiane
+  const abiToBankName: { [key: string]: string } = {
+    '01005': 'Intesa Sanpaolo',
+    '02008': 'UniCredit',
+    '03069': 'Intesa Sanpaolo',
+    '03002': 'Banca Generali',
+    '03479': 'Intesa Sanpaolo Private Banking',
+    '05034': 'Banca Popolare di Sondrio',
+    '05387': 'BPER Banca',
+    '05584': 'Banca Popolare di Bari',
+    '05696': 'Banco di Desio e della Brianza',
+    '06175': 'Banca Popolare di Vicenza',
+    '07601': 'Cariparma',
+    '08327': 'Credito Valtellinese',
+    '08509': 'Banco di Sardegna',
+    '08905': 'Cassa di Risparmio di Bolzano',
+    '10542': 'Banca di Cividale',
+    '07072': 'Banco BPM',
+    '05216': 'Banca Mediolanum',
+    '03359': 'Mediobanca',
+    '03032': 'BNL Gruppo BNP Paribas',
+    '01030': 'Monte dei Paschi di Siena',
+    '06230': 'Credito Emiliano',
+    '05018': 'Banco di Brescia',
+    '05385': 'BPER Banca',
+    '03606': 'Banca Nazionale del Lavoro',
+    '03058': 'Banco di Napoli',
+    '01025': 'Cassa di Risparmio in Bologna',
+    '06280': 'Banca Popolare di Puglia e Basilicata'
+  }
+
+  return abiToBankName[abi] || null
+}
+
+function getLocationFromCAB(cab: string): string | null {
+  // Mappa completa dei CAB delle Marche
+  const cabToLocation: { [key: string]: string } = {
+    // PROVINCIA DI ANCONA
+    '01801': 'Ancona',
+    '01802': 'Ancona',
+    '01803': 'Ancona',
+    '01804': 'Ancona',
+    '01805': 'Ancona',
+    '01900': 'Chiaravalle',
+    '02000': 'Falconara Marittima',
+    '02100': 'Jesi',
+    '02101': 'Jesi',
+    '02200': 'Osimo',
+    '02300': 'Senigallia',
+    '02301': 'Senigallia',
+    '02400': 'Fabriano',
+    '02401': 'Fabriano',
+    '02500': 'Loreto',
+    '02600': 'Castelfidardo',
+    '02700': 'Filottrano',
+    '02800': 'Camerano',
+    '02900': 'Agugliano',
+    '03000': 'Barbara',
+    '03100': 'Belvedere Ostrense',
+    '03200': 'Cerreto d\'Esi',
+    '03300': 'Corinaldo',
+    '03400': 'Cupramontana',
+    '03500': 'Genga',
+    '03600': 'Maiolati Spontini',
+    '03700': 'Monsano',
+    '03800': 'Monte Roberto',
+    '03900': 'Monte San Vito',
+    '04000': 'Montecarotto',
+    '04100': 'Montemarciano',
+    '04200': 'Morro d\'Alba',
+    '04300': 'Numana',
+    '04400': 'Ostra',
+    '04500': 'Ostra Vetere',
+    '04600': 'Poggio San Marcello',
+    '04700': 'Polverigi',
+    '04800': 'Rosora',
+    '04900': 'San Marcello',
+    '05000': 'San Paolo di Jesi',
+    '05100': 'Santa Maria Nuova',
+    '05200': 'Sassoferrato',
+    '05300': 'Serra de\' Conti',
+    '05400': 'Serra San Quirico',
+    '05500': 'Sirolo',
+    '05600': 'Staffolo',
+
+    // PROVINCIA DI ASCOLI PICENO
+    '26001': 'Ascoli Piceno',
+    '26002': 'Ascoli Piceno',
+    '26003': 'Ascoli Piceno',
+    '26100': 'San Benedetto del Tronto',
+    '26101': 'San Benedetto del Tronto',
+    '26102': 'San Benedetto del Tronto',
+    '26200': 'Grottammare',
+    '26300': 'Montegiorgio',
+    '26400': 'Sant\'Elpidio a Mare',
+    '26500': 'Porto Sant\'Elpidio',
+    '26600': 'Fermo',
+    '26700': 'Civitanova Marche',
+    '26800': 'Macerata',
+    '26900': 'Tolentino',
+
+    // PROVINCIA DI FERMO
+    '24001': 'Fermo',
+    '24002': 'Fermo',
+    '24100': 'Porto San Giorgio',
+    '24200': 'Sant\'Elpidio a Mare',
+    '24300': 'Porto Sant\'Elpidio',
+    '24400': 'Montegranaro',
+    '24500': 'Monte Urano',
+    '24600': 'Servigliano',
+    '24700': 'Amandola',
+    '24800': 'Montelparo',
+    '24900': 'Montefortino',
+
+    // PROVINCIA DI MACERATA
+    '18001': 'Macerata',
+    '18002': 'Macerata',
+    '18003': 'Macerata',
+    '18100': 'Civitanova Marche',
+    '18101': 'Civitanova Marche',
+    '18200': 'Tolentino',
+    '18300': 'Recanati',
+    '18400': 'Camerino',
+    '18500': 'San Severino Marche',
+    '18600': 'Matelica',
+    '18700': 'Cingoli',
+    '18800': 'Treia',
+    '18900': 'Pollenza',
+    '19000': 'Corridonia',
+    '19100': 'Montecosaro',
+    '19200': 'Morrovalle',
+    '19300': 'Potenza Picena',
+
+    // PROVINCIA DI PESARO E URBINO
+    '12001': 'Pesaro',
+    '12002': 'Pesaro',
+    '12003': 'Pesaro',
+    '12004': 'Pesaro',
+    '12100': 'Urbino',
+    '12200': 'Fano',
+    '12201': 'Fano',
+    '12202': 'Fano',
+    '12300': 'Cattolica',
+    '12400': 'Gabicce Mare',
+    '12500': 'Mondolfo',
+    '12600': 'Pergola',
+    '12700': 'Cagli',
+    '12800': 'Fossombrone',
+    '12900': 'Gradara',
+    '13000': 'Marotta',
+    '13100': 'Mondavio',
+    '13200': 'Sant\'Angelo in Vado',
+    '13300': 'Sassocorvaro',
+    '13400': 'Tavullia',
+
+    // CAB dai tuoi IBAN specifici (altri)
+    '38721': 'Senigallia',
+    '21206': 'Modena',
+    '09606': 'Milano',
+    '37281': 'Roma',
+    '21204': 'Roma',
+    '21302': 'Roma'
+  }
+
+  return cabToLocation[cab] || null
+}
+
+async function ensureAtecoExists(codice: string, descrizione?: string) {
+  try {
+    // Verifica se il codice ATECO esiste
+    const { data: existing } = await supabase
+      .from('scadenze_bandi_ateco_2025')
+      .select('codice')
+      .eq('codice', codice)
+      .single()
+
+    if (!existing) {
+      // Inserisci il nuovo codice ATECO
+      console.log(`Aggiungendo codice ATECO: ${codice} - ${descrizione || 'Nessuna descrizione'}`)
+
+      const { error } = await supabase
+        .from('scadenze_bandi_ateco_2025')
+        .insert({
+          codice: codice,
+          descrizione: descrizione || 'Importato da CSV',
+          attivo: true
+        })
+
+      if (error) {
+        console.warn(`Errore aggiunta ATECO ${codice}:`, error)
+      }
+    }
+  } catch (e) {
+    console.warn(`Errore verifica ATECO ${codice}:`, e)
+  }
 }
