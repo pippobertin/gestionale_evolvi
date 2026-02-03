@@ -14,7 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Pin,
-  PinOff
+  PinOff,
+  Mail
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -34,6 +35,7 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
     { id: 'clienti', label: 'Clienti', icon: Users },
     { id: 'bandi', label: 'Bandi', icon: FileText },
     { id: 'progetti', label: 'Progetti', icon: Target },
+    { id: 'email', label: 'Email', icon: Mail },
     { id: 'consulenti', label: 'Consulenti', icon: Building },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'settings', label: 'Impostazioni', icon: Settings }

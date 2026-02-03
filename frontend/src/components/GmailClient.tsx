@@ -548,7 +548,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
   console.log('✅ Gmail is open, rendering interface')
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col">
+    <div className="bg-white rounded-lg overflow-hidden h-full flex flex-col">
       {/* Gmail Header - Exact replica */}
       <div className="h-16 bg-white flex items-center px-6 border-b border-gray-200">
         <div className="flex items-center gap-6 flex-1">
@@ -605,13 +605,6 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
           </button>
           <button className="p-3 hover:bg-gray-100 rounded-full" title="Impostazioni">
             <Settings className="w-5 h-5 text-gray-600" />
-          </button>
-          <button
-            onClick={onClose}
-            className="p-3 hover:bg-gray-100 rounded-full"
-            title="Chiudi"
-          >
-            <X className="w-5 h-5 text-gray-600" />
           </button>
         </div>
       </div>

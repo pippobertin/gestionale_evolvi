@@ -11,6 +11,7 @@ import ScadenzeContent from '@/components/ScadenzeContent'
 import BandiContent from '@/components/BandiContent'
 import ProgettiContent from '@/components/ProgettiContent'
 import SettingsContent from '@/components/SettingsContent'
+import GmailClient from '@/components/GmailClient'
 import { LoadingSpinner } from '@/components/shared'
 
 function AppContent() {
@@ -54,6 +55,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'clienti': return 'Clienti'
       case 'bandi': return 'Bandi'
       case 'progetti': return 'Progetti'
+      case 'email': return 'Centro Email'
       case 'consulenti': return 'Consulenti'
       case 'reports': return 'Reports'
       case 'settings': return 'Impostazioni'
@@ -68,6 +70,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'clienti': return ['Home', 'Gestione', 'Clienti']
       case 'bandi': return ['Home', 'Gestione', 'Bandi']
       case 'progetti': return ['Home', 'Gestione', 'Progetti']
+      case 'email': return ['Home', 'Comunicazione', 'Email']
       case 'consulenti': return ['Home', 'Gestione', 'Consulenti']
       case 'reports': return ['Home', 'Analytics', 'Reports']
       case 'settings': return ['Home', 'Sistema', 'Impostazioni']
@@ -87,6 +90,12 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
         return <BandiContent initialFilter={navigationParams?.filter} />
       case 'progetti':
         return <ProgettiContent initialFilter={navigationParams?.clienteFilter} onNavigate={onNavigate} />
+      case 'email':
+        return (
+          <div className="h-[calc(100vh-200px)] bg-white rounded-lg card-shadow overflow-hidden">
+            <GmailClient isOpen={true} onClose={() => setActiveItem('dashboard')} />
+          </div>
+        )
       case 'consulenti':
         return (
           <div className="bg-white rounded-lg card-shadow p-8 text-center">

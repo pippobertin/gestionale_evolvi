@@ -16,7 +16,6 @@ import {
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useGoogleDriveStatus } from '@/hooks/useGoogleDriveStatus'
-import GmailClient from './GmailClient'
 
 interface TopBarProps {
   title: string
@@ -29,9 +28,7 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
   const { isConnected: isGoogleDriveConnected, loading: googleDriveLoading } = useGoogleDriveStatus()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
-  const [showGmailClient, setShowGmailClient] = useState(false)
 
-  console.log('🔝 TopBar render, showGmailClient:', showGmailClient)
 
   const handleLogout = async () => {
     await logout()
@@ -143,8 +140,8 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
             {/* Email */}
             <button
               onClick={() => {
-                console.log('📧 Gmail button clicked, opening client')
-                setShowGmailClient(true)
+                console.log('📧 Email button clicked, navigating to email page')
+                onNavigate?.('email')
               }}
               className="p-2.5 hover:bg-white/20 rounded-lg transition-colors duration-200 group relative"
               title="Centro Email"
@@ -277,14 +274,6 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
         </div>
       </div>
 
-      {/* Email Client Modal */}
-      <GmailClient
-        isOpen={showGmailClient}
-        onClose={() => {
-          console.log('❌ Gmail client closing')
-          setShowGmailClient(false)
-        }}
-      />
     </div>
   )
 }
