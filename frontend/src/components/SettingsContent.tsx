@@ -6,7 +6,7 @@ import UserManagement from './UserManagement'
 import GroupsManagement from './GroupsManagement'
 import NotificationSettings from './NotificationSettings'
 import SchedulerManager from './SchedulerManager'
-import GmailSetup from './GmailSetup'
+import GmailSetupNew from './GmailSetupNew'
 import {
   Settings,
   Users,
@@ -221,7 +221,7 @@ export default function SettingsContent() {
               </div>
             </div>
 
-            <GmailSetup />
+            <GmailSetupNew />
           </div>
         )
 

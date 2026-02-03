@@ -124,7 +124,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
         }`}
       >
         {/* Top Bar */}
-        <TopBar title={getPageTitle()} breadcrumb={getBreadcrumb()} />
+        <TopBar title={getPageTitle()} breadcrumb={getBreadcrumb()} onNavigate={setActiveItem} />
 
         {/* Page Content */}
         <main className="flex-1 p-6">

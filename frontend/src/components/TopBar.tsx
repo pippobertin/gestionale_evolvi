@@ -16,19 +16,22 @@ import {
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useGoogleDriveStatus } from '@/hooks/useGoogleDriveStatus'
-import EmailClient from './EmailClient'
+import GmailClient from './GmailClient'
 
 interface TopBarProps {
   title: string
   breadcrumb?: string[]
+  onNavigate?: (page: string) => void
 }
 
-export default function TopBar({ title, breadcrumb = [] }: TopBarProps) {
+export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarProps) {
   const { user, logout, isAdmin } = useAuth()
   const { isConnected: isGoogleDriveConnected, loading: googleDriveLoading } = useGoogleDriveStatus()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
-  const [showEmailClient, setShowEmailClient] = useState(false)
+  const [showGmailClient, setShowGmailClient] = useState(false)
+
+  console.log('🔝 TopBar render, showGmailClient:', showGmailClient)
 
   const handleLogout = async () => {
     await logout()
@@ -139,7 +142,10 @@ export default function TopBar({ title, breadcrumb = [] }: TopBarProps) {
 
             {/* Email */}
             <button
-              onClick={() => setShowEmailClient(true)}
+              onClick={() => {
+                console.log('📧 Gmail button clicked, opening client')
+                setShowGmailClient(true)
+              }}
               className="p-2.5 hover:bg-white/20 rounded-lg transition-colors duration-200 group relative"
               title="Centro Email"
             >
@@ -245,7 +251,13 @@ export default function TopBar({ title, breadcrumb = [] }: TopBarProps) {
                       <User className="w-4 h-4" />
                       <span>Profilo Utente</span>
                     </button>
-                    <button className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 w-full text-left transition-colors">
+                    <button
+                      onClick={() => {
+                        onNavigate?.('settings')
+                        setShowUserMenu(false)
+                      }}
+                      className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 w-full text-left transition-colors"
+                    >
                       <Settings className="w-4 h-4" />
                       <span>Impostazioni</span>
                     </button>
@@ -266,9 +278,12 @@ export default function TopBar({ title, breadcrumb = [] }: TopBarProps) {
       </div>
 
       {/* Email Client Modal */}
-      <EmailClient
-        isOpen={showEmailClient}
-        onClose={() => setShowEmailClient(false)}
+      <GmailClient
+        isOpen={showGmailClient}
+        onClose={() => {
+          console.log('❌ Gmail client closing')
+          setShowGmailClient(false)
+        }}
       />
     </div>
   )
