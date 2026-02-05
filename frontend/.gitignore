@@ -37,3 +37,9 @@ next-env.d.ts
 # Google credentials
 google-credentials.json
 **/google-credentials*.jsonservice-account-key.json
+
+# Contract templates (keep only README and example)
+templates/contracts/*.docx
+templates/contracts/*.pdf
+!templates/contracts/README.md
+!templates/contracts/contratto-standard.txt

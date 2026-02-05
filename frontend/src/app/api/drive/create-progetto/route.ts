@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       const existingBandoFolders = await listSharedDriveFiles(
         googleAccessToken,
         sharedDriveId,
-        `name='${bandoName}' and mimeType='application/vnd.google-apps.folder'`
+        `name='${bandoName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
       )
 
       if (existingBandoFolders.length > 0) {
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       const existingProgettiFolders = await listSharedDriveFiles(
         googleAccessToken,
         bandoFolderId,
-        "name='PROGETTI' and mimeType='application/vnd.google-apps.folder'"
+        "name='PROGETTI' and mimeType='application/vnd.google-apps.folder' and trashed=false"
       )
 
       if (existingProgettiFolders.length > 0) {
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
       const existingProgettoFolders = await listSharedDriveFiles(
         googleAccessToken,
         progettiFolderId,
-        `name='${progettoName}' and mimeType='application/vnd.google-apps.folder'`
+        `name='${progettoName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
       )
 
       if (existingProgettoFolders.length > 0) {
@@ -111,8 +111,8 @@ export async function POST(req: NextRequest) {
       throw error
     }
 
-    // 5. Crea sottocartelle del progetto
-    const subFolders = ['ALLEGATI', 'DOC AMM']
+    // 5. Crea sottocartelle del progetto (inclusa CONTRATTI)
+    const subFolders = ['ALLEGATI', 'DOC AMM', 'CONTRATTI']
     const createdSubFolders: any = {}
 
     for (const folderName of subFolders) {
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
         const existingSubFolders = await listSharedDriveFiles(
           googleAccessToken,
           progettoFolderId,
-          `name='${folderName}' and mimeType='application/vnd.google-apps.folder'`
+          `name='${folderName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
         )
 
         if (existingSubFolders.length > 0) {
@@ -190,7 +190,7 @@ async function copyBandoAllegatiToProgetto(
     const bandoAllegatiFolder = await listSharedDriveFiles(
       googleAccessToken,
       bandoFolderId,
-      "name='ALLEGATI' and mimeType='application/vnd.google-apps.folder'"
+      "name='ALLEGATI' and mimeType='application/vnd.google-apps.folder' and trashed=false"
     )
 
     if (bandoAllegatiFolder.length === 0) {

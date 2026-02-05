@@ -427,7 +427,7 @@ ${scadenza.note ? `📝 Note:\\n${scadenza.note}\\n\\n` : ''}🚀 Apri Gestional
     try {
       const accessToken = await this.getAccessToken()
       if (!accessToken) {
-        console.error('❌ Access token non disponibile per Calendar API')
+        // Calendar non disponibile, continua senza eventi
         return null
       }
 
@@ -563,7 +563,12 @@ ${scadenza.note ? `📝 Note:\\n${scadenza.note}\\n\\n` : ''}🚀 Apri Gestional
     try {
       const response = await fetch('/api/calendar/token')
       if (!response.ok) {
-        console.error('❌ Errore richiesta token Calendar:', response.status)
+        // Errore silenzioso per 401 (Calendar non configurato)
+        if (response.status === 401) {
+          console.warn('⚠️ Calendar API non configurato (ignorato)')
+        } else {
+          console.error('❌ Errore richiesta token Calendar:', response.status)
+        }
         return null
       }
 

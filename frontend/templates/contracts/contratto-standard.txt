@@ -1,0 +1,77 @@
+CONTRATTO DI CONSULENZA PER SERVIZI PROFESSIONALI
+
+Tra:
+BLM PROJECT SRL
+Sede legale: [INSERIRE INDIRIZZO BLM]
+Partita IVA: [INSERIRE P.IVA BLM]
+Email: info@blmproject.com
+(di seguito "Consulente")
+
+e
+
+{{denominazione_cliente}}
+Sede legale: {{indirizzo_completo}}
+Partita IVA: {{partita_iva}}
+Codice Fiscale: {{codice_fiscale}}
+Email: {{email_cliente}}
+{{#pec_cliente}}PEC: {{pec_cliente}}{{/pec_cliente}}
+{{#telefono_cliente}}Tel: {{telefono_cliente}}{{/telefono_cliente}}
+{{#referente_nome}}Referente: {{referente_nome}}{{#referente_ruolo}} ({{referente_ruolo}}){{/referente_ruolo}}{{/referente_nome}}
+(di seguito "Cliente")
+
+OGGETTO DEL CONTRATTO
+
+Il presente contratto ha per oggetto la prestazione di servizi di consulenza specializzata per:
+
+PROGETTO: {{titolo_progetto}}
+CODICE PROGETTO: {{codice_progetto}}
+BANDO DI RIFERIMENTO: {{nome_bando}}
+ENTE FINANZIATORE: {{ente_finanziatore}}
+
+DESCRIZIONE ATTIVITÀ:
+{{descrizione_progetto}}
+
+CORRISPETTIVO
+
+Per i servizi oggetto del presente contratto, il Cliente riconosce al Consulente un compenso pari a:
+
+€ {{importo_progetto}} (Euro {{importo_progetto}}/00)
+
+{{#contributo_ammesso}}
+Contributo pubblico ammesso: € {{contributo_ammesso}}
+Percentuale di contributo: {{percentuale_contributo}}%
+{{/contributo_ammesso}}
+
+MODALITÀ DI PAGAMENTO
+
+Il compenso sarà corrisposto secondo le seguenti modalità:
+- 30% all'accettazione del presente contratto
+- 40% a SAL intermedio (se previsto)
+- 30% a conclusione delle attività e approvazione finale
+
+OBBLIGHI DELLE PARTI
+
+Il Consulente si impegna a:
+- Fornire consulenza specializzata per il raggiungimento degli obiettivi progettuali
+- Garantire la massima riservatezza sui dati aziendali
+- Rispettare le tempistiche concordate
+- Fornire tutta la documentazione necessaria
+
+Il Cliente si impegna a:
+- Fornire tutte le informazioni necessarie per lo svolgimento delle attività
+- Rispettare le scadenze di pagamento
+- Collaborare attivamente al raggiungimento degli obiettivi
+
+DURATA E RECESSO
+
+Il presente contratto avrà durata fino al completamento delle attività progettuali e comunque non oltre il [DATA_FINE_PROGETTO].
+
+CLAUSOLE FINALI
+
+Il presente contratto è regolato dalla legge italiana.
+Per ogni controversia è competente il Foro di [FORO_COMPETENTE].
+
+Data: {{data_oggi}}
+
+_____________________          _____________________
+Firma Cliente                 Firma BLM Project Srl

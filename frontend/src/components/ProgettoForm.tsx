@@ -22,6 +22,7 @@ import { supabase } from '@/lib/supabase'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import DocumentiProgettoPreview from './DocumentiProgettoPreview'
 import DocumentPreviewModal from './DocumentPreviewModal'
+import ContractModal from './ContractModal'
 
 interface ProgettoFormData {
   bando_id: string
@@ -76,6 +77,8 @@ type TabType = 'generale' | 'importi' | 'scadenze' | 'documenti' | 'avanzate'
 export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, bando, cliente, progetto }: ProgettoFormProps) {
   const [activeTab, setActiveTab] = useState<TabType>('generale')
   const [loading, setLoading] = useState(false)
+  const [showContractModal, setShowContractModal] = useState(false)
+  const [savedProjectData, setSavedProjectData] = useState<any>(null)
 
   // Google Drive session
   const { data: session, status } = useSession()
@@ -1060,6 +1063,8 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
         (dataToSave as any).evento_base_id = null
       }
 
+      let projectResult: any
+
       if (progetto) {
         // Modifica progetto esistente
         const { error } = await supabase
@@ -1068,6 +1073,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
           .eq('id', progetto.id)
 
         if (error) throw error
+        projectResult = progetto
       } else {
         // Crea nuovo progetto
         const { data: newProgetto, error } = await supabase
@@ -1077,13 +1083,19 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
           .single()
 
         if (error) throw error
+        projectResult = newProgetto
 
         // Salva i documenti ereditati nel database del progetto
-        await saveDocumentiEreditati(newProgetto.id)
+        await saveDocumentiEreditati(projectResult.id)
 
         // Genera scadenze automatiche dal template del bando (solo per nuovi progetti)
         if (!progetto?.id) {
-          await generateScadenzeFromTemplate(newProgetto.id, formData.bando_id, formData)
+          try {
+            await generateScadenzeFromTemplate(projectResult.id, formData.bando_id, formData)
+          } catch (scadenzeError) {
+            console.warn('⚠️ Errore generazione scadenze (non bloccante):', scadenzeError)
+            // Non blocchiamo la creazione del progetto per errori di calendar
+          }
         }
 
         // Crea struttura Google Drive (usa Service Account, sempre disponibile)
@@ -1124,26 +1136,9 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
               const progettoData = await progettoResponse.json()
               console.log('✅ Struttura progetto Google Drive creata:', progettoData)
 
-              // Copia allegati da bando a progetto
-              try {
-                const copyResponse = await fetch('/api/drive/copy-bando-files', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    bandoName: bandoData?.nome || 'Bando Sconosciuto',
-                    progettoName: formData.titolo_progetto
-                  })
-                })
-
-                if (copyResponse.ok) {
-                  const copyResult = await copyResponse.json()
-                  console.log('📋 Allegati copiati da bando a progetto:', copyResult)
-                } else {
-                  console.warn('⚠️ Errore copia allegati (non bloccante):', await copyResponse.text())
-                }
-              } catch (copyError) {
-                console.warn('⚠️ Errore copia allegati (non bloccante):', copyError)
-              }
+              // TODO: Implementare copia allegati da bando a progetto
+              // L'API /api/drive/copy-bando-files non esiste ancora
+              console.log('📋 Copia allegati da bando: non implementata (non bloccante)')
             }
 
           } catch (driveError) {
@@ -1152,14 +1147,90 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
           }
       }
 
-      onProgettoCreated()
-      onClose()
+      // Mostra modal contratto solo per progetti nuovi
+      if (!progetto) {
+        // Prepara dati per modal contratto
+        const projectDataForContract = {
+          id: projectResult.id,
+          titolo_progetto: formData.titolo_progetto,
+          cliente: {
+            denominazione: cliente?.denominazione || 'Cliente',
+            email: cliente?.email,
+            pec: cliente?.pec
+          },
+          bando: {
+            nome: bando?.nome || 'Bando'
+          }
+        }
+
+        // Verifica che il progetto sia effettivamente salvato prima di aprire il modal
+        console.log('📋 Progetto creato con ID:', projectResult.id, '- Verifica salvataggio...')
+
+        // Verifica immediata del progetto nel database
+        const verifyProject = async (attempts = 0) => {
+          try {
+            const { data: projectCheck, error: checkError } = await supabase
+              .from('scadenze_bandi_progetti')
+              .select('id, titolo_progetto')
+              .eq('id', projectResult.id)
+              .single()
+
+            if (checkError || !projectCheck) {
+              if (attempts < 5) {
+                console.log(`🔄 Tentativo ${attempts + 1}/5 - Progetto non ancora disponibile, riprovo...`)
+                setTimeout(() => verifyProject(attempts + 1), 1000)
+                return
+              } else {
+                console.error('❌ Progetto non trovato dopo 5 tentativi')
+                alert('Progetto salvato ma errore apertura modal contratto. Riprova dalla lista progetti.')
+                onProgettoCreated()
+                onClose()
+                return
+              }
+            }
+
+            console.log('✅ Progetto verificato nel database:', projectCheck.titolo_progetto)
+            setSavedProjectData(projectDataForContract)
+            setShowContractModal(true)
+          } catch (error) {
+            console.error('❌ Errore verifica progetto:', error)
+            alert('Errore verifica progetto salvato')
+            onProgettoCreated()
+            onClose()
+          }
+        }
+
+        verifyProject()
+
+        // Non chiudiamo ancora il form, lo chiuderemo dopo il contratto
+      } else {
+        // Per modifiche esistenti, chiudi normalmente
+        onProgettoCreated()
+        onClose()
+      }
     } catch (error: any) {
       console.error('Errore salvataggio progetto:', error)
       alert(`Errore: ${error.message}`)
     } finally {
       setLoading(false)
     }
+  }
+
+  // Gestione modal contratto
+  const handleContractModalClose = () => {
+    setShowContractModal(false)
+    setSavedProjectData(null)
+    // Ora chiudiamo il form e aggiorniamo la lista
+    onProgettoCreated()
+    onClose()
+  }
+
+  const handleContractSuccess = () => {
+    // Callback quando contratto inviato con successo
+    setShowContractModal(false)
+    setSavedProjectData(null)
+    onProgettoCreated()
+    onClose()
   }
 
   const tabs = [
@@ -2135,6 +2206,16 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
         title={previewModal.documento?.nome_file || ''}
         googleDriveId={previewModal.documento?.google_drive_id || ''}
       />
+
+      {/* Modal Contratto */}
+      {savedProjectData && (
+        <ContractModal
+          isOpen={showContractModal}
+          onClose={handleContractModalClose}
+          progettoData={savedProjectData}
+          onSuccess={handleContractSuccess}
+        />
+      )}
     </div>
   )
 }

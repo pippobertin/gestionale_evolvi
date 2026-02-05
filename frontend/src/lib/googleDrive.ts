@@ -397,3 +397,44 @@ export async function copyFileToFolder(
     throw error
   }
 }
+
+// Upload file direttamente in una cartella del Drive Condiviso (supporta sia string che Buffer)
+export async function uploadFileToFolder(
+  accessToken: string,
+  parentFolderId: string,
+  fileName: string,
+  fileContent: string | Buffer,
+  mimeType: string = 'text/plain'
+) {
+  try {
+    const drive = await createDriveClient(accessToken)
+
+    const fileMetadata = {
+      name: fileName,
+      parents: [parentFolderId]
+    }
+
+    // Gestisce sia string che Buffer
+    const buffer = fileContent instanceof Buffer
+      ? fileContent
+      : Buffer.from(fileContent, 'utf-8')
+
+    const media = {
+      mimeType,
+      body: require('stream').Readable.from([buffer]),
+    }
+
+    const response = await drive.files.create({
+      requestBody: fileMetadata,
+      media,
+      fields: 'id,name,webViewLink,webContentLink',
+      supportsAllDrives: true
+    })
+
+    console.log(`📄 File caricato: ${fileName} nella cartella ${parentFolderId}`)
+    return response.data
+  } catch (error) {
+    console.error('Errore upload file:', error)
+    throw error
+  }
+}
