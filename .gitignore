@@ -16,6 +16,7 @@ frontend/.env.local
 
 # Secrets and credentials
 secrets.md
+credenziali-google.md
 **/gmail-credentials.json
 **/service-account-key.json
 **/*-credentials.json
