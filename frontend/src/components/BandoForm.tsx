@@ -578,7 +578,7 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
         giorni_da_evento: 12,
         unita_tempo: 'mesi',
         evento_riferimento: 'avvio_progetto',
-        tipo_scadenza: 'saldo',
+        tipo_scadenza: 'rendicontazione_saldo',
         priorita: 'critica',
         obbligatoria: true,
         ordine_sequenza: 4,
@@ -604,7 +604,7 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
         giorni_da_evento: 14,
         unita_tempo: 'mesi',
         evento_riferimento: 'avvio_progetto',
-        tipo_scadenza: 'chiusura_progetto',
+        tipo_scadenza: 'chiusura',
         priorita: 'critica',
         obbligatoria: true,
         ordine_sequenza: 6,
@@ -874,12 +874,12 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
   const tipiScadenza = [
     { value: 'accettazione', label: 'Accettazione' },
     { value: 'avvio', label: 'Avvio' },
+    { value: 'richiesta_anticipo', label: 'Richiesta Anticipo' },
     { value: 'sal', label: 'SAL' },
-    { value: 'saldo', label: 'Saldo' },
-    { value: 'rendicontazione', label: 'Rendicontazione' },
-    { value: 'comunicazione', label: 'Comunicazione' },
     { value: 'proroga', label: 'Proroga' },
-    { value: 'chiusura_progetto', label: 'Chiusura Progetto' }
+    { value: 'chiusura', label: 'Chiusura' },
+    { value: 'rendicontazione_saldo', label: 'Rendicontazione e Saldo' },
+    { value: 'integrazioni', label: 'Integrazioni' }
   ]
 
   return (
