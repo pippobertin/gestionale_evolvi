@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
 import {
   Users,
   UserCheck,
@@ -30,7 +29,6 @@ interface User {
 }
 
 export default function UserManagement() {
-  const { data: session, status } = useSession()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -49,19 +47,24 @@ export default function UserManagement() {
   const [createdUserEmail, setCreatedUserEmail] = useState('')
 
   useEffect(() => {
-    if (session) {
-      fetchUsers()
-    }
-  }, [session])
+    fetchUsers()
+  }, [])
 
   const fetchUsers = async () => {
     try {
-      if (!session) {
-        setError('Sessione non valida')
+      // Ottieni il token JWT dal localStorage
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        setError('Non autenticato - effettua nuovamente il login')
+        setLoading(false)
         return
       }
 
-      const response = await fetch('/api/admin/users')
+      const response = await fetch('/api/admin/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       const data = await response.json()
 
       if (!response.ok) {
@@ -79,10 +82,18 @@ export default function UserManagement() {
   const updateUser = async (userId: string, updates: Partial<User>) => {
     setActionLoading(userId)
     try {
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        setError('Non autenticato - effettua nuovamente il login')
+        setActionLoading(null)
+        return
+      }
+
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(updates)
       })
@@ -106,8 +117,18 @@ export default function UserManagement() {
   const deleteUser = async (userId: string) => {
     setActionLoading(userId)
     try {
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        setError('Non autenticato - effettua nuovamente il login')
+        setActionLoading(null)
+        return
+      }
+
       const response = await fetch(`/api/admin/users/${userId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       })
 
       const data = await response.json()
@@ -133,10 +154,18 @@ export default function UserManagement() {
 
     setActionLoading('creating')
     try {
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        setError('Non autenticato - effettua nuovamente il login')
+        setActionLoading(null)
+        return
+      }
+
       const response = await fetch('/api/admin/users', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(newUserData)
       })

@@ -158,8 +158,6 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
     }
   }
 
-  const emailType = progettoData.cliente?.email ? 'Email' : 'PEC'
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -203,19 +201,31 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
               </div>
 
               <div>
-                <Label htmlFor="email">Destinazione Email</Label>
+                <Label htmlFor="email">Email Destinatario</Label>
                 <div className="flex items-center space-x-2 mt-1">
-                  <Badge variant={progettoData.cliente?.email ? 'default' : 'secondary'}>
-                    {emailType}
+                  <Badge variant="default">
+                    EMAIL
                   </Badge>
                   <Input
                     id="email"
+                    type="email"
                     value={state.emailTarget}
                     onChange={(e) => setState(prev => ({ ...prev, emailTarget: e.target.value }))}
+                    placeholder="email@esempio.it"
                     className="flex-1"
                   />
                   <Mail className="h-4 w-4 text-gray-400" />
                 </div>
+                {progettoData.cliente?.email && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    📧 Email da anagrafica cliente: {progettoData.cliente.email}
+                  </p>
+                )}
+                {!progettoData.cliente?.email && progettoData.cliente?.pec && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    📧 PEC da anagrafica cliente: {progettoData.cliente.pec}
+                  </p>
+                )}
               </div>
 
               <div>

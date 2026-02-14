@@ -1,26 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import bcrypt from 'bcrypt'
+import { requireAdmin } from '@/lib/jwtAuth'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    // Verifica autenticazione JWT e permessi admin
+    const admin = await requireAdmin(request)
 
-    if (!session?.user?.email) {
+    if (!admin) {
       return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
-    }
-
-    // Verifica se l'utente è admin
-    const { data: user, error: userError } = await supabase
-      .from('scadenze_bandi_utenti')
-      .select('livello_permessi')
-      .eq('email', session.user.email)
-      .single()
-
-    if (userError || user?.livello_permessi !== 'admin') {
-      return NextResponse.json({ error: 'Accesso non autorizzato - Solo amministratori' }, { status: 403 })
     }
 
     // Recupera tutti gli utenti
@@ -41,21 +30,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    // Verifica autenticazione JWT e permessi admin
+    const admin = await requireAdmin(request)
 
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
-    }
-
-    // Verifica se l'utente è admin
-    const { data: admin, error: adminError } = await supabase
-      .from('scadenze_bandi_utenti')
-      .select('livello_permessi')
-      .eq('email', session.user.email)
-      .single()
-
-    if (adminError || admin?.livello_permessi !== 'admin') {
-      return NextResponse.json({ error: 'Accesso non autorizzato - Solo amministratori' }, { status: 403 })
+    if (!admin) {
+      return NextResponse.json({ error: 'Non autenticato o permessi insufficienti' }, { status: 401 })
     }
 
     const body = await request.json()

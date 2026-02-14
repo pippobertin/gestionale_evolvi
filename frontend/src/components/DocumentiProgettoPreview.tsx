@@ -50,7 +50,7 @@ export default function DocumentiProgettoPreview({ progettoId, className = '' }:
         .from('scadenze_bandi_documenti_progetto')
         .select('*')
         .eq('progetto_id', progettoId)
-        .eq('categoria', 'allegato') // Solo allegati, come richiesto
+        .in('categoria', ['allegato', 'allegati', 'ereditato', 'allegato_caricato']) // Tutte le varianti di allegati
         .order('created_at', { ascending: false })
 
       if (error) throw error

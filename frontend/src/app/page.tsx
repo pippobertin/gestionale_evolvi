@@ -12,6 +12,7 @@ import BandiContent from '@/components/BandiContent'
 import ProgettiContent from '@/components/ProgettiContent'
 import SettingsContent from '@/components/SettingsContent'
 import GmailClient from '@/components/GmailClient'
+import ReportsContent from '@/components/ReportsContent'
 import { LoadingSpinner } from '@/components/shared'
 
 function AppContent() {
@@ -104,12 +105,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
           </div>
         )
       case 'reports':
-        return (
-          <div className="bg-white rounded-lg card-shadow p-8 text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Reports & Analytics</h2>
-            <p className="text-gray-600">Sezione in sviluppo - Reportistica avanzata</p>
-          </div>
-        )
+        return <ReportsContent />
       case 'settings':
         return <SettingsContent />
       default:

@@ -449,11 +449,52 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
 
     // Applica i limiti UE 2003/361/CE
-    let dimensioneCalcolata = ''
-    if (ulaTotal < 10 && (fatturatoTotal <= 2000000 || attivoTotal <= 2000000)) dimensioneCalcolata = 'MICRO'
-    else if (ulaTotal < 50 && (fatturatoTotal <= 10000000 || attivoTotal <= 10000000)) dimensioneCalcolata = 'PICCOLA'
-    else if (ulaTotal < 250 && (fatturatoTotal <= 50000000 || attivoTotal <= 43000000)) dimensioneCalcolata = 'MEDIA'
-    else dimensioneCalcolata = 'GRANDE'
+    // Strategia: classifica separatamente per ULA, Fatturato e Attivo
+    // Poi prendi la dimensione PIÙ GRANDE tra quelle calcolate
+    // Questo evita che un valore basso "salvi" la classificazione quando un altro è altissimo
+
+    const hasFatturato = fatturatoTotal > 0
+    const hasAttivo = attivoTotal > 0
+
+    // Classifica per ULA
+    let dimensionePerULA = ''
+    if (ulaTotal < 10) dimensionePerULA = 'MICRO'
+    else if (ulaTotal < 50) dimensionePerULA = 'PICCOLA'
+    else if (ulaTotal < 250) dimensionePerULA = 'MEDIA'
+    else dimensionePerULA = 'GRANDE'
+
+    // Classifica per Fatturato (se presente)
+    let dimensionePerFatturato = ''
+    if (hasFatturato) {
+      if (fatturatoTotal <= 2000000) dimensionePerFatturato = 'MICRO'
+      else if (fatturatoTotal <= 10000000) dimensionePerFatturato = 'PICCOLA'
+      else if (fatturatoTotal <= 50000000) dimensionePerFatturato = 'MEDIA'
+      else dimensionePerFatturato = 'GRANDE'
+    }
+
+    // Classifica per Attivo (se presente)
+    let dimensionePerAttivo = ''
+    if (hasAttivo) {
+      if (attivoTotal <= 2000000) dimensionePerAttivo = 'MICRO'
+      else if (attivoTotal <= 10000000) dimensionePerAttivo = 'PICCOLA'
+      else if (attivoTotal <= 43000000) dimensionePerAttivo = 'MEDIA'
+      else dimensionePerAttivo = 'GRANDE'
+    }
+
+    // Funzione helper per confrontare dimensioni
+    const dimensioniOrdinate = ['MICRO', 'PICCOLA', 'MEDIA', 'GRANDE']
+    const getPeso = (dim: string) => dimensioniOrdinate.indexOf(dim)
+
+    // Prendi la dimensione più grande tra quelle calcolate
+    let dimensioneCalcolata = dimensionePerULA // Partiamo sempre da ULA
+
+    if (dimensionePerFatturato && getPeso(dimensionePerFatturato) > getPeso(dimensioneCalcolata)) {
+      dimensioneCalcolata = dimensionePerFatturato
+    }
+
+    if (dimensionePerAttivo && getPeso(dimensionePerAttivo) > getPeso(dimensioneCalcolata)) {
+      dimensioneCalcolata = dimensionePerAttivo
+    }
 
 
     return dimensioneCalcolata
@@ -503,30 +544,27 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
   // Funzione per salvare un collegamento
   const salvaCollegamento = async (collegamento: CollegamentoAziendale) => {
     try {
-
       if (!cliente?.id) {
         throw new Error('ID cliente mancante - salvare prima il cliente')
       }
 
       if (collegamento.id) {
         // Update existing
-        const { data, error } = await supabase
-          .from('scadenze_bandi_collegamenti_aziendali')
-          .update({
-            azienda_collegata_id: collegamento.azienda_collegata_id,
-            tipo_collegamento: collegamento.tipo_collegamento,
-            percentuale_partecipazione: collegamento.percentuale_partecipazione || null,
-            diritti_voto: collegamento.diritti_voto || null,
-            influenza_dominante: collegamento.influenza_dominante || false,
-            note_collegamento: collegamento.note_collegamento || null
-          })
-          .eq('id', collegamento.id)
-          .select()
-
-        if (error) {
-          console.error('❌ Errore update:', error)
-          throw error
+        const updateData = {
+          azienda_collegata_id: collegamento.azienda_collegata_id,
+          tipo_collegamento: collegamento.tipo_collegamento,
+          percentuale_partecipazione: collegamento.percentuale_partecipazione || null,
+          diritti_voto: collegamento.diritti_voto || null,
+          influenza_dominante: collegamento.influenza_dominante || false,
+          note_collegamento: collegamento.note_collegamento || null
         }
+
+        const { error } = await supabase
+          .from('scadenze_bandi_collegamenti_aziendali')
+          .update(updateData)
+          .eq('id', collegamento.id)
+
+        if (error) throw error
       } else {
         // Create new
         const insertData = {
@@ -539,22 +577,17 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
           note_collegamento: collegamento.note_collegamento || null
         }
 
-
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('scadenze_bandi_collegamenti_aziendali')
           .insert([insertData])
-          .select()
 
-        if (error) {
-          console.error('❌ Errore insert:', error)
-          throw error
-        }
+        if (error) throw error
       }
 
       // Ricarica i collegamenti
       await loadCollegamenti(cliente.id)
     } catch (error) {
-      console.error('❌ Errore nel salvataggio del collegamento:', error)
+      console.error('Errore nel salvataggio del collegamento:', error)
 
       // Gestisci errore di collegamento duplicato
       const errorCode = (error as any)?.code
@@ -1279,7 +1312,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   type="number"
                   step="0.01"
                   value={formData.ula || ''}
-                  onChange={(e) => handleInputChange('ula', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => handleInputChange('ula', e.target.value === '' ? null : parseFloat(e.target.value))}
                   className="input"
                   placeholder="2.5"
                 />
@@ -1291,7 +1324,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 <input
                   type="number"
                   value={formData.ultimo_fatturato || ''}
-                  onChange={(e) => handleInputChange('ultimo_fatturato', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => handleInputChange('ultimo_fatturato', e.target.value === '' ? null : parseFloat(e.target.value))}
                   className="input"
                   placeholder="325000"
                 />
@@ -1303,7 +1336,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 <input
                   type="number"
                   value={formData.attivo_bilancio || ''}
-                  onChange={(e) => handleInputChange('attivo_bilancio', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => handleInputChange('attivo_bilancio', e.target.value === '' ? null : parseFloat(e.target.value))}
                   className="input"
                   placeholder="140000"
                 />
@@ -1360,8 +1393,8 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 </label>
                 <input
                   type="number"
-                  value={formData.numero_dipendenti || 0}
-                  onChange={(e) => handleInputChange('numero_dipendenti', parseInt(e.target.value) || 0)}
+                  value={formData.numero_dipendenti || ''}
+                  onChange={(e) => handleInputChange('numero_dipendenti', e.target.value === '' ? null : parseInt(e.target.value))}
                   className="input"
                   min="0"
                 />
@@ -1372,8 +1405,8 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 </label>
                 <input
                   type="number"
-                  value={formData.numero_volontari || 0}
-                  onChange={(e) => handleInputChange('numero_volontari', parseInt(e.target.value) || 0)}
+                  value={formData.numero_volontari || ''}
+                  onChange={(e) => handleInputChange('numero_volontari', e.target.value === '' ? null : parseInt(e.target.value))}
                   className="input"
                   min="0"
                 />
@@ -1384,8 +1417,8 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 </label>
                 <input
                   type="number"
-                  value={formData.numero_collaboratori || 0}
-                  onChange={(e) => handleInputChange('numero_collaboratori', parseInt(e.target.value) || 0)}
+                  value={formData.numero_collaboratori || ''}
+                  onChange={(e) => handleInputChange('numero_collaboratori', e.target.value === '' ? null : parseInt(e.target.value))}
                   className="input"
                   min="0"
                 />

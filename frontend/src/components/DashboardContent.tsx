@@ -209,11 +209,11 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
 
   if (!stats) return null
 
-  // Scadenze più urgenti (prossime 10 non completate)
+  // Scadenze più urgenti (prossime 20 non completate)
   const scadenzeUrgenti = scadenze
     .filter(s => s.stato !== 'completata')
     .sort((a, b) => a.giorni_rimanenti - b.giorni_rimanenti)
-    .slice(0, 10)
+    .slice(0, 20)
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('it-IT', {
@@ -258,43 +258,43 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <button
           onClick={() => onNavigate('scadenze')}
-          className="bg-gradient-to-br from-red-500 to-red-600 p-6 rounded-xl border border-red-400 hover:from-red-600 hover:to-red-700 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
+          className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 hover:from-red-600 hover:to-red-700 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-red-100 drop-shadow-sm">Urgenti</p>
-              <p className="text-3xl font-black text-white drop-shadow">{stats.urgenti}</p>
+              <p className="text-xs font-bold text-red-100 drop-shadow-sm">Urgenti</p>
+              <p className="text-2xl font-black text-white drop-shadow">{stats.urgenti}</p>
               <p className="text-xs font-medium text-red-100 drop-shadow-sm">Scadute o critiche</p>
             </div>
-            <AlertTriangle className="w-10 h-10 text-red-200 drop-shadow" />
+            <AlertTriangle className="w-8 h-8 text-red-200 drop-shadow" />
           </div>
         </button>
 
         <button
           onClick={() => onNavigate('scadenze')}
-          className="bg-gradient-to-br from-amber-500 to-yellow-500 p-6 rounded-xl border border-amber-400 hover:from-amber-600 hover:to-yellow-600 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
+          className="bg-gradient-to-br from-amber-500 to-yellow-500 p-4 rounded-xl border border-amber-400 hover:from-amber-600 hover:to-yellow-600 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-white drop-shadow-sm">Imminenti</p>
-              <p className="text-3xl font-black text-white drop-shadow">{stats.imminenti}</p>
+              <p className="text-xs font-bold text-white drop-shadow-sm">Imminenti</p>
+              <p className="text-2xl font-black text-white drop-shadow">{stats.imminenti}</p>
               <p className="text-xs font-medium text-white drop-shadow-sm">Entro 7 giorni</p>
             </div>
-            <Clock className="w-10 h-10 text-white drop-shadow" />
+            <Clock className="w-8 h-8 text-white drop-shadow" />
           </div>
         </button>
 
         <button
           onClick={() => onNavigate('scadenze')}
-          className="bg-gradient-to-br from-emerald-500 to-teal-500 p-6 rounded-xl border border-emerald-400 hover:from-emerald-600 hover:to-teal-600 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
+          className="bg-gradient-to-br from-emerald-500 to-teal-500 p-4 rounded-xl border border-emerald-400 hover:from-emerald-600 hover:to-teal-600 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-emerald-100 drop-shadow-sm">Completate</p>
-              <p className="text-3xl font-black text-white drop-shadow">{stats.completate}</p>
+              <p className="text-xs font-bold text-emerald-100 drop-shadow-sm">Completate</p>
+              <p className="text-2xl font-black text-white drop-shadow">{stats.completate}</p>
               <p className="text-xs font-medium text-emerald-100 drop-shadow-sm">
                 {stats.totaleScadenze > 0
                   ? `${Math.round((stats.completate / stats.totaleScadenze) * 100)}% del totale`
@@ -302,21 +302,21 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
                 }
               </p>
             </div>
-            <CheckCircle2 className="w-10 h-10 text-emerald-200 drop-shadow" />
+            <CheckCircle2 className="w-8 h-8 text-emerald-200 drop-shadow" />
           </div>
         </button>
 
         <button
           onClick={() => onNavigate('scadenze')}
-          className="bg-gradient-to-br from-cyan-500 to-teal-500 p-6 rounded-xl border border-cyan-400 hover:from-cyan-600 hover:to-teal-600 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
+          className="bg-gradient-to-br from-cyan-500 to-teal-500 p-4 rounded-xl border border-cyan-400 hover:from-cyan-600 hover:to-teal-600 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-cyan-100 drop-shadow-sm">Totale</p>
-              <p className="text-3xl font-black text-white drop-shadow">{stats.totaleScadenze}</p>
+              <p className="text-xs font-bold text-cyan-100 drop-shadow-sm">Totale</p>
+              <p className="text-2xl font-black text-white drop-shadow">{stats.totaleScadenze}</p>
               <p className="text-xs font-medium text-cyan-100 drop-shadow-sm">Tutte le scadenze</p>
             </div>
-            <Activity className="w-10 h-10 text-cyan-200 drop-shadow" />
+            <Activity className="w-8 h-8 text-cyan-200 drop-shadow" />
           </div>
         </button>
       </div>
@@ -330,7 +330,7 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
               <AlertTriangle className="w-5 h-5 text-red-600" />
               Scadenze Prioritarie
             </h2>
-            <p className="text-sm text-gray-600">Le prossime 10 scadenze da gestire</p>
+            <p className="text-sm text-gray-600">Le prossime 20 scadenze da gestire</p>
           </div>
 
           <div className="overflow-x-auto">

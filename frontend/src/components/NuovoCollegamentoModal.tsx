@@ -190,18 +190,18 @@ const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, c
                 required
               >
                 <option value="">Seleziona azienda</option>
+                <option value="NUOVA_AZIENDA" className="text-blue-600 font-medium">
+                  ➕ Nuova azienda collegata
+                </option>
                 {clientiFiltrati.map((cliente) => (
                   <option key={cliente.id} value={cliente.id}>
                     {cliente.numero_azienda} - {cliente.denominazione}
                   </option>
                 ))}
-                <option value="NUOVA_AZIENDA" className="text-blue-600 font-medium">
-                  ➕ Nuova azienda collegata
-                </option>
               </select>
               {formData.azienda_collegata_id !== 'NUOVA_AZIENDA' && (
                 <p className="text-xs text-blue-600 mt-1">
-                  💡 Puoi creare una nuova azienda collegata selezionando l'ultima opzione
+                  💡 Puoi creare una nuova azienda collegata selezionando la prima opzione
                 </p>
               )}
               {clientiFiltrati.length === 0 && (

@@ -15,11 +15,13 @@ export async function POST(req: NextRequest) {
       }, { status: 401 })
     }
 
-    const { bandoName, progettoName } = await req.json()
+    const { bandoName, progettoName, progettoId } = await req.json()
 
     if (!bandoName || !progettoName) {
       return Response.json({ message: 'Nome bando e nome progetto richiesti' }, { status: 400 })
     }
+
+    console.log(`📋 Creazione progetto Drive: ${progettoName} (ID: ${progettoId || 'N/D'})`)
 
     // 1. Trova il Drive Condiviso "Gestionale Evolvi"
     let sharedDriveId: string
@@ -148,6 +150,7 @@ export async function POST(req: NextRequest) {
       googleAccessToken,
       bandoName,
       progettoName,
+      progettoId,
       bandoFolderId,
       createdSubFolders.ALLEGATI
     )
@@ -180,6 +183,7 @@ async function copyBandoAllegatiToProgetto(
   googleAccessToken: string,
   bandoName: string,
   progettoName: string,
+  progettoId: string | undefined,
   bandoFolderId: string,
   progettoAllegatiFolderId: string
 ) {
@@ -246,7 +250,7 @@ async function copyBandoAllegatiToProgetto(
     console.log(`📋 Copia completata: ${copiedFiles.length}/${bandoAllegati.length} file copiati`)
 
     // Aggiorna database con i nuovi ID Google Drive
-    await updateProjectDocumentsWithDriveIds(progettoName, bandoName, copiedFiles)
+    await updateProjectDocumentsWithDriveIds(progettoId, progettoName, bandoName, copiedFiles)
 
     return {
       copiedFiles: copiedFiles.length,
@@ -261,37 +265,65 @@ async function copyBandoAllegatiToProgetto(
 
 // Aggiorna database documenti progetto con ID Google Drive
 async function updateProjectDocumentsWithDriveIds(
+  progettoId: string | undefined,
   progettoName: string,
   bandoName: string,
   copiedFiles: any[]
 ) {
   try {
-    console.log(`💾 Aggiornamento database documenti progetto: ${copiedFiles.length} documenti`)
+    console.log(`💾 Aggiornamento database documenti progetto ${progettoId || 'N/D'}: ${copiedFiles.length} documenti`)
 
     for (const file of copiedFiles) {
       // Strategia di matching: cerca documenti che potrebbero corrispondere al file copiato
       // 1. Prima cerca per nome_originale (matching esatto)
-      // 2. Poi cerca per pattern nel nome_file (per template TEMPLATE_*)
+      // 2. Poi cerca per nome_file senza prefisso [NomeProgetto]
+      // 3. Poi cerca per pattern nel nome_file (per template TEMPLATE_*)
 
       let documents = null
       let findError = null
 
-      // Tentativo 1: Match per nome_originale
+      console.log(`🔍 Cercando documento per file: ${file.originalName} (copiato come: ${file.newName})`)
+
+      // Se non abbiamo il progettoId, salta l'aggiornamento per sicurezza
+      if (!progettoId) {
+        console.warn(`⚠️ Nessun progettoId fornito, skip aggiornamento per ${file.originalName}`)
+        continue
+      }
+
+      // Tentativo 1: Match per nome_originale con categoria 'allegato' (documenti ereditati)
       const result1 = await supabase
         .from('scadenze_bandi_documenti_progetto')
         .select('*')
+        .eq('progetto_id', progettoId)  // FILTRO PER PROGETTO SPECIFICO
         .eq('nome_originale', file.originalName)
-        .eq('categoria', 'ereditato')
+        .in('categoria', ['allegato', 'allegati', 'ereditato']) // Supporta varianti categoria
 
       if (!result1.error && result1.data && result1.data.length > 0) {
         documents = result1.data
+        console.log(`✅ Match esatto per nome_originale: ${file.originalName}`)
       } else {
-        // Tentativo 2: Match per pattern nel nome_file (es. TEMPLATE_Modello A...)
+        // Tentativo 1b: Match per nome_file che corrisponde esattamente al nome originale
+        const result1b = await supabase
+          .from('scadenze_bandi_documenti_progetto')
+          .select('*')
+          .eq('progetto_id', progettoId)  // FILTRO PER PROGETTO SPECIFICO
+          .eq('nome_file', file.originalName)
+          .in('categoria', ['allegato', 'allegati', 'ereditato'])
+
+        if (!result1b.error && result1b.data && result1b.data.length > 0) {
+          documents = result1b.data
+          console.log(`✅ Match esatto per nome_file: ${file.originalName}`)
+        }
+      }
+
+      if (!documents) {
+        // Tentativo 2: Match per pattern nel nome_file (es. TEMPLATE_Modello A... o [NomeProgetto] ...)
         const result2 = await supabase
           .from('scadenze_bandi_documenti_progetto')
           .select('*')
+          .eq('progetto_id', progettoId)  // FILTRO PER PROGETTO SPECIFICO
           .ilike('nome_file', `%${file.originalName}%`)
-          .eq('categoria', 'ereditato')
+          .in('categoria', ['allegato', 'allegati', 'ereditato']) // Supporta varianti categoria
 
         if (!result2.error && result2.data && result2.data.length > 0) {
           documents = result2.data
@@ -302,8 +334,9 @@ async function updateProjectDocumentsWithDriveIds(
           const result3 = await supabase
             .from('scadenze_bandi_documenti_progetto')
             .select('*')
+            .eq('progetto_id', progettoId)  // FILTRO PER PROGETTO SPECIFICO
             .ilike('nome_file', `%${cleanName}%`)
-            .eq('categoria', 'ereditato')
+            .in('categoria', ['allegato', 'allegati', 'ereditato']) // Supporta varianti categoria
 
           if (!result3.error && result3.data && result3.data.length > 0) {
             documents = result3.data

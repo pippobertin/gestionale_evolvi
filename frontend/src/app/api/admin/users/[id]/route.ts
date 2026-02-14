@@ -1,29 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
+import { requireAdmin } from '@/lib/jwtAuth'
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const session = await getServerSession(authOptions)
 
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
+    // Verifica autenticazione JWT e permessi admin
+    const admin = await requireAdmin(request)
+
+    if (!admin) {
+      return NextResponse.json({ error: 'Non autenticato o permessi insufficienti' }, { status: 401 })
     }
 
     const body = await request.json()
-
-    // Verifica se l'utente è admin
-    const { data: admin, error: adminError } = await supabase
-      .from('scadenze_bandi_utenti')
-      .select('id, livello_permessi')
-      .eq('email', session.user.email)
-      .single()
-
-    if (adminError || admin.livello_permessi !== 'admin') {
-      return NextResponse.json({ error: 'Accesso non autorizzato - Solo amministratori' }, { status: 403 })
-    }
 
       const updates: any = { updated_at: new Date().toISOString() }
 
@@ -57,24 +47,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const session = await getServerSession(authOptions)
 
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
+    // Verifica autenticazione JWT e permessi admin
+    const admin = await requireAdmin(request)
+
+    if (!admin) {
+      return NextResponse.json({ error: 'Non autenticato o permessi insufficienti' }, { status: 401 })
     }
 
-    // Verifica se l'utente è admin
-    const { data: admin, error: adminError } = await supabase
-      .from('scadenze_bandi_utenti')
-      .select('id, livello_permessi')
-      .eq('email', session.user.email)
-      .single()
-
-    if (adminError || admin.livello_permessi !== 'admin') {
-      return NextResponse.json({ error: 'Accesso non autorizzato - Solo amministratori' }, { status: 403 })
-    }
-
-    if (admin.id === id) {
+    // Impedisci all'admin di eliminare se stesso
+    if (admin.userId === id) {
       return NextResponse.json({ error: 'Non puoi eliminare il tuo account' }, { status: 400 })
     }
 

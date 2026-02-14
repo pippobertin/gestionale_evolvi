@@ -20,7 +20,6 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useSession, signIn, signOut } from 'next-auth/react'
-import DocumentiProgettoPreview from './DocumentiProgettoPreview'
 import DocumentPreviewModal from './DocumentPreviewModal'
 import ContractModal from './ContractModal'
 
@@ -31,15 +30,14 @@ interface ProgettoFormData {
   titolo_progetto: string
   descrizione_progetto: string
   stato: 'DECRETO_ATTESO' | 'DECRETO_RICEVUTO' | 'ACCETTATO' | 'IN_CORSO' | 'COMPLETATO'
-  importo_totale_progetto: number
-  contributo_ammesso: number
-  percentuale_contributo: number
+  importo_totale_progetto: number | undefined
+  contributo_ammesso: number | undefined
+  contributo_ottenuto: number | null
+  percentuale_contributo: number | undefined
   data_base_calcolo: string | null
   evento_base_id: string | null
   // Campi dinamici per eventi progetto (saranno popolati dinamicamente)
   eventi_progetto: { [eventoId: string]: string | null } // date degli eventi specifici del progetto
-  anticipo_richiedibile: boolean
-  percentuale_anticipo: number
   numero_sal: 'UNICO' | 'DUE' | 'TRE'
   proroga_richiedibile: boolean
   referente_interno: string
@@ -131,14 +129,13 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
     titolo_progetto: '',
     descrizione_progetto: '',
     stato: 'DECRETO_ATTESO',
-    importo_totale_progetto: 0,
-    contributo_ammesso: 0,
-    percentuale_contributo: bando?.percentuale_contributo || 0,
+    importo_totale_progetto: undefined,
+    contributo_ammesso: undefined,
+    contributo_ottenuto: null,
+    percentuale_contributo: bando?.percentuale_contributo || undefined,
     data_base_calcolo: '',
     evento_base_id: '',
     eventi_progetto: {},
-    anticipo_richiedibile: true,
-    percentuale_anticipo: 30,
     numero_sal: 'DUE',
     proroga_richiedibile: true,
     referente_interno: '',
@@ -162,12 +159,11 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
           stato: progetto.stato || 'DECRETO_ATTESO',
           importo_totale_progetto: progetto.importo_totale_progetto || 0,
           contributo_ammesso: progetto.contributo_ammesso || 0,
+          contributo_ottenuto: progetto.contributo_ottenuto ?? null,
           percentuale_contributo: progetto.percentuale_contributo || 0,
           data_base_calcolo: progetto.data_base_calcolo ? progetto.data_base_calcolo.split('T')[0] : '',
           evento_base_id: progetto.evento_base_id || '',
           eventi_progetto: {},
-          anticipo_richiedibile: progetto.anticipo_richiedibile || true,
-          percentuale_anticipo: progetto.percentuale_anticipo || 30,
           numero_sal: progetto.numero_sal || 'DUE',
           proroga_richiedibile: progetto.proroga_richiedibile !== false,
           referente_interno: progetto.referente_interno || '',
@@ -577,6 +573,23 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
       if (error) throw error
       setScadenzeSalvate(data || [])
+
+      // Popola le date effettive nello stato se presenti nel database
+      if (data && data.length > 0) {
+        const dateEffettive: {[scadenzaId: string]: string} = {}
+        data.forEach((scadenza: any) => {
+          if (scadenza.data_effettiva) {
+            // Converti data_effettiva in formato YYYY-MM-DD per il date picker
+            const dataEffettiva = new Date(scadenza.data_effettiva).toISOString().split('T')[0]
+            dateEffettive[scadenza.id] = dataEffettiva
+          }
+        })
+
+        if (Object.keys(dateEffettive).length > 0) {
+          console.log('📅 Date effettive caricate dal database:', dateEffettive)
+          setDateEffettiveScadenze(dateEffettive)
+        }
+      }
     } catch (error) {
       console.error('Errore caricamento scadenze:', error)
     }
@@ -614,14 +627,14 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
           console.error('❌ Errore debug documenti bando:', debugError)
         } else {
           console.log('📋 TUTTI i documenti del bando:', tuttiDocumentiBando)
-          console.log(`📊 Categorie presenti:`, tuttiDocumentiBando?.map(d => d.categoria))
+          console.log(`📊 Categorie presenti:`, JSON.stringify(tuttiDocumentiBando?.map(d => ({ nome: d.nome_file, categoria: d.categoria })), null, 2))
         }
 
         const { data: bandoAllegati, error: allegatiError } = await supabase
           .from('scadenze_bandi_documenti')
           .select('*')
           .eq('bando_id', formData.bando_id)
-          .eq('categoria', 'allegati') // Solo allegati, non normativa
+          .neq('categoria', 'normativa') // Escludi solo normativa, prendi tutti gli altri (allegati, template, ecc.)
           .order('created_at', { ascending: false })
 
         if (allegatiError) {
@@ -650,45 +663,18 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
           }
         }
 
-        // Copia fisicamente ogni allegato dal bando al progetto
+        // Crea riferimenti ai documenti del bando (i file fisici verranno copiati su Google Drive dall'API)
         for (const allegato of bandoAllegati || []) {
             try {
-              console.log(`📁 Copiando allegato: ${allegato.nome_file}`)
+              console.log(`📋 Ereditando allegato dal bando: ${allegato.nome_file}`)
 
-              // 1. Scarica il file dal bucket bandi
-              const { data: fileData, error: downloadError } = await supabase.storage
-                .from('bandi-documenti')
-                .download(allegato.url_file)
-
-              if (downloadError) {
-                console.error(`❌ Errore download allegato ${allegato.nome_file}:`, downloadError)
-                continue
-              }
-
-              // 2. Genera nuovo nome file per il progetto
-              const nuovoNomeFile = `template_${Date.now()}_${allegato.nome_file}`
-              const nuovoPercorso = `${progettoId}/${nuovoNomeFile}`
-
-              // 3. Carica il file nel bucket progetti
-              console.log(`⬆️ Tentativo upload: ${nuovoPercorso} (${fileData.size} bytes)`)
-              const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('progetti-documenti')
-                .upload(nuovoPercorso, fileData)
-
-              if (uploadError) {
-                console.error(`❌ Errore upload allegato ${allegato.nome_file}:`, uploadError)
-                console.error(`❌ Dettagli upload error:`, JSON.stringify(uploadError, null, 2))
-                continue
-              }
-
-              console.log(`✅ Upload completato:`, uploadData)
-
-              // 4. Crea record del documento copiato
+              // Crea un riferimento al documento senza copiare fisicamente il file
+              // I file esistono solo su Google Drive e verranno copiati dall'API /api/drive/create-progetto
               const documentoCopia = {
                 ...allegato,
-                id: `template_${allegato.id}_${Date.now()}`, // Nuovo ID
+                id: `template_${allegato.id}_${Date.now()}`, // Nuovo ID temporaneo
                 progetto_id: null, // Sarà impostato quando si salva il progetto
-                url_file: nuovoPercorso, // Nuovo percorso nel bucket progetti
+                url_file: `${progettoId}/placeholder_${allegato.nome_file}`, // Placeholder - il file vero è su Drive
                 inherited_from_bando: true,
                 status: 'to_compile',
                 nome_file: allegato.nome_file, // Mantiene il nome originale per l'utente
@@ -696,10 +682,10 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
               }
 
               documentiCaricati.push(documentoCopia)
-              console.log(`✅ Allegato copiato: ${allegato.nome_file} -> ${nuovoPercorso}`)
+              console.log(`✅ Allegato ereditato: ${allegato.nome_file}`)
 
             } catch (error) {
-              console.error(`❌ Errore generico copia allegato ${allegato.nome_file}:`, error)
+              console.error(`❌ Errore eredità allegato ${allegato.nome_file}:`, error)
             }
           }
         }
@@ -744,6 +730,94 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
     setFormData(prev => ({ ...prev, codice_progetto: codiceGenerato }))
     console.log(`✅ Codice progetto generato: ${codiceGenerato}`)
+  }
+
+  // Funzione per salvare le date effettive delle scadenze impostate dall'utente
+  const saveScadenzeEffettive = async (progettoId: string) => {
+    try {
+      // Controlla se ci sono date effettive da salvare
+      if (Object.keys(dateEffettiveScadenze).length === 0) {
+        console.log('📅 Nessuna data effettiva da salvare')
+        return
+      }
+
+      console.log('💾 Salvataggio date effettive scadenze:', dateEffettiveScadenze)
+      console.log('📋 Scadenze salvate (template):', scadenzeSalvate.map(s => ({ id: s.id, titolo: s.titolo || s.nome })))
+
+      // Carica le scadenze del progetto dal database
+      const { data: scadenzeDB, error: loadError } = await supabase
+        .from('scadenze_bandi_scadenze')
+        .select('id, titolo, data_scadenza')
+        .eq('progetto_id', progettoId)
+        .order('created_at')
+
+      if (loadError) {
+        console.error('❌ Errore caricamento scadenze per salvataggio date effettive:', loadError)
+        return
+      }
+
+      if (!scadenzeDB || scadenzeDB.length === 0) {
+        console.log('⚠️ Nessuna scadenza trovata nel database per il progetto')
+        return
+      }
+
+      console.log('📊 Scadenze nel database:', scadenzeDB.map(s => ({ id: s.id, titolo: s.titolo })))
+
+      // Crea una mappa delle date effettive per titolo/nome scadenza
+      const dateEffettivePerTitolo: {[titolo: string]: string} = {}
+      for (const templateId of Object.keys(dateEffettiveScadenze)) {
+        const template = scadenzeSalvate.find(s => s.id === templateId)
+        if (template) {
+          const titolo = template.titolo || template.nome
+          if (titolo) {
+            dateEffettivePerTitolo[titolo] = dateEffettiveScadenze[templateId]
+          }
+        }
+      }
+
+      console.log('📅 Date effettive per titolo:', dateEffettivePerTitolo)
+
+      // Per ogni scadenza nel database, cerca se c'è una data effettiva corrispondente
+      let scadenzeAggiornate = 0
+      for (const scadenzaDB of scadenzeDB) {
+        // Prima cerca corrispondenza esatta per ID (per progetti esistenti)
+        const scadenzaLocale = scadenzeSalvate.find(s => s.id === scadenzaDB.id)
+
+        let dataEffettiva = null
+        if (scadenzaLocale && dateEffettiveScadenze[scadenzaLocale.id]) {
+          dataEffettiva = dateEffettiveScadenze[scadenzaLocale.id]
+        } else if (dateEffettivePerTitolo[scadenzaDB.titolo]) {
+          // Altrimenti cerca per titolo (per nuovi progetti dove ID sono diversi)
+          dataEffettiva = dateEffettivePerTitolo[scadenzaDB.titolo]
+        }
+
+        if (dataEffettiva) {
+          console.log(`📅 Aggiornamento scadenza "${scadenzaDB.titolo}" con data effettiva: ${dataEffettiva}`)
+
+          // Recupera l'email dell'utente loggato
+          const userEmail = localStorage.getItem('user_email') || 'utente@gestionale.it'
+
+          const { error: updateError } = await supabase
+            .from('scadenze_bandi_scadenze')
+            .update({
+              data_effettiva: new Date(dataEffettiva).toISOString(),
+              data_modificata_da: userEmail,
+              data_modificata_il: new Date().toISOString()
+            })
+            .eq('id', scadenzaDB.id)
+
+          if (updateError) {
+            console.error(`❌ Errore aggiornamento scadenza ${scadenzaDB.titolo}:`, updateError)
+          } else {
+            scadenzeAggiornate++
+          }
+        }
+      }
+
+      console.log(`✅ Date effettive salvate: ${scadenzeAggiornate} scadenze aggiornate`)
+    } catch (error) {
+      console.error('❌ Errore salvataggio date effettive scadenze:', error)
+    }
   }
 
   const generateScadenzeFromTemplate = async (progettoId: string, bandoId: string, formData: ProgettoFormData) => {
@@ -1016,12 +1090,29 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
   // Salva i documenti ereditati nel database quando viene creato un progetto
   const saveDocumentiEreditati = async (progettoId: string) => {
     try {
+      // Prima controlla se esistono già documenti per questo progetto
+      const { data: existingDocs, error: checkError } = await supabase
+        .from('scadenze_bandi_documenti_progetto')
+        .select('id')
+        .eq('progetto_id', progettoId)
+        .limit(1)
+
+      if (checkError) {
+        console.error('Errore verifica documenti esistenti:', checkError)
+      }
+
+      if (existingDocs && existingDocs.length > 0) {
+        console.log(`⚠️ Documenti già esistenti per progetto ${progettoId}, skip salvataggio duplicati`)
+        return
+      }
+
       const documentiDaSalvare = documenti
         .filter(doc => doc.inherited_from_bando && doc.progetto_id === null)
         .map(doc => ({
           progetto_id: progettoId,
           nome_file: doc.nome_file,
-          categoria: doc.categoria,
+          nome_originale: doc.nome_file, // Necessario per matching con Google Drive
+          categoria: 'ereditato', // Categoria per documenti ereditati dal bando
           formato_file: doc.formato_file,
           dimensione_bytes: doc.dimensione_bytes,
           url_file: doc.url_file, // Ora punta al bucket progetti-documenti
@@ -1074,6 +1165,13 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
         if (error) throw error
         projectResult = progetto
+
+        // Salva le date effettive delle scadenze modificate
+        try {
+          await saveScadenzeEffettive(progetto.id)
+        } catch (scadenzeError) {
+          console.warn('⚠️ Errore salvataggio date effettive (non bloccante):', scadenzeError)
+        }
       } else {
         // Crea nuovo progetto
         const { data: newProgetto, error } = await supabase
@@ -1088,10 +1186,16 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
         // Salva i documenti ereditati nel database del progetto
         await saveDocumentiEreditati(projectResult.id)
 
+        // Ricarica i documenti dal database per sostituire quelli temporanei
+        await loadDocumenti(projectResult.id)
+
         // Genera scadenze automatiche dal template del bando (solo per nuovi progetti)
         if (!progetto?.id) {
           try {
             await generateScadenzeFromTemplate(projectResult.id, formData.bando_id, formData)
+
+            // Salva le date effettive impostate dall'utente
+            await saveScadenzeEffettive(projectResult.id)
           } catch (scadenzeError) {
             console.warn('⚠️ Errore generazione scadenze (non bloccante):', scadenzeError)
             // Non blocchiamo la creazione del progetto per errori di calendar
@@ -1126,7 +1230,8 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 bandoName: bandoData?.nome || 'Bando Sconosciuto',
-                progettoName: formData.titolo_progetto
+                progettoName: formData.titolo_progetto,
+                progettoId: projectResult.id  // Necessario per aggiornare documenti specifici del progetto
               })
             })
 
@@ -1149,19 +1254,34 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
       // Mostra modal contratto solo per progetti nuovi
       if (!progetto) {
-        // Prepara dati per modal contratto
+        // Carica i dati completi del cliente dal database
+        const { data: clienteCompleto, error: clienteError } = await supabase
+          .from('scadenze_bandi_clienti')
+          .select('denominazione, email, pec')
+          .eq('id', formData.cliente_id)
+          .single()
+
+        if (clienteError) {
+          console.error('Errore caricamento dati cliente:', clienteError)
+        }
+
+        console.log('📧 Dati cliente caricati:', clienteCompleto)
+
+        // Prepara dati per modal contratto con dati cliente completi dal database
         const projectDataForContract = {
           id: projectResult.id,
           titolo_progetto: formData.titolo_progetto,
           cliente: {
-            denominazione: cliente?.denominazione || 'Cliente',
-            email: cliente?.email,
-            pec: cliente?.pec
+            denominazione: clienteCompleto?.denominazione || cliente?.denominazione || 'Cliente',
+            email: clienteCompleto?.email || cliente?.email,
+            pec: clienteCompleto?.pec || cliente?.pec
           },
           bando: {
             nome: bando?.nome || 'Bando'
           }
         }
+
+        console.log('📋 Dati progetto per contratto:', projectDataForContract)
 
         // Verifica che il progetto sia effettivamente salvato prima di aprire il modal
         console.log('📋 Progetto creato con ID:', projectResult.id, '- Verifica salvataggio...')
@@ -1429,8 +1549,8 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                         type="number"
                         min="0"
                         step="0.01"
-                        value={formData.importo_totale_progetto}
-                        onChange={(e) => setFormData({ ...formData, importo_totale_progetto: parseFloat(e.target.value) || 0 })}
+                        value={formData.importo_totale_progetto ?? ''}
+                        onChange={(e) => setFormData({ ...formData, importo_totale_progetto: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
                         className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
@@ -1443,8 +1563,8 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                         type="number"
                         min="0"
                         step="0.01"
-                        value={formData.contributo_ammesso}
-                        onChange={(e) => setFormData({ ...formData, contributo_ammesso: parseFloat(e.target.value) || 0 })}
+                        value={formData.contributo_ammesso ?? ''}
+                        onChange={(e) => setFormData({ ...formData, contributo_ammesso: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
                         className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
@@ -1460,8 +1580,8 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                         min="0"
                         max="100"
                         step="0.01"
-                        value={formData.percentuale_contributo}
-                        onChange={(e) => setFormData({ ...formData, percentuale_contributo: parseFloat(e.target.value) || 0 })}
+                        value={formData.percentuale_contributo ?? ''}
+                        onChange={(e) => setFormData({ ...formData, percentuale_contributo: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
                         className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
@@ -1482,35 +1602,26 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                     </div>
                   </div>
 
-                  {/* Anticipo */}
-                  <div className="border border-gray-200 rounded-lg p-4">
-                    <label className="flex items-center gap-3">
+                  {/* Contributo Ottenuto - appare solo se stato è COMPLETATO */}
+                  {formData.stato === 'COMPLETATO' && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <label className="block text-sm font-medium text-blue-900 mb-2">
+                        Contributo Ottenuto (€)
+                      </label>
                       <input
-                        type="checkbox"
-                        checked={formData.anticipo_richiedibile}
-                        onChange={(e) => setFormData({ ...formData, anticipo_richiedibile: e.target.checked })}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.contributo_ottenuto ?? ''}
+                        onChange={(e) => setFormData({ ...formData, contributo_ottenuto: parseFloat(e.target.value) || null })}
+                        className="w-full md:w-1/2 p-3 border border-blue-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Inserisci il contributo effettivamente ottenuto"
                       />
-                      <span className="font-medium text-gray-900">Anticipo Richiedibile</span>
-                    </label>
-
-                    {formData.anticipo_richiedibile && (
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Percentuale Anticipo (%)
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="1"
-                          value={formData.percentuale_anticipo}
-                          onChange={(e) => setFormData({ ...formData, percentuale_anticipo: parseInt(e.target.value) || 0 })}
-                          className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                    )}
-                  </div>
+                      <p className="mt-2 text-sm text-blue-700">
+                        💡 Il contributo reale può differire da quello ammesso. Inserisci qui l'importo effettivamente erogato.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1624,56 +1735,80 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                               <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Data Effettiva *
                               </label>
-                              <div className="flex gap-2 items-center">
-                                <input
-                                  type="date"
-                                  value={dateEffettiveScadenze[scadenza.id] || ''}
-                                  onChange={(e) => {
-                                    setDateEffettiveScadenze(prev => ({
-                                      ...prev,
-                                      [scadenza.id]: e.target.value
-                                    }))
-                                  }}
-                                  className={`flex-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                    dateEffettiveScadenze[scadenza.id] &&
-                                    scadenza.data_scadenza &&
-                                    !isNaN(new Date(scadenza.data_scadenza).getTime()) &&
-                                    new Date(dateEffettiveScadenze[scadenza.id]) > new Date(scadenza.data_scadenza)
-                                      ? 'bg-red-50 border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500'
-                                      : 'border-gray-300'
-                                  }`}
-                                  placeholder="Inserisci la data di avvenimento effettiva"
-                                />
-                                {dateEffettiveScadenze[scadenza.id] &&
-                                  scadenza.data_scadenza &&
-                                  !isNaN(new Date(scadenza.data_scadenza).getTime()) &&
-                                  new Date(dateEffettiveScadenze[scadenza.id]) > new Date(scadenza.data_scadenza) && (
-                                  <div className="text-red-500" title="Scadenza sforata">
-                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                    </svg>
+                              <div className="flex gap-2 items-start">
+                                <div className="flex-1">
+                                  <div className="flex gap-2 items-center mb-2">
+                                    <input
+                                      type="date"
+                                      value={dateEffettiveScadenze[scadenza.id] || ''}
+                                      onChange={(e) => {
+                                        setDateEffettiveScadenze(prev => ({
+                                          ...prev,
+                                          [scadenza.id]: e.target.value
+                                        }))
+                                      }}
+                                      className={`flex-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                        dateEffettiveScadenze[scadenza.id] &&
+                                        scadenza.data_scadenza &&
+                                        !isNaN(new Date(scadenza.data_scadenza).getTime()) &&
+                                        new Date(dateEffettiveScadenze[scadenza.id]) > new Date(scadenza.data_scadenza)
+                                          ? 'bg-red-50 border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500'
+                                          : 'border-gray-300'
+                                      }`}
+                                      placeholder="Inserisci la data di avvenimento effettiva"
+                                    />
+                                    {dateEffettiveScadenze[scadenza.id] &&
+                                      scadenza.data_scadenza &&
+                                      !isNaN(new Date(scadenza.data_scadenza).getTime()) &&
+                                      new Date(dateEffettiveScadenze[scadenza.id]) > new Date(scadenza.data_scadenza) && (
+                                      <div className="text-red-500" title="Scadenza sforata">
+                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                        </svg>
+                                      </div>
+                                    )}
+                                    {dateEffettiveScadenze[scadenza.id] && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setDateEffettiveScadenze(prev => {
+                                            const updated = { ...prev }
+                                            delete updated[scadenza.id]
+                                            return updated
+                                          })
+                                        }}
+                                        className="text-gray-400 hover:text-red-500"
+                                        title="Rimuovi data effettiva"
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </button>
+                                    )}
                                   </div>
-                                )}
-                                {dateEffettiveScadenze[scadenza.id] && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setDateEffettiveScadenze(prev => {
-                                        const updated = { ...prev }
-                                        delete updated[scadenza.id]
-                                        return updated
-                                      })
-                                    }}
-                                    className="text-gray-400 hover:text-red-500"
-                                    title="Rimuovi data effettiva"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </button>
-                                )}
+
+                                  {/* Pulsante Conferma Data Teorica */}
+                                  {!dateEffettiveScadenze[scadenza.id] && scadenza.data_scadenza && !isNaN(new Date(scadenza.data_scadenza).getTime()) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const dataCalcolata = new Date(scadenza.data_scadenza).toISOString().split('T')[0]
+                                        setDateEffettiveScadenze(prev => ({
+                                          ...prev,
+                                          [scadenza.id]: dataCalcolata
+                                        }))
+                                      }}
+                                      className="w-full text-sm px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-md hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                      <CheckCircle className="w-4 h-4" />
+                                      Conferma data teorica ({new Date(scadenza.data_scadenza).toLocaleDateString('it-IT')})
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                               <p className="text-xs text-gray-500 mt-1">
-                                Se lasciato vuoto, verrà usata la data calcolata dal bando.
-                                Inserendo una data effettiva, le scadenze successive verranno ricalcolate automaticamente.
+                                {!dateEffettiveScadenze[scadenza.id]
+                                  ? 'Clicca "Conferma data teorica" per usare la data calcolata, oppure inserisci manualmente una data diversa.'
+                                  : 'Data confermata. Le scadenze successive verranno ricalcolate automaticamente basandosi su questa data.'
+                                }
                               </p>
                             </div>
                           </div>
@@ -1724,13 +1859,6 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                     </div>
                   )}
 
-                  {/* Preview Documenti - Solo per progetti esistenti */}
-                  {progetto?.id && (
-                    <DocumentiProgettoPreview
-                      progettoId={progetto.id}
-                      className="mb-6"
-                    />
-                  )}
 
                   {/* Upload Section */}
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">

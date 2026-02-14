@@ -13,16 +13,17 @@ import {
   Plus,
   Trash2,
   Upload,
-  Eye,
   ArrowRight,
   Settings,
   ExternalLink,
   Download,
-  AlertCircle
+  AlertCircle,
+  Users
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import SimpleResponsableSelector from './SimpleResponsableSelector'
+import MultiResponsableSelector, { Responsabile } from './MultiResponsableSelector'
 
 interface EventoCatalogo {
   id: string
@@ -37,7 +38,7 @@ interface TemplateScadenza {
   id?: string
   nome: string
   descrizione: string
-  giorni_da_evento: number
+  giorni_da_evento: number | undefined
   unita_tempo: 'giorni' | 'mesi' // Nuovo campo
   evento_riferimento: string
   tipo_scadenza: string
@@ -55,16 +56,16 @@ interface BandoFormData {
   descrizione: string
   ente_erogatore: string
   tipologia_bando: string
-  contributo_massimo: number
-  spesa_minima_ammessa: number
-  percentuale_contributo: number
+  contributo_massimo: number | undefined
+  spesa_minima_ammessa: number | undefined
+  percentuale_contributo: number | undefined
   regime_aiuto: 'DE_MINIMIS' | 'ESENZIONE' | 'NO_AIUTO_STATO' | 'ALTRO'
   data_pubblicazione: string
   data_apertura_presentazione: string
   data_chiusura_presentazione: string
   data_base_calcolo: string
   evento_base_id: string
-  tempo_valutazione_giorni: number
+  tempo_valutazione_giorni: number | undefined
   tipo_valutazione: 'A_PUNTEGGIO' | 'JUST_IN_TIME'
   stato_bando: string
   link_bando_ufficiale: string
@@ -99,16 +100,16 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
     descrizione: '',
     ente_erogatore: '',
     tipologia_bando: '',
-    contributo_massimo: 0,
-    spesa_minima_ammessa: 5000,
-    percentuale_contributo: 0,
+    contributo_massimo: undefined,
+    spesa_minima_ammessa: undefined,
+    percentuale_contributo: undefined,
     regime_aiuto: 'DE_MINIMIS',
     data_pubblicazione: '',
     data_apertura_presentazione: '',
     data_chiusura_presentazione: '',
     data_base_calcolo: '',
     evento_base_id: '',
-    tempo_valutazione_giorni: 60,
+    tempo_valutazione_giorni: undefined,
     tipo_valutazione: 'A_PUNTEGGIO',
     stato_bando: 'APERTO',
     link_bando_ufficiale: '',
@@ -123,6 +124,9 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
   // Template scadenze
   const [templateScadenze, setTemplateScadenze] = useState<TemplateScadenza[]>([])
   const [showAddTemplate, setShowAddTemplate] = useState(false)
+
+  // Responsabili scadenze
+  const [responsabiliScadenze, setResponsabiliScadenze] = useState<Responsabile[]>([])
 
   // Documenti
   const [documenti, setDocumenti] = useState<any[]>([])
@@ -154,16 +158,16 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
         descrizione: bando.descrizione || '',
         ente_erogatore: bando.ente_erogatore || '',
         tipologia_bando: bando.tipologia_bando || '',
-        contributo_massimo: bando.contributo_massimo || 0,
-        spesa_minima_ammessa: bando.spesa_minima_ammessa || 5000,
-        percentuale_contributo: bando.percentuale_contributo || 0,
+        contributo_massimo: bando.contributo_massimo || undefined,
+        spesa_minima_ammessa: bando.spesa_minima_ammessa || undefined,
+        percentuale_contributo: bando.percentuale_contributo || undefined,
         regime_aiuto: bando.regime_aiuto || 'DE_MINIMIS',
         data_pubblicazione: bando.data_pubblicazione ? bando.data_pubblicazione.split('T')[0] : '',
         data_apertura_presentazione: bando.data_apertura_presentazione ? bando.data_apertura_presentazione.split('T')[0] : '',
         data_chiusura_presentazione: bando.data_chiusura_presentazione ? bando.data_chiusura_presentazione.split('T')[0] : '',
         data_base_calcolo: bando.data_base_calcolo ? bando.data_base_calcolo.split('T')[0] : '',
         evento_base_id: bando.evento_base_id || '',
-        tempo_valutazione_giorni: bando.tempo_valutazione_giorni || 60,
+        tempo_valutazione_giorni: bando.tempo_valutazione_giorni || undefined,
         tipo_valutazione: bando.tipo_valutazione || 'A_PUNTEGGIO',
         stato_bando: bando.stato_bando || 'APERTO',
         link_bando_ufficiale: bando.link_bando_ufficiale || '',
@@ -174,6 +178,13 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
         referente_bando: bando.referente_bando || '',
         email_referente: bando.email_referente || ''
       })
+
+      // Carica responsabili scadenze se presenti
+      if (bando.responsabili_scadenze_json && Array.isArray(bando.responsabili_scadenze_json)) {
+        setResponsabiliScadenze(bando.responsabili_scadenze_json)
+        console.log('✅ Responsabili scadenze caricati:', bando.responsabili_scadenze_json)
+      }
+
       loadTemplateScadenze(bando.id)
       loadDocumenti(bando.id)
     } else {
@@ -680,6 +691,14 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
         bandoId = data.id
       }
 
+      // Salva responsabili scadenze
+      await supabase
+        .from('scadenze_bandi_bandi')
+        .update({ responsabili_scadenze_json: responsabiliScadenze })
+        .eq('id', bandoId)
+
+      console.log('✅ Responsabili scadenze salvati:', responsabiliScadenze)
+
       // Salva template scadenze
       await saveTemplateScadenze(bandoId)
 
@@ -859,7 +878,7 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
     const newTemplate: TemplateScadenza = {
       nome: '',
       descrizione: '',
-      giorni_da_evento: 30,
+      giorni_da_evento: undefined,
       unita_tempo: 'giorni',
       evento_riferimento: eventoRiferimentoDefault,
       tipo_scadenza: 'accettazione',
@@ -1025,8 +1044,8 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
                     </label>
                     <input
                       type="number"
-                      value={formData.contributo_massimo}
-                      onChange={(e) => setFormData({...formData, contributo_massimo: Number(e.target.value)})}
+                      value={formData.contributo_massimo ?? ''}
+                      onChange={(e) => setFormData({...formData, contributo_massimo: e.target.value === '' ? undefined : Number(e.target.value)})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                       placeholder="50000"
                     />
@@ -1039,8 +1058,8 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
                     <input
                       type="number"
                       min="0"
-                      value={formData.spesa_minima_ammessa}
-                      onChange={(e) => setFormData({...formData, spesa_minima_ammessa: Number(e.target.value)})}
+                      value={formData.spesa_minima_ammessa ?? ''}
+                      onChange={(e) => setFormData({...formData, spesa_minima_ammessa: e.target.value === '' ? undefined : Number(e.target.value)})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                       placeholder="5000"
                     />
@@ -1054,8 +1073,8 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
                       type="number"
                       min="0"
                       max="100"
-                      value={formData.percentuale_contributo}
-                      onChange={(e) => setFormData({...formData, percentuale_contributo: Number(e.target.value)})}
+                      value={formData.percentuale_contributo ?? ''}
+                      onChange={(e) => setFormData({...formData, percentuale_contributo: e.target.value === '' ? undefined : Number(e.target.value)})}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                       placeholder="50"
                     />
@@ -1254,6 +1273,24 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
               </div>
             </div>
 
+              {/* Responsabili Scadenze */}
+              <div className="space-y-4 mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-2">
+                    <Users className="w-5 h-5" />
+                    Responsabili Scadenze
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Seleziona gli utenti o i gruppi che riceveranno le notifiche per tutte le scadenze di questo bando.
+                  </p>
+
+                  <MultiResponsableSelector
+                    value={responsabiliScadenze}
+                    onChange={setResponsabiliScadenze}
+                  />
+                </div>
+              </div>
+
               {/* Descrizione e Note */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -1344,8 +1381,8 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
                           <div className="flex gap-2">
                             <input
                               type="number"
-                              value={template.giorni_da_evento}
-                              onChange={(e) => updateTemplateScadenza(index, 'giorni_da_evento', Number(e.target.value))}
+                              value={template.giorni_da_evento ?? ''}
+                              onChange={(e) => updateTemplateScadenza(index, 'giorni_da_evento', e.target.value === '' ? undefined : Number(e.target.value))}
                               className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
                               placeholder="30"
                             />
@@ -1374,33 +1411,6 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
                               <option key={evento.value} value={evento.value}>{evento.label}</option>
                             ))}
                           </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Priorità
-                          </label>
-                          <select
-                            value={template.priorita}
-                            onChange={(e) => updateTemplateScadenza(index, 'priorita', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                          >
-                            <option value="bassa">Bassa</option>
-                            <option value="media">Media</option>
-                            <option value="alta">Alta</option>
-                            <option value="critica">Critica</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Responsabile
-                          </label>
-                          <SimpleResponsableSelector
-                            value={template.responsabile_suggerito || ''}
-                            onChange={(email) => updateTemplateScadenza(index, 'responsabile_suggerito', email)}
-                            placeholder="Seleziona responsabile per questa scadenza..."
-                          />
                         </div>
                       </div>
 
@@ -1587,9 +1597,9 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
                                 <button
                                   onClick={() => downloadDocument(documento.url_file, documento.nome_file)}
                                   className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
-                                  title="Visualizza"
+                                  title="Scarica documento"
                                 >
-                                  <Eye className="w-4 h-4" />
+                                  <Download className="w-4 h-4" />
                                 </button>
                               )}
                               <button
@@ -1688,9 +1698,9 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
                                 <button
                                   onClick={() => downloadDocument(documento.url_file, documento.nome_file)}
                                   className="p-1 text-gray-400 hover:text-green-500 transition-colors"
-                                  title="Visualizza"
+                                  title="Scarica documento"
                                 >
-                                  <Eye className="w-4 h-4" />
+                                  <Download className="w-4 h-4" />
                                 </button>
                               )}
                               <button
