@@ -150,33 +150,7 @@ export async function DELETE(
     const { searchParams } = new URL(request.url)
     const permanent = searchParams.get('permanent') === 'true'
 
-    // Get Gmail tokens
-    const { data: refreshTokenData } = await supabase
-      .from('scadenze_bandi_system_settings')
-      .select('value')
-      .eq('key', 'gmail_refresh_token')
-      .single()
-
-    if (!refreshTokenData?.value) {
-      return NextResponse.json({
-        success: false,
-        error: 'Gmail non configurato'
-      }, { status: 401 })
-    }
-
-    // Set up OAuth2 client
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/gmail/callback`
-    )
-
-    oauth2Client.setCredentials({
-      refresh_token: refreshTokenData.value
-    })
-
-    // Get Gmail service
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client })
+    const gmail = await getGmailClient()
 
     if (permanent) {
       // Permanently delete message

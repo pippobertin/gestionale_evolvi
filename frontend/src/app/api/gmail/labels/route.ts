@@ -1,43 +1,9 @@
 import { NextResponse } from 'next/server'
-import { google } from 'googleapis'
-import { supabase } from '@/lib/supabase'
+import { getGmailClient } from '@/lib/gmail'
 
 export async function GET() {
   try {
-    // Get Gmail tokens from system settings
-    const { data: refreshTokenData } = await supabase
-      .from('scadenze_bandi_system_settings')
-      .select('value')
-      .eq('key', 'gmail_refresh_token')
-      .single()
-
-    const { data: accessTokenData } = await supabase
-      .from('scadenze_bandi_system_settings')
-      .select('value')
-      .eq('key', 'gmail_access_token')
-      .single()
-
-    if (!refreshTokenData?.value) {
-      return NextResponse.json({
-        success: false,
-        error: 'Gmail non configurato'
-      }, { status: 401 })
-    }
-
-    // Set up OAuth2 client
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/gmail/callback`
-    )
-
-    oauth2Client.setCredentials({
-      refresh_token: refreshTokenData.value,
-      access_token: accessTokenData?.value
-    })
-
-    // Get Gmail service
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client })
+    const gmail = await getGmailClient()
 
     // Fetch labels
     const response = await gmail.users.labels.list({

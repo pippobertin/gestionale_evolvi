@@ -1,4 +1,5 @@
 import { google } from 'googleapis'
+import { createClient } from '@supabase/supabase-js'
 
 export interface GmailConfig {
   clientId: string
@@ -6,6 +7,57 @@ export interface GmailConfig {
   redirectUri: string
   refreshToken?: string
   accessToken?: string
+}
+
+/**
+ * Creates a configured OAuth2 client for Google APIs
+ * @param redirectUri - Optional custom redirect URI, defaults to Gmail callback
+ */
+export function createGoogleAuthClient(redirectUri?: string) {
+  return new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    redirectUri || `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/gmail/callback`
+  )
+}
+
+/**
+ * Retrieves Gmail client with tokens from database
+ * Eliminates code duplication across 12+ API routes
+ */
+export async function getGmailClient() {
+  // Create Supabase client
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  // Fetch tokens from system settings
+  const { data: refreshTokenData, error: refreshError } = await supabase
+    .from('scadenze_bandi_system_settings')
+    .select('value')
+    .eq('key', 'gmail_refresh_token')
+    .single()
+
+  if (refreshError || !refreshTokenData) {
+    throw new Error('Gmail refresh token not found in system settings')
+  }
+
+  const { data: accessTokenData } = await supabase
+    .from('scadenze_bandi_system_settings')
+    .select('value')
+    .eq('key', 'gmail_access_token')
+    .single()
+
+  // Create OAuth2 client with tokens
+  const oauth2Client = createGoogleAuthClient()
+  oauth2Client.setCredentials({
+    refresh_token: refreshTokenData.value,
+    access_token: accessTokenData?.value
+  })
+
+  // Return configured Gmail client
+  return google.gmail({ version: 'v1', auth: oauth2Client })
 }
 
 export class GmailService {
