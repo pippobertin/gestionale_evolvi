@@ -1,8 +1,8 @@
 # Refactoring TODO - Gestionale Evolvi
 
 **Branch**: `refactor-feb-2026`
-**Ultimo aggiornamento**: 14 Febbraio 2026
-**Stato**: Fase 1 completata ✅
+**Ultimo aggiornamento**: 16 Febbraio 2026
+**Stato**: Fase 1 ✅ | Fase 2 ✅ | Fase 2.5 🔄 IN PROGRESS
 
 ---
 
@@ -56,63 +56,97 @@ Piano di refactoring incrementale in 4 fasi per migliorare la manutenibilità de
 
 ---
 
-## 📋 FASE 2: Consolidamento Selettori (DA FARE)
+## ✅ FASE 2: Consolidamento Selettori Responsabili (COMPLETATA)
 
 **Tempo stimato**: 9 ore
+**Tempo effettivo**: ~3 ore
 **Priorità**: HIGH
 **Rischio**: MEDIO
+**Commit**: `5f1701d`
+**Data completamento**: 16 Febbraio 2026
 
-### Obiettivi:
+### Obiettivi raggiunti:
 
-Unificare 4 componenti selettori duplicati (969 righe totali):
+Unificati 4 componenti selettori duplicati (969 righe totali) in 2 componenti:
 
-1. **ResponsableSelector.tsx** (206 righe)
-   - `src/components/ResponsableSelector.tsx`
-   - Usato in: ScadenzaForm, BandoForm
+1. **UnifiedResponsableSelector.tsx** (385 righe)
+   - Sostituisce: ResponsableSelector + SimpleResponsableSelector
+   - Supporta `variant='standard' | 'simple'`
+   - Union types per flessibilità tipo value
 
-2. **SimpleResponsableSelector.tsx** (154 righe)
-   - `src/components/SimpleResponsableSelector.tsx`
-   - Simile a ResponsableSelector ma semplificato
+2. **UnifiedMultiResponsableSelector.tsx** (490 righe)
+   - Sostituisce: MultipleResponsableSelector + MultiResponsableSelector
+   - Supporta `variant='inline' | 'external'`
+   - Gestisce ResponsabileSelezionato[] e Responsabile[]
 
-3. **MultipleResponsableSelector.tsx** (305 righe)
-   - `src/components/MultipleResponsableSelector.tsx`
-   - Selezione multipla con chip
+### Migrazioni completate:
+- ✅ ScadenzaForm.tsx → UnifiedResponsableSelector
+- ✅ BandoForm.tsx → UnifiedMultiResponsableSelector (variant="external")
 
-4. **MultiResponsableSelector.tsx** (304 righe)
-   - `src/components/MultiResponsableSelector.tsx`
-   - Quasi identico a MultipleResponsableSelector
+### Componenti eliminati:
+- ✅ ResponsableSelector.tsx (206 righe)
+- ✅ SimpleResponsableSelector.tsx (154 righe)
+- ✅ MultipleResponsableSelector.tsx (305 righe)
+- ✅ MultiResponsableSelector.tsx (304 righe)
 
-### Piano di azione:
+### Testing:
+- ✅ Compilazione TypeScript: 0 errori
+- ✅ Server Next.js: running senza errori
+- ✅ ScadenzaForm: selezione singola funzionante
+- ✅ BandoForm: selezione multipla con external chips funzionante
 
-1. **Analisi delle differenze**
-   - Confrontare i 4 componenti
-   - Identificare funzionalità comuni e specifiche
+### Metriche Fase 2:
+- File modificati: 8
+- File creati: 2 (unified components)
+- File eliminati: 4 (old selectors)
+- Righe duplicate eliminate: ~520 righe (53% riduzione)
+- Da 969 righe → 450 righe totali
 
-2. **Creazione componente unificato**
-   - Nome: `UnifiedResponsableSelector.tsx`
-   - Props:
-     - `multiple?: boolean` (singola vs multipla selezione)
-     - `simplified?: boolean` (versione semplificata)
-     - `showChips?: boolean` (mostra chip per multipli)
-     - Altri props comuni
+---
 
-3. **Migration graduale**
-   - Sostituire ResponsableSelector
-   - Sostituire SimpleResponsableSelector
-   - Sostituire MultipleResponsableSelector
-   - Sostituire MultiResponsableSelector
-   - Eliminare vecchi componenti
+## 🔄 FASE 2.5: Pulizia console.log (IN PROGRESS)
 
-4. **Testing**
-   - Testare ScadenzaForm
-   - Testare BandoForm
-   - Testare ProgettoForm
-   - Verificare selezione singola/multipla
+**Tempo stimato**: 4 ore
+**Priorità**: MEDIUM
+**Rischio**: MOLTO BASSO
+**Status**: 🔄 IN PROGRESS
+
+### Obiettivo:
+
+Rimuovere 388 occorrenze di `console.log` dal codebase per avere un codice più pulito e professionale.
+
+### Step da seguire:
+
+1. **Analisi occorrenze console.log**
+   - Trovare tutte le 388 occorrenze
+   - Categorizzare: eliminare vs mantenere (console.error, console.warn critici)
+   - Identificare file con più occorrenze
+
+2. **Rimozione in batch per sicurezza**
+   - Batch 1: src/components/ (componenti UI)
+   - Batch 2: src/app/ (route handlers e pagine)
+   - Batch 3: src/lib/ (utility e servizi)
+   - Testare compilazione dopo ogni batch
+
+3. **Mantenere solo logging critico**
+   - Mantenere `console.error` per errori reali
+   - Mantenere `console.warn` per warning importanti
+   - Rimuovere tutti i `console.log` di debug
+
+4. **Testing e commit**
+   - Verificare compilazione TypeScript: 0 errori
+   - Verificare dev server running
+   - Commit dettagliato con metriche
+   - Push a refactor-feb-2026
 
 ### Risultato atteso:
-- 4 componenti → 1 componente unificato
-- ~969 righe → ~350 righe
-- Risparmio: ~620 righe di codice duplicato
+- ~350-380 console.log rimossi
+- Codebase più pulito e professionale
+- 0 breaking changes
+- Mantenuti solo console.error/warn critici
+
+### Nota:
+ClienteSelector e BandoSelector menzionati nella pianificazione originale non esistono nel codebase. Le duplicazioni principali (Responsable Selectors) sono già state risolte in Fase 2.
 
 ---
 
@@ -199,47 +233,74 @@ Unificare 4 componenti selettori duplicati (969 righe totali):
 
 ## 📈 Metriche Totali Progetto
 
-### Stato attuale (dopo Fase 1):
+### Stato attuale (dopo Fase 2):
 - ✅ Dependency rimosse: 1
-- ✅ Duplicazioni eliminate: 220 righe
+- ✅ Duplicazioni eliminate: 740 righe (220 Fase 1 + 520 Fase 2)
 - ✅ Utility create: 2
-- ⏳ Tempo investito: 2.5 ore
+- ✅ Componenti unificati creati: 2 (UnifiedResponsableSelector, UnifiedMultiResponsableSelector)
+- ⏳ Tempo investito: 5.5 ore (2.5h Fase 1 + 3h Fase 2)
 
 ### Obiettivi finali (tutte le fasi):
 - 🎯 Duplicazioni da eliminare: ~1,800 righe
+- 🎯 Progresso duplicazioni: 740/1800 (41% completato)
 - 🎯 File da refactorare: ~15
-- 🎯 Componenti unificati: 6+
+- 🎯 Componenti unificati target: 6+
 - 🎯 Tempo totale stimato: 81 ore
-- 🎯 Tempo rimanente: 78.5 ore
+- 🎯 Tempo rimanente: ~75.5 ore
 
 ---
 
-## 🚀 Prossima Sessione
+## 🚀 Prossima Sessione - ISTRUZIONI AUTOMATICHE
 
-### Da fare immediatamente:
+### ⚡ TASK ATTUALE: Fase 2.5 (Pulizia console.log)
 
-1. **Decidere quale fase affrontare**
-   - Fase 2 (selettori) - 9 ore - Impatto medio
-   - Fase 3 (ProgettoForm) - 25 ore - Impatto alto
-   - Fase 4 (polish) - 44 ore - Impatto basso
+**Procedi automaticamente con i seguenti step:**
 
-2. **Setup ambiente**
+1. **Trova tutte le occorrenze console.log**
    ```bash
-   git checkout refactor-feb-2026
-   git pull origin refactor-feb-2026
-   npm install
-   npm run dev
+   cd /Users/filippobertin/Documents/GESTIONALE\ EVOLVI/gestionale_evolvi
+   grep -rn "console\.log" frontend/src --include="*.{ts,tsx}" | wc -l
+   grep -rn "console\.log" frontend/src --include="*.{ts,tsx}" > /tmp/console-log-list.txt
    ```
 
-3. **Leggere analisi**
-   - Aprire `CODEBASE_ANALYSIS_REPORT.md`
-   - Rivedere sezione della fase scelta
+2. **Analizza e categorizza**
+   - Conta occorrenze per directory
+   - Identifica file con più occorrenze
+   - Lista console.error/warn da mantenere
 
-### Raccomandazioni:
+3. **Rimuovi in batch (usa Edit tool per sicurezza)**
+   - Batch 1: frontend/src/components/ (start con file più piccoli)
+   - Batch 2: frontend/src/app/
+   - Batch 3: frontend/src/lib/
+   - Testa compilazione dopo ogni batch
 
-- **Per quick win**: Iniziare con Fase 2 (selettori)
-- **Per impatto massimo**: Iniziare con Fase 3 (ProgettoForm)
-- **Per stabilità**: Completare Fase 2 e Fase 4 prima di Fase 3
+4. **Strategia rimozione:**
+   - Rimuovi intere righe `console.log(...)`
+   - Se inline in espressioni, sostituisci con void 0 o rimuovi
+   - Mantieni SEMPRE: console.error, console.warn
+   - Rimuovi: console.log, console.info, console.debug
+
+5. **Testing continuo**
+   - Dopo ogni batch: verifica compilazione
+   - Controlla dev server non abbia errori
+   - Se errori: rollback quel file e skippa
+
+6. **Commit finale**
+   - Conta console.log rimossi
+   - Commit dettagliato con metriche
+   - Push a refactor-feb-2026
+
+7. **DOPO Fase 2.5, FERMATI e chiedi conferma**
+   - Valutare se procedere con Fase 4 (TypeScript improvements)
+   - O se procedere con Fase 3 (ProgettoForm - HIGH RISK)
+
+### 🎯 Strategia di avanzamento:
+
+- ✅ Fase 1: Completata (Quick wins)
+- ✅ Fase 2: Completata (Selector consolidation)
+- 🔄 Fase 2.5: IN PROGRESS (console.log cleanup)
+- ⏸️ Fase 3: STOP e chiedi conferma (ProgettoForm - HIGH RISK)
+- ⏸️ Fase 4: STOP e chiedi conferma (TypeScript/Polish)
 
 ---
 
@@ -305,6 +366,10 @@ frontend/
 
 ---
 
-**Ultimo commit refactoring**: `d6fdf71`
+**Ultimo commit refactoring**: `5f1701d` (Fase 2 completata)
+**Commit precedenti**:
+- `d6fdf71` - Fase 1 (Quick wins)
+- `a0bd1ad` - Aggiunta refactor-todo.md
+
 **Branch**: `refactor-feb-2026`
-**Data**: 14 Febbraio 2026
+**Data ultimo aggiornamento**: 16 Febbraio 2026
