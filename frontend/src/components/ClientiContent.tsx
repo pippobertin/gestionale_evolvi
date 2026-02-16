@@ -41,6 +41,12 @@ interface Cliente {
   legale_rappresentante?: string
   numero_progetti?: number
   creato_da?: string
+  // Proprietà per calcolo dimensione aggregata (Raccomandazione UE 2003/361/CE)
+  ula?: number // Unità Lavorative Annuali
+  attivo_bilancio?: number // Attivo di bilancio
+  tipo_collegamento?: 'AUTONOMA' | 'COLLEGATA' | 'ASSOCIATA' // Tipo di collegamento aziendale
+  impresa_collegata_id?: string // ID dell'impresa collegata
+  percentuale_partecipazione?: number // Percentuale di partecipazione (0-100)
 }
 
 export default function ClientiContent({ onNavigate }: { onNavigate?: (page: string, params?: any) => void }) {
@@ -54,7 +60,7 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
   // Modal states
   const [showForm, setShowForm] = useState(false)
   const [showDettaglio, setShowDettaglio] = useState(false)
-  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | undefined>(undefined)
   const [selectedClienteId, setSelectedClienteId] = useState<string>('')
 
   // Bulk selection states
@@ -124,7 +130,7 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
 
   // Funzioni per gestire i modali
   const handleNuovoCliente = () => {
-    setSelectedCliente(null)
+    setSelectedCliente(undefined)
     setShowForm(true)
   }
 
@@ -149,7 +155,7 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
 
   const handleCloseForm = () => {
     setShowForm(false)
-    setSelectedCliente(null)
+    setSelectedCliente(undefined)
   }
 
   const handleCloseDettaglio = () => {
@@ -704,7 +710,7 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
 
       {/* Modali */}
       <ClienteForm
-        cliente={selectedCliente}
+        cliente={selectedCliente as any}
         isOpen={showForm}
         onClose={handleCloseForm}
         onSave={handleSaveCliente}
@@ -714,7 +720,7 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
         clienteId={selectedClienteId}
         isOpen={showDettaglio}
         onClose={handleCloseDettaglio}
-        onEdit={handleEditFromDettaglio}
+        onEdit={handleEditFromDettaglio as any}
       />
 
       <ClientiMappingCSV

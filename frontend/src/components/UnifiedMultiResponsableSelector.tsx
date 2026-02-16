@@ -124,75 +124,74 @@ export default function UnifiedMultiResponsableSelector({
     if (variant === 'inline') {
       const inlineValue = value as ResponsabileSelezionato[]
       const isCurrentlySelected = isSelected(tipo, id)
+      const inlineOnChange = onChange as InlineProps['onChange']
 
       if (isCurrentlySelected) {
         // Rimuovi dalla selezione
-        const newValue = inlineValue.filter(r => !(r.tipo === tipo && r.id === id))
-        (onChange as InlineProps['onChange'])(newValue)
+        const updatedValue: ResponsabileSelezionato[] = inlineValue.filter(r => !(r.tipo === tipo && r.id === id))
+        inlineOnChange(updatedValue)
       } else {
         // Aggiungi alla selezione
-        let responsabile: ResponsabileSelezionato
-
         if (tipo === 'tutti') {
-          responsabile = { tipo: 'tutti', id: 'tutti', nome: 'Tutti gli utenti' }
+          const resp: ResponsabileSelezionato = { tipo: 'tutti', id: 'tutti', nome: 'Tutti gli utenti' }
           // Se seleziono "tutti", rimuovi tutto il resto
-          (onChange as InlineProps['onChange'])([responsabile])
+          inlineOnChange([resp])
         } else if (tipo === 'gruppo') {
           const gruppo = gruppi.find(g => g.id === id)
           if (!gruppo) return
-          responsabile = {
+          const resp: ResponsabileSelezionato = {
             tipo: 'gruppo',
             id: gruppo.id,
             nome: gruppo.nome,
             colore: gruppo.colore_hex
           }
           // Rimuovi "tutti" se era selezionato
-          const newValue = inlineValue.filter(r => r.tipo !== 'tutti')
-          (onChange as InlineProps['onChange'])([...newValue, responsabile])
+          const filtered: ResponsabileSelezionato[] = inlineValue.filter(r => r.tipo !== 'tutti')
+          inlineOnChange([...filtered, resp])
         } else {
           const utente = utenti.find(u => u.id === id)
           if (!utente) return
-          responsabile = {
+          const resp: ResponsabileSelezionato = {
             tipo: 'utente',
             id: utente.id,
             nome: `${utente.nome} ${utente.cognome}`
           }
           // Rimuovi "tutti" se era selezionato
-          const newValue = inlineValue.filter(r => r.tipo !== 'tutti')
-          (onChange as InlineProps['onChange'])([...newValue, responsabile])
+          const filtered: ResponsabileSelezionato[] = inlineValue.filter(r => r.tipo !== 'tutti')
+          inlineOnChange([...filtered, resp])
         }
       }
     } else {
       // External variant: aggiungi solo, non toglie
       const externalValue = value as Responsabile[]
+      const externalOnChange = onChange as ExternalProps['onChange']
 
       // Controlla se già presente
       if (isSelected(tipo, id)) {
         return
       }
 
-      let responsabile: Responsabile
-
       if (tipo === 'gruppo') {
         const gruppo = gruppi.find(g => g.id === id)
         if (!gruppo) return
-        responsabile = {
+        const resp: Responsabile = {
           type: 'gruppo',
           id: gruppo.id,
           nome: gruppo.nome
         }
+        externalOnChange([...externalValue, resp])
       } else {
         const utente = utenti.find(u => u.id === id)
         if (!utente) return
-        responsabile = {
+        const resp: Responsabile = {
           type: 'utente',
           id: utente.id,
           nome: `${utente.nome} ${utente.cognome}`,
           email: utente.email
         }
+        externalOnChange([...externalValue, resp])
       }
 
-      (onChange as ExternalProps['onChange'])([...externalValue, responsabile])
       setIsOpen(false)
     }
   }
@@ -200,19 +199,21 @@ export default function UnifiedMultiResponsableSelector({
   const handleRemove = (indexOrId: number | string) => {
     if (variant === 'inline') {
       const inlineValue = value as ResponsabileSelezionato[]
+      const inlineOnChange = onChange as InlineProps['onChange']
       if (typeof indexOrId === 'string') {
         // Rimuovi per tipo+id
         const parts = indexOrId.split('-')
         const tipo = parts[0] as 'utente' | 'gruppo' | 'tutti'
         const id = parts.slice(1).join('-')
-        const newValue = inlineValue.filter(r => !(r.tipo === tipo && r.id === id))
-        (onChange as InlineProps['onChange'])(newValue)
+        const updatedValue: ResponsabileSelezionato[] = inlineValue.filter(r => !(r.tipo === tipo && r.id === id))
+        inlineOnChange(updatedValue)
       }
     } else {
       const externalValue = value as Responsabile[]
+      const externalOnChange = onChange as ExternalProps['onChange']
       if (typeof indexOrId === 'number') {
-        const newValue = externalValue.filter((_, i) => i !== indexOrId)
-        (onChange as ExternalProps['onChange'])(newValue)
+        const updatedValue: Responsabile[] = externalValue.filter((_, i) => i !== indexOrId)
+        externalOnChange(updatedValue)
       }
     }
   }
