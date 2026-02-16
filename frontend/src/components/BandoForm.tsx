@@ -22,8 +22,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useSession, signIn, signOut } from 'next-auth/react'
-import SimpleResponsableSelector from './SimpleResponsableSelector'
-import MultiResponsableSelector, { Responsabile } from './MultiResponsableSelector'
+import UnifiedMultiResponsableSelector, { Responsabile } from './UnifiedMultiResponsableSelector'
 
 interface EventoCatalogo {
   id: string
@@ -1284,7 +1283,8 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
                     Seleziona gli utenti o i gruppi che riceveranno le notifiche per tutte le scadenze di questo bando.
                   </p>
 
-                  <MultiResponsableSelector
+                  <UnifiedMultiResponsableSelector
+                    variant="external"
                     value={responsabiliScadenze}
                     onChange={setResponsabiliScadenze}
                   />

@@ -13,7 +13,7 @@ import {
   ChevronDown
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import ResponsableSelector from './ResponsableSelector'
+import UnifiedResponsableSelector from './UnifiedResponsableSelector'
 
 interface Cliente {
   id: string
@@ -585,7 +585,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Responsabile
               </label>
-              <ResponsableSelector
+              <UnifiedResponsableSelector
                 value={responsabile}
                 onChange={setResponsabile}
                 className="w-full"
