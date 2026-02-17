@@ -204,13 +204,6 @@ export default function ScadenzeContent() {
         .delete()
         .eq('scadenza_id', scadenzaDaEliminare.id)
 
-      // Elimina eventuali eventi calendario associati
-      await supabase
-        .from('scadenze_bandi_calendar_events')
-        .delete()
-        .eq('entity_id', scadenzaDaEliminare.id)
-        .eq('event_type', 'scadenza')
-
       // Elimina la scadenza
       const { error } = await supabase
         .from('scadenze_bandi_scadenze')

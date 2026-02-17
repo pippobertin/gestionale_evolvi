@@ -118,7 +118,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
           priorita: 'media'
         })
         setEntitaSelezionata('')
-        setResponsabile(null)
+        setResponsabile(undefined)
       }
   }, [scadenza])
 
@@ -196,62 +196,79 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
     }))
   }
 
+  // Prepara i dati per il calendario (usata sia da create che da update)
+  const buildCalendarData = async (scadenzaId: string, dataScadenza: ScadenzaFormData) => {
+    let clienteNome = 'N/A'
+    let progettoTitolo = 'N/A'
+    let responsabileEmail = dataScadenza.responsabile_email || 'info@blmproject.com'
+
+    if (dataScadenza.cliente_id) {
+      const cliente = clienti.find(c => c.id === dataScadenza.cliente_id)
+      if (cliente) clienteNome = cliente.denominazione
+    }
+
+    if (dataScadenza.progetto_id) {
+      const progetto = progetti.find(p => p.id === dataScadenza.progetto_id)
+      if (progetto) progettoTitolo = progetto.titolo_progetto
+    }
+
+    if (responsabile && responsabile.tipo === 'utente' && responsabile.utente_id) {
+      try {
+        const { data: utente } = await supabase
+          .from('scadenze_bandi_utenti')
+          .select('email')
+          .eq('id', responsabile.utente_id)
+          .single()
+        if (utente?.email) responsabileEmail = utente.email
+      } catch (e) {
+        console.warn('Email responsabile non trovata, uso default')
+      }
+    }
+
+    return {
+      id: scadenzaId,
+      titolo: dataScadenza.titolo,
+      descrizione: dataScadenza.note || '',
+      dataScadenza: dataScadenza.data_scadenza,
+      priorita: dataScadenza.priorita,
+      clienteNome,
+      progettoTitolo,
+      responsabileEmail,
+      note: dataScadenza.note
+    }
+  }
+
   const createCalendarEvent = async (scadenzaId: string, dataScadenza: ScadenzaFormData) => {
     try {
-      // Recupera informazioni aggiuntive per l'evento calendario
-      let clienteNome = 'N/A'
-      let progettoTitolo = 'N/A'
-      let responsabileEmail = dataScadenza.responsabile_email || 'info@blmproject.com'
-
-      // Recupera nome cliente se presente
-      if (dataScadenza.cliente_id) {
-        const cliente = clienti.find(c => c.id === dataScadenza.cliente_id)
-        if (cliente) clienteNome = cliente.denominazione
-      }
-
-      // Recupera titolo progetto se presente
-      if (dataScadenza.progetto_id) {
-        const progetto = progetti.find(p => p.id === dataScadenza.progetto_id)
-        if (progetto) progettoTitolo = progetto.titolo_progetto
-      }
-
-      // Se c'è un responsabile personalizzato, cerca la sua email
-      if (responsabile) {
-        if (responsabile.tipo === 'utente' && responsabile.utente_id) {
-          try {
-            const { data: utente } = await supabase
-              .from('scadenze_bandi_utenti')
-              .select('email')
-              .eq('id', responsabile.utente_id)
-              .single()
-
-            if (utente?.email) responsabileEmail = utente.email
-          } catch (e) {
-            console.warn('Email responsabile non trovata, uso default')
-          }
-        }
-      }
-
-      // Importa dinamicamente CalendarService
+      const calData = await buildCalendarData(scadenzaId, dataScadenza)
       const { CalendarService } = await import('@/lib/notifications/calendarService')
+      const eventId = await CalendarService.createScadenzaEvent(calData)
 
-      await CalendarService.createScadenzaEvent({
-        id: scadenzaId,
-        titolo: dataScadenza.titolo,
-        descrizione: dataScadenza.note || '',
-        dataScadenza: dataScadenza.data_scadenza,
-        priorita: dataScadenza.priorita,
-        clienteNome,
-        progettoTitolo,
-        responsabileEmail,
-        note: dataScadenza.note
-      })
-
-      console.log('✅ Evento calendario creato per scadenza:', scadenzaId)
-
+      if (eventId) {
+        console.log('✅ Evento calendario creato per scadenza:', scadenzaId)
+      } else {
+        console.warn('⚠️ Evento calendario non creato (token non disponibile o permessi mancanti)')
+      }
     } catch (error) {
       console.error('❌ Errore creazione evento calendario:', error)
       throw error
+    }
+  }
+
+  const updateCalendarEvent = async (scadenzaId: string, dataScadenza: ScadenzaFormData) => {
+    try {
+      const calData = await buildCalendarData(scadenzaId, dataScadenza)
+      const { CalendarService } = await import('@/lib/notifications/calendarService')
+      const success = await CalendarService.updateScadenzaEvent(calData)
+
+      if (success) {
+        console.log('✅ Evento calendario aggiornato per scadenza:', scadenzaId)
+      } else {
+        console.warn('⚠️ Evento calendario non aggiornato')
+      }
+    } catch (error) {
+      console.error('❌ Errore aggiornamento evento calendario:', error)
+      // Non blocchiamo il salvataggio se il calendario fallisce
     }
   }
 
@@ -291,6 +308,16 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
           .from('scadenze_bandi_responsabili_scadenze')
           .delete()
           .eq('scadenza_id', scadenzaId)
+
+        // Aggiorna evento calendario (non blocca il salvataggio se fallisce)
+        try {
+          await updateCalendarEvent(scadenzaId, dataToSave)
+        } catch (calError) {
+          console.warn('Evento calendario non aggiornato:', calError)
+          if (calError instanceof Error && calError.message.includes('insufficient_permissions_calendar')) {
+            alert('Scadenza salvata! Per abilitare gli eventi calendario, fare logout e login nuovamente per concedere i permessi del calendario a Google.')
+          }
+        }
       } else {
         // Nuova scadenza - prima crea la scadenza per ottenere l'ID
         const { data: newScadenza, error } = await supabase

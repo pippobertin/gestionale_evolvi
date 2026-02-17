@@ -76,6 +76,10 @@ export class CalendarService {
       return eventId
 
     } catch (error) {
+      // Propaga errori di permesso al chiamante (es. 403)
+      if (error instanceof Error && error.message === 'insufficient_permissions_calendar') {
+        throw error
+      }
       console.error('Errore creazione evento calendar scadenza:', error)
       return null
     }
@@ -424,35 +428,35 @@ ${scadenza.note ? `📝 Note:\\n${scadenza.note}\\n\\n` : ''}🚀 Apri Gestional
   // === GOOGLE CALENDAR API METHODS ===
 
   private static async createCalendarEvent(event: CalendarEvent): Promise<string | null> {
+    const accessToken = await this.getAccessToken()
+    if (!accessToken) {
+      // Calendar non disponibile (token assente/scaduto), continua senza eventi
+      return null
+    }
+
+    const calendarEvent = {
+      summary: event.title,
+      description: event.description,
+      start: {
+        dateTime: event.start,
+        timeZone: 'Europe/Rome'
+      },
+      end: {
+        dateTime: event.end,
+        timeZone: 'Europe/Rome'
+      },
+      reminders: {
+        useDefault: false,
+        overrides: event.reminders?.map(r => ({
+          method: r.method,
+          minutes: r.minutes
+        })) || []
+      },
+      attendees: event.attendees?.map(email => ({ email })) || [],
+      location: event.location || ''
+    }
+
     try {
-      const accessToken = await this.getAccessToken()
-      if (!accessToken) {
-        // Calendar non disponibile, continua senza eventi
-        return null
-      }
-
-      const calendarEvent = {
-        summary: event.title,
-        description: event.description,
-        start: {
-          dateTime: event.start,
-          timeZone: 'Europe/Rome'
-        },
-        end: {
-          dateTime: event.end,
-          timeZone: 'Europe/Rome'
-        },
-        reminders: {
-          useDefault: false,
-          overrides: event.reminders?.map(r => ({
-            method: r.method,
-            minutes: r.minutes
-          })) || []
-        },
-        attendees: event.attendees?.map(email => ({ email })) || [],
-        location: event.location || ''
-      }
-
       const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
         method: 'POST',
         headers: {
@@ -467,6 +471,7 @@ ${scadenza.note ? `📝 Note:\\n${scadenza.note}\\n\\n` : ''}🚀 Apri Gestional
         console.error('❌ Errore creazione evento Calendar:', response.status, errorText)
 
         if (response.status === 403) {
+          // Permessi insufficienti: propaga al chiamante per mostrare avviso all'utente
           throw new Error('insufficient_permissions_calendar')
         }
 
@@ -478,6 +483,10 @@ ${scadenza.note ? `📝 Note:\\n${scadenza.note}\\n\\n` : ''}🚀 Apri Gestional
       return createdEvent.id
 
     } catch (error) {
+      // Re-throw errori di permesso, silenzioso per altri errori di rete
+      if (error instanceof Error && error.message === 'insufficient_permissions_calendar') {
+        throw error
+      }
       console.error('❌ Errore chiamata Calendar API:', error)
       return null
     }
