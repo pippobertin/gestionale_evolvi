@@ -248,16 +248,18 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
                       <User className="w-4 h-4" />
                       <span>Profilo Utente</span>
                     </button>
-                    <button
-                      onClick={() => {
-                        onNavigate?.('settings')
-                        setShowUserMenu(false)
-                      }}
-                      className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 w-full text-left transition-colors"
-                    >
-                      <Settings className="w-4 h-4" />
-                      <span>Impostazioni</span>
-                    </button>
+                    {isAdmin() && (
+                      <button
+                        onClick={() => {
+                          onNavigate?.('settings')
+                          setShowUserMenu(false)
+                        }}
+                        className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 w-full text-left transition-colors"
+                      >
+                        <Settings className="w-4 h-4" />
+                        <span>Impostazioni</span>
+                      </button>
+                    )}
                     <hr className="my-2" />
                     <button
                       onClick={handleLogout}

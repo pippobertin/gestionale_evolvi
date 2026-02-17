@@ -17,6 +17,7 @@ import {
   PinOff,
   Mail
 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface SidebarProps {
   activeItem: string
@@ -28,18 +29,21 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isPinned, setIsPinned] = useState(true)
   const [isHovered, setIsHovered] = useState(false)
+  const { isAdmin } = useAuth()
 
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'scadenze', label: 'Scadenzario', icon: Calendar },
-    { id: 'clienti', label: 'Clienti', icon: Users },
-    { id: 'bandi', label: 'Bandi', icon: FileText },
-    { id: 'progetti', label: 'Progetti', icon: Target },
-    { id: 'email', label: 'Email', icon: Mail },
-    { id: 'consulenti', label: 'Consulenti', icon: Building },
-    { id: 'reports', label: 'Reports', icon: BarChart3 },
-    { id: 'settings', label: 'Impostazioni', icon: Settings }
+  const allMenuItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: Home, adminOnly: false },
+    { id: 'scadenze', label: 'Scadenzario', icon: Calendar, adminOnly: false },
+    { id: 'clienti', label: 'Clienti', icon: Users, adminOnly: false },
+    { id: 'bandi', label: 'Bandi', icon: FileText, adminOnly: false },
+    { id: 'progetti', label: 'Progetti', icon: Target, adminOnly: false },
+    { id: 'email', label: 'Email', icon: Mail, adminOnly: false },
+    { id: 'consulenti', label: 'Consulenti', icon: Building, adminOnly: false },
+    { id: 'reports', label: 'Reports', icon: BarChart3, adminOnly: false },
+    { id: 'settings', label: 'Impostazioni', icon: Settings, adminOnly: true }
   ]
+
+  const menuItems = allMenuItems.filter(item => !item.adminOnly || isAdmin())
 
   const shouldShowExpanded = isPinned || isHovered
   const effectiveWidth = shouldShowExpanded ? 'w-72' : 'w-16'

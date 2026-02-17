@@ -49,6 +49,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
   sidebarExpanded: boolean
   setSidebarExpanded: (expanded: boolean) => void
 }) {
+  const { isAdmin } = useAuth()
   const getPageTitle = () => {
     switch (activeItem) {
       case 'dashboard': return 'Dashboard'
@@ -107,6 +108,10 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'reports':
         return <ReportsContent />
       case 'settings':
+        if (!isAdmin()) {
+          // Protezione: non-admin non può accedere alle impostazioni
+          return <DashboardContent onNavigate={setActiveItem} />
+        }
         return <SettingsContent />
       default:
         return <DashboardContent onNavigate={setActiveItem} />
