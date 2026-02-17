@@ -26,10 +26,13 @@ export default async function handler(
       })
     }
 
+    // Session is guaranteed non-null after the check above
+    const accessToken = session!.accessToken as string
+
     // 1. Trova il Drive Condiviso "Gestionale Evolvi"
     let sharedDriveId: string
     try {
-      sharedDriveId = await findOrCreateSharedDrive(session.accessToken as string, 'Gestionale Evolvi')
+      sharedDriveId = await findOrCreateSharedDrive(accessToken, 'Gestionale Evolvi')
       console.log('📁 Drive Condiviso trovato:', sharedDriveId)
     } catch (error: any) {
       console.error('📁 Errore Drive Condiviso:', error)
@@ -43,7 +46,7 @@ export default async function handler(
     let bandoFolderId: string
     try {
       const existingBandoFolders = await listSharedDriveFiles(
-        session.accessToken as string,
+        accessToken,
         sharedDriveId,
         `name='${bandoName}' and mimeType='application/vnd.google-apps.folder'`
       )
@@ -66,7 +69,7 @@ export default async function handler(
     let bandoAllegatiFolderId: string
     try {
       const bandoAllegatifolders = await listSharedDriveFiles(
-        session.accessToken as string,
+        accessToken,
         bandoFolderId,
         `name='ALLEGATI' and mimeType='application/vnd.google-apps.folder'`
       )
@@ -90,7 +93,7 @@ export default async function handler(
     let progettiFolderId: string
     try {
       const progettifolders = await listSharedDriveFiles(
-        session.accessToken as string,
+        accessToken,
         bandoFolderId,
         `name='PROGETTI' and mimeType='application/vnd.google-apps.folder'`
       )
@@ -113,7 +116,7 @@ export default async function handler(
     let progettoFolderId: string
     try {
       const progettoFolders = await listSharedDriveFiles(
-        session.accessToken as string,
+        accessToken,
         progettiFolderId,
         `name='${progettoName}' and mimeType='application/vnd.google-apps.folder'`
       )
@@ -136,7 +139,7 @@ export default async function handler(
     let progettoAllegatiFolderId: string
     try {
       const progettoAllegatifolders = await listSharedDriveFiles(
-        session.accessToken as string,
+        accessToken,
         progettoFolderId,
         `name='ALLEGATI' and mimeType='application/vnd.google-apps.folder'`
       )
@@ -157,7 +160,7 @@ export default async function handler(
 
     // 7. Lista tutti i file nella cartella ALLEGATI del bando
     const allegatiFiles = await listSharedDriveFiles(
-      session.accessToken as string,
+      accessToken,
       bandoAllegatiFolderId,
       `mimeType != 'application/vnd.google-apps.folder'`
     )
@@ -165,7 +168,7 @@ export default async function handler(
     console.log(`📄 Trovati ${allegatiFiles.length} file da copiare nella cartella ALLEGATI del bando`)
 
     // 8. Copia ogni file nella cartella ALLEGATI del progetto
-    const drive = await createDriveClient(session.accessToken as string)
+    const drive = await createDriveClient(accessToken)
     const copiedFiles = []
 
     for (const file of allegatiFiles) {
