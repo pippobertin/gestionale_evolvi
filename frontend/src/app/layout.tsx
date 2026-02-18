@@ -7,6 +7,11 @@ import DisableNumberInputScroll from '@/components/DisableNumberInputScroll'
 export const metadata: Metadata = {
   title: 'Gestionale Evolvi',
   description: 'Sistema di gestione integrato per bandi, progetti e scadenze',
+  icons: {
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
 }
 
 export default function RootLayout({

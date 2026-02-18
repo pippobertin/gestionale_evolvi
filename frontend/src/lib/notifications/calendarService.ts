@@ -1,5 +1,9 @@
 import { supabase } from '@/lib/supabase'
 
+// ID del calendario aziendale BLM Project
+const CALENDAR_ID = 'c_84801bd792d0c8193bcd88e3cdeea8abbd02027491a283188f6fb653cf846920@group.calendar.google.com'
+const CALENDAR_ID_ENCODED = encodeURIComponent(CALENDAR_ID)
+
 export interface CalendarEvent {
   title: string
   description: string
@@ -245,7 +249,7 @@ export class CalendarService {
       }
 
       // Prima cerca per ID scadenza
-      let response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?q=${scadenzaId}`, {
+      let response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID_ENCODED}/events?q=${scadenzaId}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -267,7 +271,7 @@ export class CalendarService {
         console.log('🔍 Ricerca per titolo scadenza:', scadenzaTitolo)
 
         const encodedTitle = encodeURIComponent(scadenzaTitolo)
-        response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?q=${encodedTitle}`, {
+        response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID_ENCODED}/events?q=${encodedTitle}`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`
           }
@@ -284,7 +288,7 @@ export class CalendarService {
       if (events.length === 0) {
         console.log('🔍 Ricerca eventi Gestionale Evolvi generici...')
 
-        response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?q=Gestionale+Evolvi`, {
+        response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID_ENCODED}/events?q=Gestionale+Evolvi`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`
           }
@@ -457,7 +461,7 @@ ${scadenza.note ? `📝 Note:\\n${scadenza.note}\\n\\n` : ''}🚀 Apri Gestional
     }
 
     try {
-      const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID_ENCODED}/events`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -517,7 +521,7 @@ ${scadenza.note ? `📝 Note:\\n${scadenza.note}\\n\\n` : ''}🚀 Apri Gestional
       }
       if (updates.location) updateData.location = updates.location
 
-      const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
+      const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID_ENCODED}/events/${eventId}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -547,7 +551,7 @@ ${scadenza.note ? `📝 Note:\\n${scadenza.note}\\n\\n` : ''}🚀 Apri Gestional
         return
       }
 
-      const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
+      const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID_ENCODED}/events/${eventId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${accessToken}`
