@@ -192,7 +192,7 @@ Tel: [NUMERO_TELEFONO]
 
     return {
       success: true,
-      emailId: response.data.id
+      emailId: response.data.id ?? undefined
     }
 
   } catch (error: any) {
