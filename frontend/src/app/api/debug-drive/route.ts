@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
 
       // Test 4: Verifica contenuto Drive Condiviso
       const sharedDriveFiles = await drive.files.list({
-        driveId: gestionaleDrive.id,
+        driveId: gestionaleDrive.id ?? undefined,
         includeItemsFromAllDrives: true,
         supportsAllDrives: true,
         corpora: 'drive',
