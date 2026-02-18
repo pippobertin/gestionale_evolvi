@@ -1,11 +1,38 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedDriveClient } from '@/lib/googleAuth'
+import { google } from 'googleapis'
+import path from 'path'
+import fs from 'fs'
 
 export async function GET(req: NextRequest) {
   try {
     console.log('🔍 Debug Google Drive - Inizio verifica...')
 
-    // Test 2: Verifica accesso Google Drive
+    // Diagnostica env var e parsing service account
+    const envKeyPresent = !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY
+    let parsedEmail = null
+    let parseError = null
+    if (envKeyPresent) {
+      try {
+        const decoded = Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_KEY!, 'base64').toString('utf8')
+        const parsed = JSON.parse(decoded)
+        parsedEmail = parsed.client_email
+      } catch (e: any) {
+        parseError = e.message
+      }
+    }
+
+    if (!envKeyPresent || parseError || !parsedEmail) {
+      return Response.json({
+        success: false,
+        status: 'KEY_PARSE_ERROR',
+        envKeyPresent,
+        parsedEmail,
+        parseError
+      })
+    }
+
+    // Test accesso Google Drive
     let drive: any
     try {
       drive = await getAuthenticatedDriveClient()
