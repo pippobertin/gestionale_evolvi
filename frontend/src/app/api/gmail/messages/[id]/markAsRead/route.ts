@@ -3,10 +3,11 @@ import { getGmailClient } from '@/lib/gmail'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const messageId = params.id
+    const { id } = await params
+    const messageId = id
     const gmail = await getGmailClient()
 
     // Mark as read (remove UNREAD label)
