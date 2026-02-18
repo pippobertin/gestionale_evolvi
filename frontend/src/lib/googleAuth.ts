@@ -6,14 +6,20 @@ import fs from 'fs'
 // Funzione per ottenere token Service Account (mai scade)
 async function getServiceAccountToken(): Promise<string | null> {
   try {
-    const serviceAccountPath = path.join(process.cwd(), 'service-account-key.json')
+    let serviceAccountKey: any = null
 
-    if (!fs.existsSync(serviceAccountPath)) {
-      console.log('⚠️ Service Account key non trovato, fallback a OAuth')
-      return null
+    // Prima prova dalla variabile d'ambiente (produzione/Vercel)
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+      serviceAccountKey = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY)
+    } else {
+      // Fallback: leggi dal file (sviluppo locale)
+      const serviceAccountPath = path.join(process.cwd(), 'service-account-key.json')
+      if (!fs.existsSync(serviceAccountPath)) {
+        console.log('⚠️ Service Account key non trovato, fallback a OAuth')
+        return null
+      }
+      serviceAccountKey = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'))
     }
-
-    const serviceAccountKey = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'))
 
     const auth = new google.auth.GoogleAuth({
       credentials: serviceAccountKey,
