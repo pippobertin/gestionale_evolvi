@@ -1,15 +1,15 @@
 import { NextRequest } from 'next/server'
-import { getValidGoogleToken } from '@/lib/googleAuth'
-import { google } from 'googleapis'
+import { getAuthenticatedDriveClient } from '@/lib/googleAuth'
 
 export async function GET(req: NextRequest) {
   try {
     console.log('🔍 Debug Google Drive - Inizio verifica...')
 
-    // Test 1: Verifica token
-    const googleAccessToken = await getValidGoogleToken()
-
-    if (!googleAccessToken) {
+    // Test 2: Verifica accesso Google Drive
+    let drive: any
+    try {
+      drive = await getAuthenticatedDriveClient()
+    } catch (authError: any) {
       return Response.json({
         success: false,
         error: 'Token Google non disponibile',
@@ -17,13 +17,6 @@ export async function GET(req: NextRequest) {
         message: 'Riconfigura Google Drive nelle impostazioni'
       })
     }
-
-    console.log('✅ Token ottenuto:', googleAccessToken.substring(0, 20) + '...')
-
-    // Test 2: Verifica accesso Google Drive
-    const auth = new google.auth.OAuth2()
-    auth.setCredentials({ access_token: googleAccessToken })
-    const drive = google.drive({ version: 'v3', auth })
 
     let aboutResponse: any
     try {

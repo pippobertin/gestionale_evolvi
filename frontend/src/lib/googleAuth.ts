@@ -215,16 +215,44 @@ export async function getValidGoogleToken(): Promise<string | null> {
 
 // Funzione helper per creare un client Google Drive autenticato
 export async function getAuthenticatedDriveClient() {
-  const accessToken = await getValidGoogleToken()
+  // Usa GoogleAuth con service account direttamente (approccio corretto per produzione)
+  const serviceAccountKey = getServiceAccountKey()
+  if (serviceAccountKey) {
+    const auth = new google.auth.GoogleAuth({
+      credentials: serviceAccountKey,
+      scopes: [
+        'https://www.googleapis.com/auth/drive',
+        'https://www.googleapis.com/auth/gmail.send'
+      ]
+    })
+    return google.drive({ version: 'v3', auth })
+  }
 
+  // Fallback OAuth (sviluppo locale senza service account)
+  const accessToken = await getValidGoogleToken()
   if (!accessToken) {
     throw new Error('Token Google non disponibile - richiesta autenticazione')
   }
-
   const auth = new google.auth.OAuth2()
   auth.setCredentials({ access_token: accessToken })
-
   return google.drive({ version: 'v3', auth })
+}
+
+// Funzione helper interna per ottenere le credenziali service account
+function getServiceAccountKey(): any | null {
+  try {
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+      const decoded = Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_KEY, 'base64').toString('utf8')
+      return JSON.parse(decoded)
+    }
+    const serviceAccountPath = path.join(process.cwd(), 'service-account-key.json')
+    if (fs.existsSync(serviceAccountPath)) {
+      return JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'))
+    }
+    return null
+  } catch {
+    return null
+  }
 }
 
 // Funzione per verificare se l'utente è autenticato con Google
