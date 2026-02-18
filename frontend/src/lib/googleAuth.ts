@@ -8,9 +8,10 @@ async function getServiceAccountToken(): Promise<string | null> {
   try {
     let serviceAccountKey: any = null
 
-    // Prima prova dalla variabile d'ambiente (produzione/Vercel)
+    // Prima prova dalla variabile d'ambiente (produzione/Vercel) - base64 encoded
     if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
-      serviceAccountKey = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY)
+      const decoded = Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_KEY, 'base64').toString('utf8')
+      serviceAccountKey = JSON.parse(decoded)
     } else {
       // Fallback: leggi dal file (sviluppo locale)
       const serviceAccountPath = path.join(process.cwd(), 'service-account-key.json')
