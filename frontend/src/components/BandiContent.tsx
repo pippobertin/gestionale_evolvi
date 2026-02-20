@@ -229,19 +229,19 @@ export default function BandiContent({ initialFilter }: { initialFilter?: string
         // 0. Recupera i dati del bando per eliminazione Drive
         const { data: bandoData } = await supabase
           .from('scadenze_bandi_bandi')
-          .select('nome, drive_folder_id')
+          .select('nome')
           .eq('id', bandoId)
           .single()
 
         // Elimina cartella Google Drive se esiste
-        if (bandoData && (bandoData.drive_folder_id || bandoData.nome)) {
+        if (bandoData && bandoData.nome) {
           try {
             const driveResponse = await fetch('/api/drive/delete-bando', {
               method: 'DELETE',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                bandoName: bandoData.nome,
-                driveFolderId: bandoData.drive_folder_id
+                bandoName: bandoData.nome
+                // Nota: non passiamo driveFolderId - l'API cercherà per nome
               })
             })
 
