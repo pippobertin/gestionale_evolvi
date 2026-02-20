@@ -1149,9 +1149,12 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
       // Rimuovi il campo eventi_progetto che non esiste nel database
       delete (dataToSave as any).eventi_progetto
 
-      // Gestisci solo il campo evento_base_id se vuoto (data_base_calcolo deve rimanere)
+      // Converti stringhe vuote in null per campi opzionali
       if (dataToSave.evento_base_id === '') {
         (dataToSave as any).evento_base_id = null
+      }
+      if (dataToSave.data_base_calcolo === '') {
+        (dataToSave as any).data_base_calcolo = null
       }
 
       let projectResult: any
