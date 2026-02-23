@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getGmailClient } from '@/lib/gmail'
+import { verifyToken } from '@/lib/jwtAuth'
 
 export async function POST(request: NextRequest) {
   try {
+    // Get logged-in user ID
+    const token = request.cookies.get('auth_token')?.value
+    let userId: string | undefined = undefined
+
+    if (token) {
+      const decoded = verifyToken(token)
+      if (decoded?.userId) {
+        userId = decoded.userId
+      }
+    }
+
     const contentType = request.headers.get('content-type')
     let to: string = ''
     let cc: string = ''
@@ -48,7 +60,8 @@ export async function POST(request: NextRequest) {
       console.log('📧 Email send request (JSON):', { to, cc, bcc, subject, emailBody: emailBody?.substring(0, 100) + '...', bodyLength: emailBody?.length })
     }
 
-    const gmail = await getGmailClient()
+    // Get Gmail client with user's tokens (or system fallback)
+    const gmail = await getGmailClient(userId)
 
     let emailMessage: string
 

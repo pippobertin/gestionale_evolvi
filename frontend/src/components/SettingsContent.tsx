@@ -7,6 +7,7 @@ import GroupsManagement from './GroupsManagement'
 import NotificationSettings from './NotificationSettings'
 import SchedulerManager from './SchedulerManager'
 import GmailSetupNew from './GmailSetupNew'
+import UserGmailConnection from './UserGmailConnection'
 import {
   Settings,
   Users,
@@ -59,6 +60,12 @@ export default function SettingsContent() {
       label: 'Notifiche',
       icon: Bell,
       description: 'Configurazione notifiche email e sistema'
+    },
+    {
+      id: 'my-gmail',
+      label: 'Il Mio Gmail',
+      icon: Mail,
+      description: 'Collega il tuo account Gmail personale'
     },
     {
       id: 'scheduler',
@@ -208,6 +215,23 @@ export default function SettingsContent() {
           </div>
         )
 
+      case 'my-gmail':
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                <Mail className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Il Mio Gmail</h1>
+                <p className="text-gray-600">Collega il tuo account Gmail aziendale</p>
+              </div>
+            </div>
+
+            <UserGmailConnection />
+          </div>
+        )
+
       case 'gmail':
         return (
           <div className="space-y-6">
@@ -216,8 +240,8 @@ export default function SettingsContent() {
                 <Mail className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Gmail API</h1>
-                <p className="text-gray-600">Configurazione invio email tramite Gmail</p>
+                <h1 className="text-2xl font-bold text-gray-900">Gmail API (Sistema)</h1>
+                <p className="text-gray-600">Configurazione Gmail di sistema (fallback)</p>
               </div>
             </div>
 

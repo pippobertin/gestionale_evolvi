@@ -23,37 +23,71 @@ export function createGoogleAuthClient(redirectUri?: string) {
 
 /**
  * Retrieves Gmail client with tokens from database
- * Eliminates code duplication across 12+ API routes
+ * Supports both per-user tokens and system-wide fallback
+ *
+ * @param userId - Optional user ID to use per-user Gmail tokens
+ * @returns Configured Gmail client
  */
-export async function getGmailClient() {
+export async function getGmailClient(userId?: string) {
   // Create Supabase client
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // Fetch tokens from system settings
-  const { data: refreshTokenData, error: refreshError } = await supabase
-    .from('scadenze_bandi_system_settings')
-    .select('value')
-    .eq('key', 'gmail_refresh_token')
-    .single()
+  let refreshToken: string | null = null
+  let accessToken: string | null = null
+  let gmailEmail: string | null = null
 
-  if (refreshError || !refreshTokenData) {
-    throw new Error('Gmail refresh token not found in system settings')
+  // If userId provided, try to get user-specific tokens first
+  if (userId) {
+    const { data: userData, error: userError } = await supabase
+      .from('scadenze_bandi_utenti')
+      .select('gmail_refresh_token, gmail_access_token, gmail_email')
+      .eq('id', userId)
+      .single()
+
+    if (!userError && userData?.gmail_refresh_token) {
+      refreshToken = userData.gmail_refresh_token
+      accessToken = userData.gmail_access_token
+      gmailEmail = userData.gmail_email
+      console.log(`✅ Using Gmail tokens for user ${gmailEmail || userId}`)
+    } else {
+      console.log(`⚠️ User ${userId} has no Gmail connected, falling back to system settings`)
+    }
   }
 
-  const { data: accessTokenData } = await supabase
-    .from('scadenze_bandi_system_settings')
-    .select('value')
-    .eq('key', 'gmail_access_token')
-    .single()
+  // Fallback to system-wide tokens if user tokens not found
+  if (!refreshToken) {
+    const { data: refreshTokenData, error: refreshError } = await supabase
+      .from('scadenze_bandi_system_settings')
+      .select('value')
+      .eq('key', 'gmail_refresh_token')
+      .single()
+
+    if (refreshError || !refreshTokenData) {
+      throw new Error(userId
+        ? `User ${userId} has no Gmail connected and system Gmail is not configured`
+        : 'Gmail refresh token not found in system settings'
+      )
+    }
+
+    const { data: accessTokenData } = await supabase
+      .from('scadenze_bandi_system_settings')
+      .select('value')
+      .eq('key', 'gmail_access_token')
+      .single()
+
+    refreshToken = refreshTokenData.value
+    accessToken = accessTokenData?.value
+    console.log('✅ Using system-wide Gmail tokens')
+  }
 
   // Create OAuth2 client with tokens
   const oauth2Client = createGoogleAuthClient()
   oauth2Client.setCredentials({
-    refresh_token: refreshTokenData.value,
-    access_token: accessTokenData?.value
+    refresh_token: refreshToken,
+    access_token: accessToken || undefined
   })
 
   // Return configured Gmail client
