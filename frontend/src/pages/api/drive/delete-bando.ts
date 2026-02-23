@@ -50,10 +50,11 @@ export default async function handler(
       console.log(`🔍 Ricerca cartella bando con query: name='${bandoName}' and mimeType='application/vnd.google-apps.folder' and '${sharedDriveId}' in parents and trashed=false`)
 
       const foldersResponse = await drive.files.list({
-        q: `name='${bandoName}' and mimeType='application/vnd.google-apps.folder' and '${sharedDriveId}' in parents and trashed=false`,
         driveId: sharedDriveId,
         includeItemsFromAllDrives: true,
         supportsAllDrives: true,
+        corpora: 'drive',
+        q: `name='${bandoName}' and mimeType='application/vnd.google-apps.folder' and '${sharedDriveId}' in parents and trashed=false`,
         fields: 'files(id,name)',
         pageSize: 1
       })
