@@ -23,40 +23,54 @@ export default async function handler(
 
     // Se non abbiamo l'ID, cerchiamo la cartella per nome
     if (!folderIdToDelete && bandoName) {
+      console.log(`🔍 Ricerca cartella bando "${bandoName}"`)
+
       // 1. Trova il Drive Condiviso "Gestionale Evolvi"
       const drivesResponse = await drive.drives.list({
         pageSize: 100,
         fields: 'drives(id,name)'
       })
 
+      console.log(`📁 Drives trovati:`, drivesResponse.data.drives?.map(d => d.name))
+
       const gestionaleEvolvi = drivesResponse.data.drives?.find(d => d.name === 'Gestionale Evolvi')
 
       if (!gestionaleEvolvi?.id) {
+        console.log('❌ Drive Condiviso "Gestionale Evolvi" non trovato')
         return res.status(404).json({
           success: false,
           message: 'Drive Condiviso "Gestionale Evolvi" non trovato'
         })
       }
 
+      const sharedDriveId = gestionaleEvolvi.id
+      console.log(`✅ Drive Condiviso trovato: ${sharedDriveId}`)
+
       // 2. Trova la cartella del bando nel Drive Condiviso
+      console.log(`🔍 Ricerca cartella bando con query: name='${bandoName}' and mimeType='application/vnd.google-apps.folder' and '${sharedDriveId}' in parents and trashed=false`)
+
       const foldersResponse = await drive.files.list({
-        q: `name='${bandoName}' and mimeType='application/vnd.google-apps.folder' and '${gestionaleEvolvi.id}' in parents and trashed=false`,
-        driveId: gestionaleEvolvi.id,
+        q: `name='${bandoName}' and mimeType='application/vnd.google-apps.folder' and '${sharedDriveId}' in parents and trashed=false`,
+        driveId: sharedDriveId,
         includeItemsFromAllDrives: true,
         supportsAllDrives: true,
         fields: 'files(id,name)',
         pageSize: 1
       })
 
+      console.log(`📊 Risultati ricerca:`, foldersResponse.data.files)
+
       const bandoFolder = foldersResponse.data.files?.[0]
 
       if (!bandoFolder?.id) {
+        console.log(`❌ Cartella bando "${bandoName}" non trovata in Google Drive`)
         return res.status(404).json({
           success: false,
           message: `Cartella bando "${bandoName}" non trovata in Google Drive`
         })
       }
 
+      console.log(`🎯 Cartella bando trovata: ${bandoFolder.name} (${bandoFolder.id})`)
       folderIdToDelete = bandoFolder.id
     }
 
