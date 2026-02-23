@@ -19,12 +19,17 @@ export async function verifyJWT(request: NextRequest): Promise<JWTPayload | null
 
     const token = tokenFromCookie || tokenFromHeader
 
+    console.log('[verifyJWT] Token from cookie:', tokenFromCookie ? 'Present' : 'Missing')
+    console.log('[verifyJWT] Token from header:', tokenFromHeader ? 'Present' : 'Missing')
+
     if (!token) {
+      console.log('[verifyJWT] No token found')
       return null
     }
 
     // Verifica il token JWT
     const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload
+    console.log('[verifyJWT] JWT decoded successfully:', decoded.userId)
 
     // Verifica che l'utente esista ancora e sia attivo
     const { data: user, error } = await supabase
@@ -34,9 +39,17 @@ export async function verifyJWT(request: NextRequest): Promise<JWTPayload | null
       .eq('attivo', true)
       .single()
 
-    if (error || !user) {
+    if (error) {
+      console.error('[verifyJWT] Supabase error:', error)
       return null
     }
+
+    if (!user) {
+      console.log('[verifyJWT] User not found or inactive')
+      return null
+    }
+
+    console.log('[verifyJWT] User verified:', user.email)
 
     return {
       userId: user.id,
@@ -44,7 +57,7 @@ export async function verifyJWT(request: NextRequest): Promise<JWTPayload | null
       livello_permessi: user.livello_permessi
     }
   } catch (error) {
-    console.error('Errore verifica JWT:', error)
+    console.error('[verifyJWT] Error:', error)
     return null
   }
 }

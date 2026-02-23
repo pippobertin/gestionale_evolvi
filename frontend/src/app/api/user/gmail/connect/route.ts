@@ -8,14 +8,23 @@ import { verifyJWT } from '@/lib/jwtAuth'
  */
 export async function GET(request: NextRequest) {
   try {
+    console.log('📧 Gmail connect request received')
+    console.log('🍪 Cookies:', request.cookies.getAll().map(c => c.name))
+    console.log('🔑 Authorization header:', request.headers.get('authorization') ? 'Present' : 'Missing')
+
     // Verify user is logged in
     const decoded = await verifyJWT(request)
+    console.log('👤 Decoded JWT:', decoded)
+
     if (!decoded || !decoded.userId) {
+      console.error('❌ JWT verification failed - user not authenticated')
       return NextResponse.json(
         { error: 'Non autenticato' },
         { status: 401 }
       )
     }
+
+    console.log(`✅ User authenticated: ${decoded.userId} (${decoded.email})`)
 
     // Generate OAuth URL with state parameter to identify user
     const oauth2Client = createGoogleAuthClient(
