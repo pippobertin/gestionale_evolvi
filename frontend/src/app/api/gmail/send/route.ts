@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getGmailClient } from '@/lib/gmail'
-import { verifyToken } from '@/lib/jwtAuth'
+import { verifyJWT } from '@/lib/jwtAuth'
 
 export async function POST(request: NextRequest) {
   try {
     // Get logged-in user ID
-    const token = request.cookies.get('auth_token')?.value
-    let userId: string | undefined = undefined
-
-    if (token) {
-      const decoded = verifyToken(token)
-      if (decoded?.userId) {
-        userId = decoded.userId
-      }
-    }
+    const decoded = await verifyJWT(request)
+    const userId = decoded?.userId
 
     const contentType = request.headers.get('content-type')
     let to: string = ''

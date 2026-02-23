@@ -40,7 +40,7 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
     { id: 'email', label: 'Email', icon: Mail, adminOnly: false },
     { id: 'consulenti', label: 'Consulenti', icon: Building, adminOnly: false },
     { id: 'reports', label: 'Reports', icon: BarChart3, adminOnly: false },
-    { id: 'settings', label: 'Impostazioni', icon: Settings, adminOnly: true }
+    { id: 'settings', label: 'Impostazioni', icon: Settings, adminOnly: false }
   ]
 
   const menuItems = allMenuItems.filter(item => !item.adminOnly || isAdmin())

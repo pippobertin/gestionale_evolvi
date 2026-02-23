@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyToken } from '@/lib/jwtAuth'
+import { verifyJWT } from '@/lib/jwtAuth'
 import { createClient } from '@supabase/supabase-js'
 
 /**
@@ -9,18 +9,10 @@ import { createClient } from '@supabase/supabase-js'
 export async function GET(request: NextRequest) {
   try {
     // Verify user is logged in
-    const token = request.cookies.get('auth_token')?.value
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Non autenticato' },
-        { status: 401 }
-      )
-    }
-
-    const decoded = verifyToken(token)
+    const decoded = await verifyJWT(request)
     if (!decoded || !decoded.userId) {
       return NextResponse.json(
-        { error: 'Token non valido' },
+        { error: 'Non autenticato' },
         { status: 401 }
       )
     }
