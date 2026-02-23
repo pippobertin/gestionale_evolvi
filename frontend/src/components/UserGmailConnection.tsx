@@ -64,18 +64,24 @@ export default function UserGmailConnection() {
   const handleConnect = async () => {
     try {
       setConnecting(true)
+      console.log('🔗 Requesting Gmail connection URL...')
       const response = await fetch('/api/user/gmail/connect')
+      console.log('📡 Response status:', response.status)
+
       const data = await response.json()
+      console.log('📦 Response data:', data)
 
       if (data.success && data.authUrl) {
+        console.log('✅ Redirecting to Google OAuth:', data.authUrl)
         // Redirect to Google OAuth
         window.location.href = data.authUrl
       } else {
-        alert('Errore durante la connessione')
+        console.error('❌ No auth URL in response:', data)
+        alert(`Errore durante la connessione: ${data.error || 'Risposta non valida'}`)
       }
     } catch (error) {
-      console.error('Error connecting Gmail:', error)
-      alert('Errore durante la connessione')
+      console.error('❌ Error connecting Gmail:', error)
+      alert(`Errore durante la connessione: ${error}`)
     } finally {
       setConnecting(false)
     }
