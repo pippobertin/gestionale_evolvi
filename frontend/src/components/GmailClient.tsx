@@ -95,6 +95,11 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
   const [filteredCcEmails, setFilteredCcEmails] = useState<string[]>([])
   const [filteredBccEmails, setFilteredBccEmails] = useState<string[]>([])
 
+  // Column widths state (percentages)
+  const [sidebarWidth, setSidebarWidth] = useState(20) // 20% default
+  const [messageListWidth, setMessageListWidth] = useState(40) // 40% default
+  const [isResizing, setIsResizing] = useState<'sidebar' | 'messageList' | null>(null)
+
   // Function to handle file attachment
   const handleFileAttachment = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
@@ -518,6 +523,56 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
     }
   }, [])
 
+  // Load column widths from localStorage
+  useEffect(() => {
+    const savedSidebar = localStorage.getItem('gmail_sidebar_width')
+    const savedMessageList = localStorage.getItem('gmail_messagelist_width')
+    if (savedSidebar) setSidebarWidth(parseFloat(savedSidebar))
+    if (savedMessageList) setMessageListWidth(parseFloat(savedMessageList))
+  }, [])
+
+  // Save column widths to localStorage
+  useEffect(() => {
+    localStorage.setItem('gmail_sidebar_width', sidebarWidth.toString())
+    localStorage.setItem('gmail_messagelist_width', messageListWidth.toString())
+  }, [sidebarWidth, messageListWidth])
+
+  // Handle column resizing
+  useEffect(() => {
+    if (!isResizing) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const container = document.getElementById('gmail-main-container')
+      if (!container) return
+
+      const containerRect = container.getBoundingClientRect()
+      const mouseX = e.clientX - containerRect.left
+      const percentage = (mouseX / containerRect.width) * 100
+
+      if (isResizing === 'sidebar') {
+        // Limit sidebar between 15% and 40%
+        const newWidth = Math.max(15, Math.min(40, percentage))
+        setSidebarWidth(newWidth)
+      } else if (isResizing === 'messageList') {
+        // Limit message list between 25% and 60%
+        const newWidth = Math.max(25, Math.min(60, percentage - sidebarWidth))
+        setMessageListWidth(newWidth)
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(null)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing, sidebarWidth])
+
   const getLabelIcon = (labelId: string) => {
     switch (labelId) {
       case 'INBOX': return <Inbox className="w-4 h-4" />
@@ -548,7 +603,13 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
   console.log('✅ Gmail is open, rendering interface')
 
   return (
-    <div className="bg-white rounded-lg overflow-hidden h-full flex flex-col">
+    <div
+      className="bg-white rounded-lg overflow-hidden h-full flex flex-col"
+      style={{
+        cursor: isResizing ? 'col-resize' : 'auto',
+        userSelect: isResizing ? 'none' : 'auto'
+      }}
+    >
       {/* Gmail Header - Exact replica */}
       <div className="h-16 bg-white flex items-center px-6 border-b border-gray-200">
         <div className="flex items-center gap-6 flex-1">
@@ -609,9 +670,9 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden bg-white">
+      <div id="gmail-main-container" className="flex flex-1 overflow-hidden bg-white relative">
         {/* Sidebar - Exact Gmail replica */}
-        <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
+        <div className="bg-white border-r border-gray-200 flex flex-col" style={{ width: `${sidebarWidth}%` }}>
           <div className="pt-6 pb-4 px-6">
             <button
               onClick={() => setView('compose')}
@@ -756,8 +817,17 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
           </div>
         </div>
 
+        {/* Resizer for Sidebar */}
+        <div
+          className="w-1 bg-gray-200 hover:bg-blue-400 cursor-col-resize transition-colors relative group"
+          onMouseDown={() => setIsResizing('sidebar')}
+          style={{ cursor: isResizing === 'sidebar' ? 'col-resize' : 'auto' }}
+        >
+          <div className="absolute inset-y-0 -left-1 -right-1" />
+        </div>
+
         {/* Main Content */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex overflow-hidden" style={{ width: `${100 - sidebarWidth}%` }}>
           {view === 'compose' ? (
             /* Compose View */
             <div className="flex-1 p-6 overflow-y-auto">
@@ -1024,7 +1094,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
           ) : (
             <>
               {/* Message List - Gmail exact layout */}
-              <div className="flex-1 border-r border-gray-200 overflow-hidden flex flex-col bg-white">
+              <div className="border-r border-gray-200 overflow-hidden flex flex-col bg-white" style={{ width: `${messageListWidth}%` }}>
                 {/* Toolbar - Gmail exact replica */}
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center gap-3 bg-white">
                   <input
@@ -1228,8 +1298,17 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                 </div>
               </div>
 
+              {/* Resizer for Message List */}
+              <div
+                className="w-1 bg-gray-200 hover:bg-blue-400 cursor-col-resize transition-colors relative group"
+                onMouseDown={() => setIsResizing('messageList')}
+                style={{ cursor: isResizing === 'messageList' ? 'col-resize' : 'auto' }}
+              >
+                <div className="absolute inset-y-0 -left-1 -right-1" />
+              </div>
+
               {/* Message Detail - Gmail exact styling */}
-              <div className="flex-1 overflow-hidden flex flex-col bg-white">
+              <div className="overflow-hidden flex flex-col bg-white" style={{ width: `${100 - sidebarWidth - messageListWidth}%` }}>
                 {selectedMessage ? (
                   <>
                     {/* Message Toolbar */}
