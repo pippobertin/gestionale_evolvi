@@ -1,9 +1,14 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getGmailClient } from '@/lib/gmail'
+import { verifyJWT } from '@/lib/jwtAuth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const gmail = await getGmailClient()
+    // Get logged-in user ID
+    const decoded = await verifyJWT(request)
+    const userId = decoded?.userId
+
+    const gmail = await getGmailClient(userId)
 
     // Fetch labels
     const response = await gmail.users.labels.list({

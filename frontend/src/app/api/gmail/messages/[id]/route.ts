@@ -1,3 +1,4 @@
+import { verifyJWT } from '@/lib/jwtAuth'
 import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
 import { supabase } from '@/lib/supabase'
@@ -150,7 +151,9 @@ export async function DELETE(
     const { searchParams } = new URL(request.url)
     const permanent = searchParams.get('permanent') === 'true'
 
-    const gmail = await getGmailClient()
+    const decoded = await verifyJWT(request)
+    const userId = decoded?.userId
+    const gmail = await getGmailClient(userId)
 
     if (permanent) {
       // Permanently delete message

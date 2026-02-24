@@ -1,3 +1,4 @@
+import { verifyJWT } from '@/lib/jwtAuth'
 import { NextRequest, NextResponse } from 'next/server'
 import { getGmailClient } from '@/lib/gmail'
 
@@ -8,7 +9,9 @@ export async function POST(
   try {
     const resolvedParams = await params
     const messageId = resolvedParams.id
-    const gmail = await getGmailClient()
+    const decoded = await verifyJWT(request)
+    const userId = decoded?.userId
+    const gmail = await getGmailClient(userId)
 
     // Mark message as read by removing UNREAD label
     await gmail.users.messages.modify({

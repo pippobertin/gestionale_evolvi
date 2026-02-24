@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getGmailClient } from '@/lib/gmail'
+import { verifyJWT } from '@/lib/jwtAuth'
 
 export async function GET(request: NextRequest) {
   try {
+    // Get logged-in user ID
+    const decoded = await verifyJWT(request)
+    const userId = decoded?.userId
+
     const { searchParams } = new URL(request.url)
     const labelIds = searchParams.get('labelIds')?.split(',') || ['INBOX']
     const maxResults = parseInt(searchParams.get('maxResults') || '50')
     const pageToken = searchParams.get('pageToken')
     const query = searchParams.get('q')
 
-    const gmail = await getGmailClient()
+    // Get Gmail client with user's tokens
+    const gmail = await getGmailClient(userId)
 
     // Fetch messages list
     const messagesResponse = await gmail.users.messages.list({

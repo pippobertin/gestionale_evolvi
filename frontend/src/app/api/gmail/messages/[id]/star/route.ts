@@ -1,3 +1,4 @@
+import { verifyJWT } from '@/lib/jwtAuth'
 import { NextRequest, NextResponse } from 'next/server'
 import { getGmailClient } from '@/lib/gmail'
 
@@ -8,7 +9,9 @@ export async function POST(
   try {
     const { id } = await params
     const messageId = id
-    const gmail = await getGmailClient()
+    const decoded = await verifyJWT(request)
+    const userId = decoded?.userId
+    const gmail = await getGmailClient(userId)
 
     // Get current message to check if it's starred
     const messageResponse = await gmail.users.messages.get({
