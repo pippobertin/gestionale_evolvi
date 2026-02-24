@@ -16,13 +16,13 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/impostazioni?gmail_error=${encodeURIComponent(error)}`
+        `${process.env.NEXT_PUBLIC_APP_URL}/?gmail_error=${encodeURIComponent(error)}`
       )
     }
 
     if (!code || !state) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/impostazioni?gmail_error=missing_code_or_state`
+        `${process.env.NEXT_PUBLIC_APP_URL}/?gmail_error=missing_code_or_state`
       )
     }
 
@@ -60,21 +60,21 @@ export async function GET(request: NextRequest) {
     if (updateError) {
       console.error('Error saving Gmail tokens:', updateError)
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/impostazioni?gmail_error=save_failed`
+        `${process.env.NEXT_PUBLIC_APP_URL}/?gmail_error=save_failed`
       )
     }
 
     console.log(`✅ Gmail connected for user ${userId}: ${gmailEmail}`)
 
-    // Redirect back to settings with success message
+    // Redirect back to homepage with success message
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/impostazioni?gmail_success=true`
+      `${process.env.NEXT_PUBLIC_APP_URL}/?gmail_success=true`
     )
 
   } catch (error: any) {
     console.error('Error in Gmail callback:', error)
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/impostazioni?gmail_error=${encodeURIComponent(error.message)}`
+      `${process.env.NEXT_PUBLIC_APP_URL}/?gmail_error=${encodeURIComponent(error.message)}`
     )
   }
 }
