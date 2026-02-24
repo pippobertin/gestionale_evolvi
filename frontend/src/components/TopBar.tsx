@@ -16,6 +16,8 @@ import {
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useGoogleDriveStatus } from '@/hooks/useGoogleDriveStatus'
+import { useUnreadEmailCount } from '@/hooks/useUnreadEmailCount'
+import { useNotifications } from '@/hooks/useNotifications'
 
 interface TopBarProps {
   title: string
@@ -26,6 +28,8 @@ interface TopBarProps {
 export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarProps) {
   const { user, logout, isAdmin } = useAuth()
   const { isConnected: isGoogleDriveConnected, loading: googleDriveLoading } = useGoogleDriveStatus()
+  const { count: unreadEmailCount, loading: emailLoading } = useUnreadEmailCount()
+  const { notifications, unreadCount, loading: notificationsLoading, markAsRead } = useNotifications()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
 
@@ -35,34 +39,6 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
     setShowUserMenu(false)
   }
 
-  const notifications = [
-    {
-      id: 1,
-      title: 'Scadenza imminente',
-      message: 'BANDO TURISMO - CASALE THE GELS scade tra 2 giorni',
-      time: '2 ore fa',
-      type: 'warning',
-      unread: true
-    },
-    {
-      id: 2,
-      title: 'Nuovo progetto creato',
-      message: 'Progetto INNOVATION MANAGER avviato',
-      time: '4 ore fa',
-      type: 'success',
-      unread: true
-    },
-    {
-      id: 3,
-      title: 'Documento caricato',
-      message: 'Allegato per IMPRESE CULTURALI - TOTIP',
-      time: '1 giorno fa',
-      type: 'info',
-      unread: false
-    }
-  ]
-
-  const unreadCount = notifications.filter(n => n.unread).length
 
   return (
     <div className="gradient-primary text-white shadow-hard relative z-50">
@@ -147,9 +123,11 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
               title="Centro Email"
             >
               <Mail className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
-              <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold border-2 border-white shadow-lg">
-                5
-              </span>
+              {!emailLoading && unreadEmailCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold border-2 border-white shadow-lg">
+                  {unreadEmailCount > 99 ? '99+' : unreadEmailCount}
+                </span>
+              )}
             </button>
 
             {/* Notifications */}
@@ -176,24 +154,48 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
                     </div>
                   </div>
                   <div className="max-h-80 overflow-y-auto">
-                    {notifications.map((notification) => (
-                      <div key={notification.id} className={`p-4 border-b border-gray-50 hover:bg-gray-25 transition-colors ${notification.unread ? 'bg-blue-25' : ''}`}>
-                        <div className="flex items-start space-x-3">
-                          <div className={`w-2 h-2 rounded-full mt-2 ${
-                            notification.type === 'warning' ? 'bg-yellow-400' :
-                            notification.type === 'success' ? 'bg-green-400' : 'bg-blue-400'
-                          }`} />
-                          <div className="flex-1">
-                            <h4 className="text-gray-900 font-medium text-sm">{notification.title}</h4>
-                            <p className="text-gray-600 text-sm mt-1">{notification.message}</p>
-                            <p className="text-gray-400 text-xs mt-2">{notification.time}</p>
-                          </div>
-                          {notification.unread && (
-                            <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
-                          )}
-                        </div>
+                    {notificationsLoading ? (
+                      <div className="p-8 text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
+                        <p className="text-gray-500 text-sm mt-2">Caricamento...</p>
                       </div>
-                    ))}
+                    ) : notifications.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <Bell className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                        <p className="text-gray-500 text-sm">Nessuna notifica</p>
+                      </div>
+                    ) : (
+                      notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          className={`p-4 border-b border-gray-50 hover:bg-gray-25 transition-colors cursor-pointer ${notification.unread ? 'bg-blue-25' : ''}`}
+                          onClick={() => {
+                            if (notification.unread) {
+                              markAsRead(notification.id)
+                            }
+                            if (notification.link) {
+                              // TODO: Handle navigation to notification.link
+                              console.log('Navigate to:', notification.link)
+                            }
+                          }}
+                        >
+                          <div className="flex items-start space-x-3">
+                            <div className={`w-2 h-2 rounded-full mt-2 ${
+                              notification.type === 'warning' ? 'bg-yellow-400' :
+                              notification.type === 'success' ? 'bg-green-400' : 'bg-blue-400'
+                            }`} />
+                            <div className="flex-1">
+                              <h4 className="text-gray-900 font-medium text-sm">{notification.title}</h4>
+                              <p className="text-gray-600 text-sm mt-1">{notification.message}</p>
+                              <p className="text-gray-400 text-xs mt-2">{notification.time}</p>
+                            </div>
+                            {notification.unread && (
+                              <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                   <div className="p-3 bg-gray-50 border-t border-gray-100">
                     <button className="text-primary-600 text-sm font-medium hover:text-primary-700 transition-colors">
