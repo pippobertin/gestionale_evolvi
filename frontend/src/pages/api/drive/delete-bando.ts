@@ -46,17 +46,17 @@ export default async function handler(
       const sharedDriveId = gestionaleEvolvi.id
       console.log(`✅ Drive Condiviso trovato: ${sharedDriveId}`)
 
-      // 2. Trova la cartella del bando nel Drive Condiviso
-      console.log(`🔍 Ricerca cartella bando con query: name='${bandoName}' and mimeType='application/vnd.google-apps.folder' and '${sharedDriveId}' in parents and trashed=false`)
+      // 2. Trova la cartella del bando nel Drive Condiviso (in tutta la gerarchia)
+      console.log(`🔍 Ricerca cartella bando "${bandoName}" in tutto il Drive Condiviso`)
 
       const foldersResponse = await drive.files.list({
         driveId: sharedDriveId,
         includeItemsFromAllDrives: true,
         supportsAllDrives: true,
         corpora: 'drive',
-        q: `name='${bandoName}' and mimeType='application/vnd.google-apps.folder' and '${sharedDriveId}' in parents and trashed=false`,
-        fields: 'files(id,name)',
-        pageSize: 1
+        q: `name='${bandoName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+        fields: 'files(id,name,parents)',
+        pageSize: 10  // Aumentato per gestire eventuali duplicati
       })
 
       console.log(`📊 Risultati ricerca:`, foldersResponse.data.files)
