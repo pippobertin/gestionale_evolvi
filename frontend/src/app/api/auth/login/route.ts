@@ -99,12 +99,24 @@ export async function POST(request: NextRequest) {
     const requiresPasswordChange = utente.first_login_password_change || false
     console.log('Sending requiresPasswordChange:', requiresPasswordChange)
 
-    return NextResponse.json({
+    // Create response with cookie
+    const response = NextResponse.json({
       success: true,
       token,
       user: userData,
       requiresPasswordChange
     })
+
+    // Set auth_token as HTTP-only cookie for API routes
+    response.cookies.set('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      path: '/'
+    })
+
+    return response
 
   } catch (error) {
     console.error('Errore login:', error)
