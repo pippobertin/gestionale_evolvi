@@ -36,12 +36,76 @@ export async function POST(req: NextRequest) {
       }, { status: 404 })
     }
 
-    // 2. Trova cartella bando
+    // 2. Trova cartella "BANDI E PROGETTI"
+    let bandiProgettiFolder: string
+    try {
+      const existingBandiProgetti = await listSharedDriveFiles(
+        googleAccessToken,
+        sharedDriveId,
+        "name='BANDI E PROGETTI' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+      )
+
+      if (existingBandiProgetti.length > 0) {
+        bandiProgettiFolder = existingBandiProgetti[0].id!
+        console.log('📁 Cartella BANDI E PROGETTI trovata:', bandiProgettiFolder)
+      } else {
+        return Response.json({
+          success: false,
+          message: 'Cartella "BANDI E PROGETTI" non trovata nel Drive Condiviso'
+        }, { status: 404 })
+      }
+    } catch (error: any) {
+      console.error('📁 Errore cartella BANDI E PROGETTI:', error)
+      throw error
+    }
+
+    // 3. Cerca cartella anno (prova anno corrente e 2 anni precedenti)
+    const currentYear = new Date().getFullYear()
+    let yearFolderId: string | null = null
+    let foundYear: number | null = null
+
+    try {
+      for (let year = currentYear; year >= currentYear - 2; year--) {
+        const yearFolders = await listSharedDriveFiles(
+          googleAccessToken,
+          bandiProgettiFolder,
+          `name='${year}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+        )
+
+        if (yearFolders.length > 0) {
+          // Verifica se il bando esiste in questa cartella anno
+          const bandoInYear = await listSharedDriveFiles(
+            googleAccessToken,
+            yearFolders[0].id!,
+            `name='${bandoName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+          )
+
+          if (bandoInYear.length > 0) {
+            yearFolderId = yearFolders[0].id!
+            foundYear = year
+            console.log(`📁 Cartella anno ${year} trovata con bando:`, yearFolderId)
+            break
+          }
+        }
+      }
+
+      if (!yearFolderId) {
+        return Response.json({
+          success: false,
+          message: `Cartella anno con bando "${bandoName}" non trovata. Verifica che il bando esista.`
+        }, { status: 404 })
+      }
+    } catch (error: any) {
+      console.error('📁 Errore ricerca cartella anno:', error)
+      throw error
+    }
+
+    // 4. Trova cartella bando nella cartella anno
     let bandoFolderId: string
     try {
       const existingBandoFolders = await listSharedDriveFiles(
         googleAccessToken,
-        sharedDriveId,
+        yearFolderId,
         `name='${bandoName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
       )
 
@@ -51,7 +115,7 @@ export async function POST(req: NextRequest) {
       } else {
         return Response.json({
           success: false,
-          message: `Cartella bando "${bandoName}" non trovata. Crea prima il bando.`
+          message: `Cartella bando "${bandoName}" non trovata nella cartella anno ${foundYear}. Crea prima il bando.`
         }, { status: 404 })
       }
     } catch (error: any) {
@@ -59,7 +123,7 @@ export async function POST(req: NextRequest) {
       throw error
     }
 
-    // 3. Cerca o crea cartella "PROGETTI" dentro il bando
+    // 5. Cerca o crea cartella "PROGETTI" dentro il bando
     let progettiFolderId: string
     try {
       const existingProgettiFolders = await listSharedDriveFiles(
@@ -86,7 +150,7 @@ export async function POST(req: NextRequest) {
       throw error
     }
 
-    // 4. Cerca o crea cartella progetto dentro PROGETTI
+    // 6. Cerca o crea cartella progetto dentro PROGETTI
     let progettoFolderId: string
     try {
       const existingProgettoFolders = await listSharedDriveFiles(
@@ -113,7 +177,7 @@ export async function POST(req: NextRequest) {
       throw error
     }
 
-    // 5. Crea sottocartelle del progetto (inclusa CONTRATTI)
+    // 7. Crea sottocartelle del progetto (inclusa CONTRATTI)
     const subFolders = ['ALLEGATI', 'DOC AMM', 'CONTRATTI']
     const createdSubFolders: any = {}
 
@@ -145,7 +209,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 6. Copia allegati del bando nella cartella ALLEGATI del progetto
+    // 8. Copia allegati del bando nella cartella ALLEGATI del progetto
     const allegatiResult = await copyBandoAllegatiToProgetto(
       googleAccessToken,
       bandoName,
@@ -164,7 +228,7 @@ export async function POST(req: NextRequest) {
         progettoFolderId,
         subFolders: createdSubFolders,
         allegatiCopy: allegatiResult,
-        folderPath: `Drive Condivisi > Gestionale Evolvi > ${bandoName} > PROGETTI > ${progettoName}`
+        folderPath: `Drive Condivisi > Gestionale Evolvi > BANDI E PROGETTI > ${foundYear} > ${bandoName} > PROGETTI > ${progettoName}`
       }
     })
 
