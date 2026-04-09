@@ -263,11 +263,11 @@ export default function DocumentiAmministrativiManager({ clienteId }: DocumentiA
   })
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h4 className="text-lg font-medium text-gray-900 flex items-center">
-          <FileText className="w-5 h-5 mr-2" />
+        <h4 className="text-sm font-medium text-gray-900 flex items-center">
+          <FileText className="w-4 h-4 mr-2" />
           Documenti Amministrativi
         </h4>
         <div className="flex items-center space-x-2">
@@ -314,14 +314,14 @@ export default function DocumentiAmministrativiManager({ clienteId }: DocumentiA
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
         onDrop={handleDrop}
-        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+        className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${
           dragActive
             ? 'border-primary-500 bg-primary-50'
             : 'border-gray-300 hover:border-gray-400 bg-gray-50'
         }`}
         onClick={() => fileInputRef.current?.click()}
       >
-        <Upload className={`w-8 h-8 mx-auto mb-2 ${dragActive ? 'text-primary-500' : 'text-gray-400'}`} />
+        <Upload className={`w-6 h-6 mx-auto mb-1 ${dragActive ? 'text-primary-500' : 'text-gray-400'}`} />
         <p className="text-sm text-gray-600">
           {dragActive ? 'Rilascia il file qui' : 'Trascina un file qui o clicca per selezionare'}
         </p>
@@ -336,7 +336,7 @@ export default function DocumentiAmministrativiManager({ clienteId }: DocumentiA
       {/* Upload Form Modal */}
       {showUploadForm && (
         <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <h5 className="text-sm font-medium text-gray-900">Carica Documento</h5>
             <button
               type="button"
@@ -497,7 +497,7 @@ export default function DocumentiAmministrativiManager({ clienteId }: DocumentiA
         </div>
       ) : filteredCategories.length === 0 ? (
         <div className="text-center py-8 text-gray-500 border border-gray-200 rounded-lg">
-          <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <FileText className="w-6 h-6 mx-auto mb-1 opacity-50" />
           <p className="text-sm">Nessun documento amministrativo presente</p>
           <p className="text-xs mt-1">Trascina un file nell&apos;area sopra per caricarlo</p>
         </div>

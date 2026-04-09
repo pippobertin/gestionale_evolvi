@@ -144,7 +144,7 @@ export default function GmailSetupNew() {
 
   if (loading || driveLoading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div className="flex items-center justify-center py-8">
           <RefreshCw className="w-6 h-6 animate-spin text-gray-400" />
           <span className="ml-2 text-gray-500">Caricamento configurazione...</span>
@@ -154,10 +154,10 @@ export default function GmailSetupNew() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold flex items-center">
-          <Mail className="mr-2 h-5 w-5 text-red-500" />
+        <h3 className="text-sm font-semibold flex items-center">
+          <Mail className="mr-2 h-4 w-4 text-red-500" />
           Configurazione Gmail API
         </h3>
 
@@ -180,7 +180,7 @@ export default function GmailSetupNew() {
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
           <div className="flex items-start">
-            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
             <div className="ml-3">
               <h4 className="text-sm font-medium text-red-800">Errore</h4>
               <p className="text-sm text-red-700 mt-1">{error}</p>
@@ -193,12 +193,12 @@ export default function GmailSetupNew() {
         /* Configured State */
         <div className="space-y-4">
           <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-            <h4 className="font-medium text-green-800 mb-2 flex items-center">
+            <h4 className="font-medium text-green-800 mb-1 flex items-center">
               <CheckCircle className="w-4 h-4 mr-2" />
               Gmail Configurato Correttamente
             </h4>
             {status.email && (
-              <p className="text-green-700 text-sm mb-2">
+              <p className="text-green-700 text-sm mb-1">
                 <strong>Account:</strong> {status.email}
               </p>
             )}
@@ -229,9 +229,9 @@ export default function GmailSetupNew() {
               className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {actionLoading ? (
-                <RefreshCw className="w-5 h-5 animate-spin" />
+                <RefreshCw className="w-4 h-4 animate-spin" />
               ) : (
-                <ExternalLink className="w-5 h-5" />
+                <ExternalLink className="w-4 h-4" />
               )}
               {actionLoading ? 'Riautorizzazione...' : 'Riautorizza Gmail'}
             </button>
@@ -249,7 +249,7 @@ export default function GmailSetupNew() {
         /* Not Configured State */
         <div className="space-y-4">
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h4 className="font-medium text-blue-800 mb-2">Configurazione Richiesta</h4>
+            <h4 className="font-medium text-blue-800 mb-1">Configurazione Richiesta</h4>
             <p className="text-blue-700 text-sm mb-4">
               Per utilizzare il client Gmail integrato, è necessario autenticare l'applicazione
               con il tuo account Google Workspace.
@@ -272,9 +272,9 @@ export default function GmailSetupNew() {
               className="flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {actionLoading ? (
-                <RefreshCw className="w-5 h-5 animate-spin" />
+                <RefreshCw className="w-4 h-4 animate-spin" />
               ) : (
-                <ExternalLink className="w-5 h-5" />
+                <ExternalLink className="w-4 h-4" />
               )}
               {actionLoading ? 'Inizializzazione...' : 'Configura Gmail'}
             </button>
@@ -293,8 +293,8 @@ export default function GmailSetupNew() {
       {/* Google Drive Configuration */}
       <div className="mt-8 pt-6 border-t border-gray-200">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold flex items-center">
-            <Cloud className="mr-2 h-5 w-5 text-blue-500" />
+          <h3 className="text-sm font-semibold flex items-center">
+            <Cloud className="mr-2 h-4 w-4 text-blue-500" />
             Configurazione Google Drive API
           </h3>
 
@@ -316,12 +316,12 @@ export default function GmailSetupNew() {
         {driveStatus.connected ? (
           <div className="space-y-4">
             <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <h4 className="font-medium text-green-800 mb-2 flex items-center">
+              <h4 className="font-medium text-green-800 mb-1 flex items-center">
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Google Drive Connesso
               </h4>
               {driveStatus.serviceAccount && (
-                <p className="text-green-700 text-sm mb-2">
+                <p className="text-green-700 text-sm mb-1">
                   <strong>Service Account:</strong> {driveStatus.serviceAccount}
                 </p>
               )}
@@ -345,7 +345,7 @@ export default function GmailSetupNew() {
         ) : (
           <div className="space-y-4">
             <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
-              <h4 className="font-medium text-orange-800 mb-2">Drive Non Configurato</h4>
+              <h4 className="font-medium text-orange-800 mb-1">Drive Non Configurato</h4>
               <p className="text-orange-700 text-sm mb-4">
                 Google Drive è utilizzato per gestire automaticamente i documenti e gli allegati.
                 {driveStatus.error && (
@@ -378,7 +378,7 @@ export default function GmailSetupNew() {
 
       {/* Instructions */}
       <div className="mt-6 pt-6 border-t border-gray-200">
-        <h5 className="font-medium text-gray-900 mb-2">Informazioni</h5>
+        <h5 className="font-medium text-gray-900 mb-1">Informazioni</h5>
         <div className="text-sm text-gray-600 space-y-1">
           <p>• Il client Gmail integrato ti permetterà di gestire le email direttamente dal gestionale</p>
           <p>• Google Drive permette la gestione automatica di documenti e allegati</p>

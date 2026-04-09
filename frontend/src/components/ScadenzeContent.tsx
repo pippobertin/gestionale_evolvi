@@ -370,11 +370,11 @@ export default function ScadenzeContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <h1 className="text-3xl font-bold text-gray-900">Gestione Scadenze</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-sm font-semibold text-gray-900">Gestione Scadenze</h1>
           <button
             onClick={() => setShowContrattuali(!showContrattuali)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
@@ -407,14 +407,14 @@ export default function ScadenzeContent() {
       {!showContrattuali && <>
 
       {/* Statistiche Rapide */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-red-100 drop-shadow-sm">Urgenti</p>
-              <p className="text-2xl font-black text-white drop-shadow">{urgenti.length}</p>
+              <p className="text-lg font-black text-white drop-shadow">{urgenti.length}</p>
             </div>
-            <AlertTriangle className="w-8 h-8 text-red-200 drop-shadow" />
+            <AlertTriangle className="w-6 h-6 text-red-200 drop-shadow" />
           </div>
         </div>
 
@@ -422,9 +422,9 @@ export default function ScadenzeContent() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-white drop-shadow-sm">Imminenti</p>
-              <p className="text-2xl font-black text-white drop-shadow">{imminenti.length}</p>
+              <p className="text-lg font-black text-white drop-shadow">{imminenti.length}</p>
             </div>
-            <Clock className="w-8 h-8 text-white drop-shadow" />
+            <Clock className="w-6 h-6 text-white drop-shadow" />
           </div>
         </div>
 
@@ -432,9 +432,9 @@ export default function ScadenzeContent() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-cyan-100 drop-shadow-sm">Normali</p>
-              <p className="text-2xl font-black text-white drop-shadow">{normali.length}</p>
+              <p className="text-lg font-black text-white drop-shadow">{normali.length}</p>
             </div>
-            <Calendar className="w-8 h-8 text-cyan-200 drop-shadow" />
+            <Calendar className="w-6 h-6 text-cyan-200 drop-shadow" />
           </div>
         </div>
 
@@ -442,17 +442,17 @@ export default function ScadenzeContent() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-emerald-100 drop-shadow-sm">Completate</p>
-              <p className="text-2xl font-black text-white drop-shadow">
+              <p className="text-lg font-black text-white drop-shadow">
                 {scadenze.filter(s => s.stato === 'completata').length}
               </p>
             </div>
-            <CheckCircle className="w-8 h-8 text-emerald-200 drop-shadow" />
+            <CheckCircle className="w-6 h-6 text-emerald-200 drop-shadow" />
           </div>
         </div>
       </div>
 
       {/* Controlli Vista e Filtri */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+      <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
         {/* Toggle Vista */}
         <div className="flex bg-gray-100 rounded-lg p-1">
           <button
@@ -565,28 +565,28 @@ export default function ScadenzeContent() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Scadenza
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Cliente
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Progetto
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Bando
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Data
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Giorni Rim.
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Urgenza
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Stato
                   </th>
                 </tr>
@@ -594,15 +594,15 @@ export default function ScadenzeContent() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {scadenzeFiltrate.map((scadenza) => (
                   <tr key={scadenza.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-1.5 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {scadenza.titolo || scadenza.note}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                       {scadenza.cliente_nome || 'N/D'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                       <div>
                         <div className="font-medium">{scadenza.progetto_titolo || 'N/D'}</div>
                         <div className="text-gray-500 text-xs truncate max-w-32">
@@ -610,13 +610,13 @@ export default function ScadenzeContent() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                       {scadenza.bando_nome || 'N/D'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                       {formatDate(scadenza.data_scadenza)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-1.5 whitespace-nowrap">
                       <span className={`text-sm font-medium ${
                         scadenza.giorni_rimanenti < 0 ? 'text-red-600' :
                         scadenza.giorni_rimanenti <= 2 ? 'text-red-600' :
@@ -629,12 +629,12 @@ export default function ScadenzeContent() {
                         }
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-1.5 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(scadenza.urgenza)}`}>
                         {scadenza.urgenza}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-1.5 whitespace-nowrap">
                       <select
                         value={scadenza.stato}
                         onChange={(e) => handleStatoChange(scadenza, e.target.value)}
@@ -707,9 +707,9 @@ export default function ScadenzeContent() {
       {/* Modal Completamento Scadenza */}
       {showCompletaModal && scadenzaDaCompletare && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Completa Scadenza</h3>
+              <h3 className="text-sm font-medium text-gray-900">Completa Scadenza</h3>
               <button
                 onClick={() => setShowCompletaModal(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -762,9 +762,9 @@ export default function ScadenzeContent() {
       {/* Modal Conferma Eliminazione */}
       {showDeleteModal && scadenzaDaEliminare && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900 text-red-600">
+              <h3 className="text-sm font-medium text-gray-900 text-red-600">
                 🗑️ Elimina Scadenza
               </h3>
               <button
@@ -822,8 +822,8 @@ export default function ScadenzeContent() {
       {showDayModal && selectedDate && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-sm font-medium text-gray-900">
                 Scadenze del {new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', {
                   weekday: 'long',
                   day: 'numeric',
@@ -839,7 +839,7 @@ export default function ScadenzeContent() {
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto max-h-96">
+            <div className="p-4 overflow-y-auto max-h-96">
               {getSelectedDateScadenze().length > 0 ? (
                 <div className="space-y-4">
                   {getSelectedDateScadenze().map((scadenza) => (
@@ -906,7 +906,7 @@ export default function ScadenzeContent() {
               )}
             </div>
 
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
               <button
                 onClick={closeDayModal}
                 className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"

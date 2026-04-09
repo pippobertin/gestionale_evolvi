@@ -155,19 +155,19 @@ const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, c
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-sm font-semibold text-gray-900">
             {collegamentoInModifica ? 'Modifica Collegamento' : 'Nuovo Collegamento Aziendale'}
           </h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-full"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-4 space-y-3">
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <h4 className="text-sm font-medium text-yellow-800 mb-1">
               ⚖️ Normativa UE 2003/361/CE
@@ -178,9 +178,9 @@ const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, c
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Azienda Collegata *
               </label>
               <select
@@ -212,7 +212,7 @@ const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, c
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Tipo di Collegamento *
               </label>
               <select
@@ -227,7 +227,7 @@ const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, c
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Percentuale Partecipazione (%) *
               </label>
               <input
@@ -249,7 +249,7 @@ const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, c
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Diritti di Voto (%)
               </label>
               <input
@@ -283,7 +283,7 @@ const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, c
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Note sul Collegamento
             </label>
             <textarea
@@ -296,7 +296,7 @@ const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, c
           </div>
         </div>
 
-        <div className="flex items-center justify-between p-6 border-t bg-gray-50">
+        <div className="flex items-center justify-between p-4 border-t bg-gray-50">
           <button
             type="button"
             onClick={onClose}

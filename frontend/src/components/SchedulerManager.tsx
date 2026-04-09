@@ -170,7 +170,7 @@ export default function SchedulerManager() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div className="flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           <span className="ml-2 text-gray-600">Caricamento scheduler...</span>
@@ -180,12 +180,12 @@ export default function SchedulerManager() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Status Overview */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold flex items-center">
-            <Clock className="mr-2 h-5 w-5" />
+          <h3 className="text-sm font-semibold flex items-center">
+            <Clock className="mr-2 h-4 w-4" />
             Status Scheduler Notifiche
           </h3>
 
@@ -254,7 +254,7 @@ export default function SchedulerManager() {
 
         {/* Next Executions */}
         {status?.active && (
-          <div className="grid md:grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg">
+          <div className="grid md:grid-cols-2 gap-3 p-4 bg-blue-50 rounded-lg">
             <div>
               <p className="font-semibold text-blue-800 mb-1">🔔 Prossime notifiche scadenze:</p>
               <p className="text-blue-600 text-sm">
@@ -273,13 +273,13 @@ export default function SchedulerManager() {
 
       {/* Configuration Panel */}
       {showConfig && tempConfig && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h4 className="text-lg font-semibold mb-4 flex items-center">
-            <Settings className="mr-2 h-5 w-5" />
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <h4 className="text-sm font-semibold mb-4 flex items-center">
+            <Settings className="mr-2 h-4 w-4" />
             Configurazione Scheduler
           </h4>
 
-          <div className="space-y-6">
+          <div className="space-y-3">
             {/* Scadenze Notifications */}
             <div className="border rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">

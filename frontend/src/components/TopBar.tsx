@@ -42,12 +42,12 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
 
   return (
     <div className="gradient-primary text-white shadow-hard relative z-50">
-      <div className="px-6 py-4 flex items-center justify-between">
+      <div className="px-4 py-2.5 flex items-center justify-between">
         {/* Left side - Title and Breadcrumb */}
         <div className="flex-1">
           <div className="flex items-center space-x-4">
             <div>
-              <h1 className="text-2xl font-black text-white drop-shadow-sm">{title}</h1>
+              <h1 className="text-sm font-bold text-white drop-shadow-sm">{title}</h1>
               {breadcrumb.length > 0 && (
                 <div className="flex items-center space-x-2 text-white/90 text-sm font-medium mt-1 drop-shadow-sm">
                   {breadcrumb.map((item, index) => (
@@ -147,7 +147,7 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
               {/* Notifications Dropdown */}
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-hard border border-gray-200 overflow-hidden">
-                  <div className="p-4 border-b border-gray-100 bg-gray-50">
+                  <div className="p-3 border-b border-gray-100 bg-gray-50">
                     <div className="flex items-center justify-between">
                       <h3 className="text-gray-900 font-semibold">Notifiche</h3>
                       <span className="text-xs text-gray-500">{unreadCount} non lette</span>
@@ -229,9 +229,9 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
               {/* User Dropdown */}
               {showUserMenu && (
                 <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-hard border border-gray-200 overflow-hidden">
-                  <div className="p-4 border-b border-gray-100">
+                  <div className="p-3 border-b border-gray-100">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
                         <span className="text-teal-600 font-semibold">
                           {user?.nome?.[0]?.toUpperCase() || 'U'}
                         </span>

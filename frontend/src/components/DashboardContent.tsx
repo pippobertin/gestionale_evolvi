@@ -242,11 +242,11 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <h1 className="text-sm font-semibold text-gray-900">Dashboard</h1>
           <p className="text-gray-600">Panoramica scadenze e progetti</p>
         </div>
         <button
@@ -259,7 +259,7 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         <button
           onClick={() => onNavigate('scadenze')}
           className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 hover:from-red-600 hover:to-red-700 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
@@ -267,10 +267,10 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-red-100 drop-shadow-sm">Urgenti</p>
-              <p className="text-2xl font-black text-white drop-shadow">{stats.urgenti}</p>
+              <p className="text-lg font-black text-white drop-shadow">{stats.urgenti}</p>
               <p className="text-xs font-medium text-red-100 drop-shadow-sm">Scadute o critiche</p>
             </div>
-            <AlertTriangle className="w-8 h-8 text-red-200 drop-shadow" />
+            <AlertTriangle className="w-6 h-6 text-red-200 drop-shadow" />
           </div>
         </button>
 
@@ -281,10 +281,10 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-white drop-shadow-sm">Imminenti</p>
-              <p className="text-2xl font-black text-white drop-shadow">{stats.imminenti}</p>
+              <p className="text-lg font-black text-white drop-shadow">{stats.imminenti}</p>
               <p className="text-xs font-medium text-white drop-shadow-sm">Entro 7 giorni</p>
             </div>
-            <Clock className="w-8 h-8 text-white drop-shadow" />
+            <Clock className="w-6 h-6 text-white drop-shadow" />
           </div>
         </button>
 
@@ -295,7 +295,7 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-emerald-100 drop-shadow-sm">Completate</p>
-              <p className="text-2xl font-black text-white drop-shadow">{stats.completate}</p>
+              <p className="text-lg font-black text-white drop-shadow">{stats.completate}</p>
               <p className="text-xs font-medium text-emerald-100 drop-shadow-sm">
                 {stats.totaleScadenze > 0
                   ? `${Math.round((stats.completate / stats.totaleScadenze) * 100)}% del totale`
@@ -303,7 +303,7 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
                 }
               </p>
             </div>
-            <CheckCircle2 className="w-8 h-8 text-emerald-200 drop-shadow" />
+            <CheckCircle2 className="w-6 h-6 text-emerald-200 drop-shadow" />
           </div>
         </button>
 
@@ -314,21 +314,21 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-cyan-100 drop-shadow-sm">Totale</p>
-              <p className="text-2xl font-black text-white drop-shadow">{stats.totaleScadenze}</p>
+              <p className="text-lg font-black text-white drop-shadow">{stats.totaleScadenze}</p>
               <p className="text-xs font-medium text-cyan-100 drop-shadow-sm">Tutte le scadenze</p>
             </div>
-            <Activity className="w-8 h-8 text-cyan-200 drop-shadow" />
+            <Activity className="w-6 h-6 text-cyan-200 drop-shadow" />
           </div>
         </button>
       </div>
 
       {/* Sezione Panoramica */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {/* Scadenze più urgenti */}
         <div className="lg:col-span-2 bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
+          <div className="px-3 py-1.5 border-b border-gray-200">
+            <h2 className="text-sm font-medium text-gray-900 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-600" />
               Scadenze Prioritarie
             </h2>
             <p className="text-sm text-gray-600">Le prossime 20 scadenze da gestire</p>
@@ -339,12 +339,12 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scadenza</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progetto</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Giorni</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stato</th>
+                    <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Scadenza</th>
+                    <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
+                    <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Progetto</th>
+                    <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
+                    <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Giorni</th>
+                    <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Stato</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -355,31 +355,31 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
                       onClick={() => onNavigate('scadenze')}
                       title="Clicca per andare alle scadenze"
                     >
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-1.5">
                         <div className="text-sm font-medium text-gray-900 hover:text-blue-600">{scadenza.titolo}</div>
                       </td>
                       <td
-                        className="px-6 py-4 text-sm text-gray-900 hover:text-blue-600"
+                        className="px-3 py-1.5 text-sm text-gray-900 hover:text-blue-600"
                         onClick={(e) => { e.stopPropagation(); onNavigate('clienti'); }}
                         title="Clicca per andare ai clienti"
                       >
                         {scadenza.cliente_nome}
                       </td>
                       <td
-                        className="px-6 py-4 hover:text-blue-600"
+                        className="px-3 py-1.5 hover:text-blue-600"
                         onClick={(e) => { e.stopPropagation(); onNavigate('progetti'); }}
                         title="Clicca per andare ai progetti"
                       >
                         <div className="text-sm font-medium text-gray-900">{scadenza.progetto_titolo}</div>
                         <div className="text-xs text-gray-500">{scadenza.progetto_codice}</div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{formatDate(scadenza.data_scadenza)}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-1.5 text-sm text-gray-900">{formatDate(scadenza.data_scadenza)}</td>
+                      <td className="px-3 py-1.5">
                         <span className={`text-sm font-medium ${getUrgencyColor(scadenza.urgenza, scadenza.stato)}`}>
                           {getGiorniText(scadenza.giorni_rimanenti)}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-1.5">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           scadenza.stato === 'completata' ? 'bg-green-100 text-green-800' :
                           scadenza.stato === 'in_corso' ? 'bg-blue-100 text-blue-800' :
@@ -406,9 +406,9 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
         {/* Statistiche rapide */}
         <div className="space-y-4">
           {/* Progetti e clienti */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-              <Building className="w-5 h-5 text-gray-600" />
+          <div className="bg-white rounded-lg shadow p-4">
+            <h3 className="text-sm font-medium text-gray-900 mb-4 flex items-center gap-2">
+              <Building className="w-4 h-4 text-gray-600" />
               Panoramica
             </h3>
             <div className="space-y-3">
@@ -457,8 +457,8 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
           </div>
 
           {/* Quick actions */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Azioni rapide</h3>
+          <div className="bg-white rounded-lg shadow p-4">
+            <h3 className="text-sm font-medium text-gray-900 mb-4">Azioni rapide</h3>
             <div className="space-y-2">
               <button
                 onClick={() => onNavigate('scadenze')}
@@ -498,14 +498,14 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
 
       {/* Mini Calendario */}
       <div className="bg-white rounded-lg shadow">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-3 py-1.5 border-b border-gray-200">
           <div
             className="flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors"
             onClick={() => onNavigate('scadenze')}
             title="Clicca per andare al calendario completo"
           >
-            <Calendar className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-medium text-gray-900 hover:text-blue-600">
+            <Calendar className="w-4 h-4 text-blue-600" />
+            <h2 className="text-sm font-medium text-gray-900 hover:text-blue-600">
               Calendario Scadenze - Panoramica 3 Mesi
             </h2>
           </div>
@@ -523,8 +523,8 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
       {showDayModal && selectedDate && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-sm font-medium text-gray-900">
                 Scadenze del {new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', {
                   weekday: 'long',
                   day: 'numeric',
@@ -540,7 +540,7 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto max-h-96">
+            <div className="p-4 overflow-y-auto max-h-96">
               {getSelectedDateScadenze().length > 0 ? (
                 <div className="space-y-4">
                   {getSelectedDateScadenze().map((scadenza) => (
@@ -586,7 +586,7 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
               )}
             </div>
 
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
               <button
                 onClick={() => setShowDayModal(false)}
                 className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"

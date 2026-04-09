@@ -240,10 +240,10 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
     switch (currentTab) {
       case 'anagrafica':
         return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Denominazione *
                 </label>
                 <input
@@ -256,7 +256,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Partita IVA
                 </label>
                 <input
@@ -269,9 +269,9 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Codice Fiscale
                 </label>
                 <input
@@ -283,7 +283,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Email
                 </label>
                 <input
@@ -296,9 +296,9 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   PEC
                 </label>
                 <input
@@ -310,7 +310,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Telefono
                 </label>
                 <input
@@ -324,7 +324,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Sito Web
               </label>
               <input
@@ -340,16 +340,16 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
 
       case 'dettagli':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             {/* Indirizzo */}
-            <div className="border-b pb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <MapPin className="w-5 h-5 mr-2" />
+            <div className="border-b pb-3">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
+                <MapPin className="w-4 h-4 mr-2" />
                 Indirizzo
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Indirizzo</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Indirizzo</label>
                   <input
                     type="text"
                     value={formData.indirizzo}
@@ -359,7 +359,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">CAP</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">CAP</label>
                   <input
                     type="text"
                     value={formData.cap}
@@ -369,7 +369,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Citta</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Citta</label>
                   <input
                     type="text"
                     value={formData.citta}
@@ -379,7 +379,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Provincia</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Provincia</label>
                   <input
                     type="text"
                     value={formData.provincia}
@@ -394,13 +394,13 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
 
             {/* Dettagli Aziendali */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Building2 className="w-5 h-5 mr-2" />
+              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
+                <Building2 className="w-4 h-4 mr-2" />
                 Dettagli Aziendali
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Settore</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Settore</label>
                   <input
                     type="text"
                     value={formData.settore}
@@ -410,7 +410,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Codice ATECO 2025</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Codice ATECO 2025</label>
                   <input
                     type="text"
                     value={formData.ateco_2025}
@@ -420,7 +420,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Dimensione</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dimensione</label>
                   <select
                     value={formData.dimensione}
                     onChange={(e) => handleInputChange('dimensione', e.target.value)}
@@ -433,7 +433,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Numero Dipendenti</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Numero Dipendenti</label>
                   <input
                     type="number"
                     value={formData.numero_dipendenti}
@@ -443,7 +443,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Ultimo Fatturato</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ultimo Fatturato</label>
                   <input
                     type="number"
                     value={formData.ultimo_fatturato}
@@ -453,7 +453,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Fonte Acquisizione</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fonte Acquisizione</label>
                   <select
                     value={formData.fonte_acquisizione}
                     onChange={(e) => {
@@ -489,20 +489,20 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
 
       case 'legale':
         return (
-          <div className="space-y-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="space-y-3">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
               <div className="flex items-center">
-                <User className="w-5 h-5 text-blue-600 mr-2" />
-                <h3 className="text-lg font-semibold text-blue-900">Dati Legale Rappresentante</h3>
+                <User className="w-4 h-4 text-blue-600 mr-2" />
+                <h3 className="text-sm font-semibold text-blue-900">Dati Legale Rappresentante</h3>
               </div>
               <p className="text-blue-700 mt-2 text-sm">
                 Inserisci i dati del legale rappresentante del prospect
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
                 <input
                   type="text"
                   value={formData.legale_rappresentante_nome}
@@ -512,7 +512,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Cognome</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cognome</label>
                 <input
                   type="text"
                   value={formData.legale_rappresentante_cognome}
@@ -522,7 +522,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
                   type="email"
                   value={formData.legale_rappresentante_email}
@@ -532,7 +532,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Telefono</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
                 <input
                   type="tel"
                   value={formData.legale_rappresentante_telefono}
@@ -547,11 +547,11 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
 
       case 'profilazione':
         return (
-          <div className="space-y-6">
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+          <div className="space-y-3">
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-6">
               <div className="flex items-center">
-                <ClipboardList className="w-5 h-5 text-purple-600 mr-2" />
-                <h3 className="text-lg font-semibold text-purple-900">Scheda di Profilazione</h3>
+                <ClipboardList className="w-4 h-4 text-purple-600 mr-2" />
+                <h3 className="text-sm font-semibold text-purple-900">Scheda di Profilazione</h3>
               </div>
               <p className="text-purple-700 mt-2 text-sm">
                 Compila la scheda di profilazione per calcolare il punteggio del prospect
@@ -564,7 +564,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
               </div>
             ) : profilingTemplates.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
-                <ClipboardList className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <ClipboardList className="w-8 h-8 mx-auto mb-1 opacity-50" />
                 <p className="text-sm">Nessun template di profilazione configurato</p>
               </div>
             ) : (
@@ -580,9 +580,9 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
 
       case 'note':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Note Generali</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Note Generali</label>
               <textarea
                 value={formData.note}
                 onChange={(e) => handleInputChange('note', e.target.value)}
@@ -594,7 +594,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
 
             {prospect && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Note Valutazione</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Note Valutazione</label>
                 <textarea
                   value={formData.note_valutazione}
                   onChange={(e) => handleInputChange('note_valutazione', e.target.value)}
@@ -606,7 +606,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Assegnato a</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Assegnato a</label>
               <input
                 type="text"
                 value={formData.assegnato_a}
@@ -625,13 +625,13 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-hard max-w-7xl w-full max-h-[95vh] overflow-hidden flex flex-col border-4 border-orange-400">
+      <div className="bg-white rounded-xl shadow-hard max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col border-4 border-orange-400">
         {/* Header */}
-        <div className="gradient-primary text-white p-6 flex items-center justify-between">
+        <div className="gradient-primary text-white p-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Building2 className="w-6 h-6" />
+            <Building2 className="w-4 h-4" />
             <div>
-              <h2 className="text-xl font-bold">
+              <h2 className="text-sm font-semibold">
                 {prospect ? 'Modifica Prospect' : 'Nuovo Prospect'}
               </h2>
               <div className="flex items-center space-x-2 mt-1">
@@ -650,20 +650,20 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
             onClick={onClose}
             className="p-2 hover:bg-white/20 rounded-lg transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-gray-200 px-6">
-          <div className="flex space-x-6 overflow-x-auto min-w-full">
+        <div className="border-b border-gray-200 px-4">
+          <div className="flex space-x-3 overflow-x-auto min-w-full">
             {tabs.map((tab) => {
               const Icon = tab.icon
               return (
                 <button
                   key={tab.id}
                   onClick={() => setCurrentTab(tab.id)}
-                  className={`py-4 px-2 border-b-2 font-medium text-sm flex items-center space-x-2 transition-colors flex-shrink-0 ${
+                  className={`py-2 px-1.5 border-b-2 font-medium text-xs flex items-center space-x-2 transition-colors flex-shrink-0 ${
                     currentTab === tab.id
                       ? 'border-primary-500 text-primary-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -678,12 +678,12 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-4 overflow-y-auto flex-1">
           {renderTabContent()}
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex items-center justify-end flex-shrink-0">
+        <div className="border-t border-gray-200 px-4 py-2.5 bg-gray-50 flex items-center justify-end flex-shrink-0">
           <div className="flex items-center space-x-3">
             <button
               onClick={onClose}

@@ -155,28 +155,28 @@ export default function EvolviInvoicesContent({ clienteId }: EvolviInvoicesConte
             <Euro className="w-4 h-4 text-gray-500" />
             <span className="text-xs text-gray-500 font-medium">Totale Fatturato</span>
           </div>
-          <p className="text-lg font-semibold text-gray-900">{formatCurrency(stats.totaleFatturato)}</p>
+          <p className="text-sm font-semibold text-gray-900">{formatCurrency(stats.totaleFatturato)}</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-3">
           <div className="flex items-center space-x-2 mb-1">
             <CheckCircle className="w-4 h-4 text-green-500" />
             <span className="text-xs text-gray-500 font-medium">Incassato</span>
           </div>
-          <p className="text-lg font-semibold text-green-700">{formatCurrency(stats.incassato)}</p>
+          <p className="text-sm font-semibold text-green-700">{formatCurrency(stats.incassato)}</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-3">
           <div className="flex items-center space-x-2 mb-1">
             <Clock className="w-4 h-4 text-yellow-500" />
             <span className="text-xs text-gray-500 font-medium">Da Incassare</span>
           </div>
-          <p className="text-lg font-semibold text-yellow-700">{formatCurrency(stats.daIncassare)}</p>
+          <p className="text-sm font-semibold text-yellow-700">{formatCurrency(stats.daIncassare)}</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-3">
           <div className="flex items-center space-x-2 mb-1">
             <AlertTriangle className="w-4 h-4 text-red-500" />
             <span className="text-xs text-gray-500 font-medium">Scaduto</span>
           </div>
-          <p className="text-lg font-semibold text-red-700">{formatCurrency(stats.scaduto)}</p>
+          <p className="text-sm font-semibold text-red-700">{formatCurrency(stats.scaduto)}</p>
         </div>
       </div>
 
@@ -210,7 +210,7 @@ export default function EvolviInvoicesContent({ clienteId }: EvolviInvoicesConte
       {/* Table */}
       {filteredFatture.length === 0 ? (
         <div className="text-center py-8">
-          <FileText className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+          <FileText className="w-6 h-6 text-gray-300 mx-auto mb-1" />
           <p className="text-gray-500 text-sm">Nessuna fattura trovata</p>
         </div>
       ) : (
@@ -274,8 +274,8 @@ export default function EvolviInvoicesContent({ clienteId }: EvolviInvoicesConte
             {/* Header */}
             <div className="gradient-primary text-white p-4 flex items-center justify-between rounded-t-lg">
               <div className="flex items-center space-x-2">
-                <FileText className="w-5 h-5" />
-                <h3 className="text-lg font-semibold">
+                <FileText className="w-4 h-4" />
+                <h3 className="text-sm font-semibold">
                   Dettaglio Fattura {selectedFattura.numero_fattura || ''}
                 </h3>
               </div>
@@ -290,7 +290,7 @@ export default function EvolviInvoicesContent({ clienteId }: EvolviInvoicesConte
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-4 space-y-4">
               {/* Fattura Info */}
               <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
                 <div className="grid grid-cols-2 gap-3">

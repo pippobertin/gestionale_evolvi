@@ -129,24 +129,24 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
   }
 
   const renderStep1 = () => (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="text-center mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Tipo di Cliente</h3>
+        <h3 className="text-sm font-semibold text-gray-900">Tipo di Cliente</h3>
         <p className="text-sm text-gray-600 mt-1">Scegli la tipologia di cliente per la conversione</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* EVOLVI */}
         <button
           onClick={() => setDecisione('EVOLVI')}
-          className={`border-2 rounded-lg p-6 text-left transition-all ${
+          className={`border-2 rounded-lg p-4 text-left transition-all ${
             decisione === 'EVOLVI'
               ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-200'
               : 'border-gray-200 hover:border-gray-300 bg-white'
           }`}
         >
           <div className="flex items-center space-x-3 mb-3">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
               decisione === 'EVOLVI' ? 'bg-primary-100' : 'bg-gray-100'
             }`}>
               <Zap className={`w-5 h-5 ${decisione === 'EVOLVI' ? 'text-primary-600' : 'text-gray-500'}`} />
@@ -168,14 +168,14 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
         {/* SPOT */}
         <button
           onClick={() => setDecisione('SPOT')}
-          className={`border-2 rounded-lg p-6 text-left transition-all ${
+          className={`border-2 rounded-lg p-4 text-left transition-all ${
             decisione === 'SPOT'
               ? 'border-yellow-500 bg-yellow-50 ring-2 ring-yellow-200'
               : 'border-gray-200 hover:border-gray-300 bg-white'
           }`}
         >
           <div className="flex items-center space-x-3 mb-3">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
               decisione === 'SPOT' ? 'bg-yellow-100' : 'bg-gray-100'
             }`}>
               <FileText className={`w-5 h-5 ${decisione === 'SPOT' ? 'text-yellow-600' : 'text-gray-500'}`} />
@@ -198,9 +198,9 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
   )
 
   const renderStep2 = () => (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="text-center mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Anteprima Dati Cliente</h3>
+        <h3 className="text-sm font-semibold text-gray-900">Anteprima Dati Cliente</h3>
         <p className="text-sm text-gray-600 mt-1">Verifica i dati che verranno trasferiti al nuovo cliente</p>
       </div>
 
@@ -240,13 +240,13 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
   )
 
   const renderStep3 = () => (
-    <div className="text-center space-y-6">
+    <div className="text-center space-y-3">
       <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
         <CheckCircle className="w-8 h-8 text-green-600" />
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold text-gray-900">Conversione Completata!</h3>
+        <h3 className="text-sm font-semibold text-gray-900">Conversione Completata!</h3>
         <p className="text-sm text-gray-600 mt-2">
           Il prospect <strong>{prospect.denominazione}</strong> e stato convertito con successo in cliente.
         </p>
@@ -276,9 +276,9 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
       <div className="bg-white rounded-xl shadow-hard max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="gradient-primary text-white p-6 flex items-center justify-between">
+        <div className="gradient-primary text-white p-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <ArrowRight className="w-6 h-6" />
+            <ArrowRight className="w-4 h-4" />
             <div>
               <h2 className="text-xl font-bold">Conversione a Cliente</h2>
               <p className="text-primary-100 text-sm">{prospect.denominazione}</p>
@@ -293,7 +293,7 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
         </div>
 
         {/* Step Indicator */}
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-4 py-3 border-b border-gray-200">
           <div className="flex items-center justify-center space-x-4">
             {steps.map((step, index) => (
               <div key={step.number} className="flex items-center">
@@ -326,14 +326,14 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-4 overflow-y-auto flex-1">
           {currentStep === 1 && renderStep1()}
           {currentStep === 2 && renderStep2()}
           {currentStep === 3 && renderStep3()}
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex items-center justify-between flex-shrink-0">
+        <div className="border-t border-gray-200 px-4 py-3 bg-gray-50 flex items-center justify-between flex-shrink-0">
           <div>
             {currentStep > 1 && currentStep < 3 && (
               <button

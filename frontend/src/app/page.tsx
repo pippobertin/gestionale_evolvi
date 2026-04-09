@@ -130,7 +130,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
 
       {/* Main Content - with dynamic left margin based on sidebar state */}
       <div
-        className={`flex flex-col min-h-screen transition-all duration-300 ease-in-out ${
+        className={`flex flex-col h-screen overflow-hidden transition-all duration-300 ease-in-out ${
           sidebarExpanded ? 'ml-72' : 'ml-16'
         }`}
       >
@@ -138,7 +138,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
         <TopBar title={getPageTitle()} breadcrumb={getBreadcrumb()} onNavigate={setActiveItem} />
 
         {/* Page Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 min-h-0 p-4 overflow-auto">
           {renderContent()}
         </main>
       </div>

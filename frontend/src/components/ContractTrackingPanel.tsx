@@ -143,7 +143,7 @@ export default function ContractTrackingPanel({ entityType, entityId, clienteId 
 
   if (loading) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500 mx-auto"></div>
           <p className="text-sm text-gray-500 mt-2">Caricamento tracking...</p>
@@ -154,8 +154,8 @@ export default function ContractTrackingPanel({ entityType, entityId, clienteId 
 
   if (!tracking) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-6 text-center">
-        <FileText className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+      <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
+        <FileText className="w-6 h-6 mx-auto mb-1 text-gray-400" />
         <p className="text-sm text-gray-500">Nessun tracking disponibile per questo contratto</p>
       </div>
     )

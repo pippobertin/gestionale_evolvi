@@ -611,14 +611,14 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
       }}
     >
       {/* Gmail Header - Exact replica */}
-      <div className="h-16 bg-white flex items-center px-6 border-b border-gray-200">
-        <div className="flex items-center gap-6 flex-1">
+      <div className="h-16 bg-white flex items-center px-4 border-b border-gray-200">
+        <div className="flex items-center gap-3 flex-1">
           {/* Gmail Logo */}
           <div className="flex items-center gap-2">
             <svg width="24" height="24" viewBox="0 0 24 24" className="text-red-500 fill-current">
               <path d="M20 18h2v-8a1 1 0 0 0-1-1h-9v2h8zm-2-8V8l-8 5-8-5v2h16zm2-2a1 1 0 0 1 1 1v8h-2V9h-8V7h9zM2 12h2v-2h14v2H4v6h16v2H2z"/>
             </svg>
-            <span className="text-xl text-gray-700">Gmail</span>
+            <span className="text-sm text-gray-700">Gmail</span>
           </div>
 
           {/* Search Bar - Gmail style */}
@@ -673,10 +673,10 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
       <div id="gmail-main-container" className="flex flex-1 overflow-hidden bg-white relative">
         {/* Sidebar - Exact Gmail replica */}
         <div className="bg-white border-r border-gray-200 flex flex-col" style={{ width: `${sidebarWidth}%` }}>
-          <div className="pt-6 pb-4 px-6">
+          <div className="pt-3 pb-4 px-4">
             <button
               onClick={() => setView('compose')}
-              className="flex items-center gap-4 pl-6 pr-8 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 hover:shadow-lg transition-all font-medium text-sm min-w-0"
+              className="flex items-center gap-3 pl-6 pr-8 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 hover:shadow-lg transition-all font-medium text-sm min-w-0"
             >
               <Edit3 className="w-5 h-5 flex-shrink-0" />
               <span>Scrivi</span>
@@ -693,13 +693,13 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                   setSearchQuery('') // Reset search when changing folder
                   setShowUnreadOnly(false) // Reset filter when changing folder
                 }}
-                className={`w-full flex items-center justify-between px-6 py-2 text-sm transition-colors hover:bg-gray-100 ${
+                className={`w-full flex items-center justify-between px-4 py-2 text-sm transition-colors hover:bg-gray-100 ${
                   currentLabel === label.id
                     ? 'bg-red-100 text-red-700 font-medium border-r-4 border-red-500'
                     : 'text-gray-700'
                 }`}
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   {getLabelIcon(label.id)}
                   <span>{getLabelName(label.id)}</span>
                 </div>
@@ -738,12 +738,12 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
             {getUserLabels().length > 0 && (
               <>
                 <div className="h-px bg-gray-200 my-3 mx-6" />
-                <div className="px-6 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Etichette</div>
+                <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Etichette</div>
                 {getUserLabels().map(label => (
                   <button
                     key={label.id}
                     onClick={() => setCurrentLabel(label.id)}
-                    className={`w-full flex items-center gap-4 px-6 py-2 text-sm transition-colors hover:bg-gray-100 ${
+                    className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors hover:bg-gray-100 ${
                       currentLabel === label.id
                         ? 'bg-red-100 text-red-700 border-r-4 border-red-500'
                         : 'text-gray-700'
@@ -769,7 +769,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
 
             {showLabelManager && (
               <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                <h4 className="text-xs font-medium text-gray-700 mb-2 uppercase tracking-wider">Etichette nascoste</h4>
+                <h4 className="text-xs font-medium text-gray-700 mb-1 uppercase tracking-wider">Etichette nascoste</h4>
                 {getHiddenLabels().length === 0 ? (
                   <p className="text-xs text-gray-500">Nessuna etichetta nascosta</p>
                 ) : (
@@ -792,7 +792,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                   </div>
                 )}
 
-                <h4 className="text-xs font-medium text-gray-700 mt-3 mb-2 uppercase tracking-wider">Etichette visibili</h4>
+                <h4 className="text-xs font-medium text-gray-700 mt-3 mb-1 uppercase tracking-wider">Etichette visibili</h4>
                 <div className="space-y-1">
                   {[...getSystemLabels(), ...getUserLabels()].map(label => (
                     <div key={label.id} className="flex items-center justify-between">
@@ -830,11 +830,11 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
         <div className="flex overflow-hidden" style={{ width: `${100 - sidebarWidth}%` }}>
           {view === 'compose' ? (
             /* Compose View */
-            <div className="flex-1 p-6 overflow-y-auto">
+            <div className="flex-1 p-4 overflow-y-auto">
               <div className="max-w-4xl">
                 <div className="bg-white rounded-lg shadow-lg">
                   <div className="p-4 border-b flex items-center justify-between">
-                    <h3 className="text-lg font-medium">Nuovo messaggio</h3>
+                    <h3 className="text-sm font-medium">Nuovo messaggio</h3>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
@@ -1022,7 +1022,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                       {/* Attachments Display */}
                       {composeData.attachments.length > 0 && (
                         <div className="border-t border-gray-200 p-4">
-                          <div className="mb-2">
+                          <div className="mb-1">
                             <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
                               <Paperclip className="w-4 h-4" />
                               {composeData.attachments.length} allegat{composeData.attachments.length === 1 ? 'o' : 'i'}
@@ -1031,7 +1031,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                           <div className="space-y-2">
                             {composeData.attachments.map((file, index) => (
                               <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                                <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
+                                <div className="w-4 h-4 bg-blue-100 rounded flex items-center justify-center">
                                   <Paperclip className="w-3 h-3 text-blue-600" />
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -1061,7 +1061,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                         <button
                           onClick={sendEmail}
                           disabled={loading || !composeData.to || !composeData.subject}
-                          className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
                         >
                           <Send className="w-4 h-4" />
                           {loading ? 'Invio...' : 'Invia'}
@@ -1168,13 +1168,13 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                 <div className="flex-1 overflow-y-auto">
                   {loading ? (
                     <div className="flex items-center justify-center py-8">
-                      <RefreshCw className="w-6 h-6 animate-spin text-gray-400" />
+                      <RefreshCw className="w-4 h-4 animate-spin text-gray-400" />
                     </div>
                   ) : messages.length === 0 ? (
                     <div className="flex items-center justify-center py-12 text-center text-gray-500">
                       <div>
                         <Inbox className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                        <p className="text-lg font-medium text-gray-400 mb-1">Nessun messaggio</p>
+                        <p className="text-sm font-medium text-gray-400 mb-1">Nessun messaggio</p>
                         <p className="text-sm text-gray-400">La tua posta in arrivo è vuota</p>
                       </div>
                     </div>
@@ -1312,7 +1312,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                 {selectedMessage ? (
                   <>
                     {/* Message Toolbar */}
-                    <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-white">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => {
@@ -1355,8 +1355,8 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                     </div>
 
                     {/* Message Header */}
-                    <div className="px-6 pt-6 pb-4">
-                      <h1 className="text-xl font-normal text-gray-900 mb-4 leading-tight">
+                    <div className="px-4 pt-3 pb-4">
+                      <h1 className="text-sm font-normal text-gray-900 mb-4 leading-tight">
                         {getHeader(selectedMessage, 'subject') || '(Nessun oggetto)'}
                       </h1>
 
@@ -1424,7 +1424,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                     </div>
 
                     {/* Message Body - Gmail styling */}
-                    <div className="flex-1 overflow-y-auto px-6">
+                    <div className="flex-1 overflow-y-auto px-4">
                       <div className="py-4">
                         {/* Body Content */}
                         <div className="mb-6">
@@ -1453,7 +1453,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
 
                         {/* Attachments - Gmail style */}
                         {selectedMessage.attachments && selectedMessage.attachments.length > 0 && (
-                          <div className="border-t border-gray-200 pt-6">
+                          <div className="border-t border-gray-200 pt-3">
                             <div className="mb-4">
                               <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                 <Paperclip className="w-4 h-4" />
@@ -1484,7 +1484,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                         )}
 
                         {/* Reply Section */}
-                        <div className="border-t border-gray-200 pt-6 mt-8">
+                        <div className="border-t border-gray-200 pt-3 mt-8">
                           <div className="flex items-center gap-3">
                             <button
                               onClick={() => {
@@ -1520,7 +1520,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                       <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Mail className="w-12 h-12 text-gray-400" />
                       </div>
-                      <p className="text-lg font-normal text-gray-500 mb-2">Seleziona una conversazione</p>
+                      <p className="text-sm font-normal text-gray-500 mb-1">Seleziona una conversazione</p>
                       <p className="text-sm text-gray-400">per leggere i messaggi</p>
                     </div>
                   </div>

@@ -146,9 +146,9 @@ export default function EvolviDashboardBilling() {
 
   if (loading) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-5 h-5 animate-spin text-primary-500" />
+          <Loader2 className="w-4 h-4 animate-spin text-primary-500" />
           <span className="ml-2 text-sm text-gray-500">Caricamento...</span>
         </div>
       </div>
@@ -157,7 +157,7 @@ export default function EvolviDashboardBilling() {
 
   if (error) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
         <div className="bg-red-50 border border-red-200 rounded p-3">
           <p className="text-sm text-red-700">{error}</p>
         </div>
@@ -178,24 +178,24 @@ export default function EvolviDashboardBilling() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4">
         <div className="text-center p-3 rounded-lg bg-gray-50">
-          <Euro className="w-5 h-5 text-gray-500 mx-auto mb-1" />
+          <Euro className="w-4 h-4 text-gray-500 mx-auto mb-1" />
           <p className="text-xs text-gray-500 font-medium">Totale Fatturato</p>
           <p className="text-base font-bold text-gray-900">{formatCurrency(stats.totaleFatturato)}</p>
         </div>
         <div className="text-center p-3 rounded-lg bg-green-50">
-          <CheckCircle className="w-5 h-5 text-green-500 mx-auto mb-1" />
+          <CheckCircle className="w-4 h-4 text-green-500 mx-auto mb-1" />
           <p className="text-xs text-gray-500 font-medium">Incassato</p>
           <p className="text-base font-bold text-green-700">{formatCurrency(stats.incassato)}</p>
           <p className="text-xs text-gray-400">{stats.countPaid} fatture</p>
         </div>
         <div className="text-center p-3 rounded-lg bg-yellow-50">
-          <Clock className="w-5 h-5 text-yellow-500 mx-auto mb-1" />
+          <Clock className="w-4 h-4 text-yellow-500 mx-auto mb-1" />
           <p className="text-xs text-gray-500 font-medium">Da Incassare</p>
           <p className="text-base font-bold text-yellow-700">{formatCurrency(stats.daIncassare)}</p>
           <p className="text-xs text-gray-400">{stats.countPending} fatture</p>
         </div>
         <div className="text-center p-3 rounded-lg bg-red-50">
-          <AlertTriangle className="w-5 h-5 text-red-500 mx-auto mb-1" />
+          <AlertTriangle className="w-4 h-4 text-red-500 mx-auto mb-1" />
           <p className="text-xs text-gray-500 font-medium">Scaduto</p>
           <p className="text-base font-bold text-red-700">{formatCurrency(stats.scaduto)}</p>
           <p className="text-xs text-gray-400">{stats.countOverdue} fatture</p>

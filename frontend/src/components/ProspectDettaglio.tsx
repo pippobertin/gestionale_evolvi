@@ -265,38 +265,38 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
     switch (currentTab) {
       case 'anagrafica':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             {/* Dati Principali */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Denominazione</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Denominazione</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {prospect.denominazione || '-'}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Numero Prospect</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Numero Prospect</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {prospect.numero_prospect || '-'}
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Partita IVA</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Partita IVA</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {prospect.partita_iva || '-'}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Codice Fiscale</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Codice Fiscale</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {prospect.codice_fiscale || '-'}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Settore</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Settore</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {prospect.settore || '-'}
                 </div>
@@ -304,32 +304,32 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
             </div>
 
             {/* Contatti */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Mail className="w-5 h-5 mr-2" />
+            <div className="border-t pt-3">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
+                <Mail className="w-4 h-4 mr-2" />
                 Contatti
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {prospect.email || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">PEC</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">PEC</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {prospect.pec || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Telefono</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {prospect.telefono || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Sito Web</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sito Web</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {prospect.sito_web || '-'}
                   </div>
@@ -338,32 +338,32 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
             </div>
 
             {/* Indirizzo */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <MapPin className="w-5 h-5 mr-2" />
+            <div className="border-t pt-3">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
+                <MapPin className="w-4 h-4 mr-2" />
                 Indirizzo
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Indirizzo</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Indirizzo</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {prospect.indirizzo || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">CAP</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">CAP</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {prospect.cap || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Citta</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Citta</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {prospect.citta || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Provincia</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Provincia</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {prospect.provincia || '-'}
                   </div>
@@ -372,26 +372,26 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
             </div>
 
             {/* Dettagli Aziendali */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Building2 className="w-5 h-5 mr-2" />
+            <div className="border-t pt-3">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
+                <Building2 className="w-4 h-4 mr-2" />
                 Dettagli Aziendali
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Dimensione</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dimensione</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {prospect.dimensione || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Numero Dipendenti</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Numero Dipendenti</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {prospect.numero_dipendenti ?? '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Ultimo Fatturato</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ultimo Fatturato</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {formatCurrency(prospect.ultimo_fatturato)}
                   </div>
@@ -401,32 +401,32 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
 
             {/* Legale Rappresentante */}
             {(prospect.legale_rappresentante_nome || prospect.legale_rappresentante_cognome) && (
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <User className="w-5 h-5 mr-2" />
+              <div className="border-t pt-3">
+                <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
+                  <User className="w-4 h-4 mr-2" />
                   Legale Rappresentante
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
                     <div className="input bg-gray-50 cursor-not-allowed">
                       {prospect.legale_rappresentante_nome || '-'}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Cognome</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cognome</label>
                     <div className="input bg-gray-50 cursor-not-allowed">
                       {prospect.legale_rappresentante_cognome || '-'}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                     <div className="input bg-gray-50 cursor-not-allowed">
                       {prospect.legale_rappresentante_email || '-'}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Telefono</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
                     <div className="input bg-gray-50 cursor-not-allowed">
                       {prospect.legale_rappresentante_telefono || '-'}
                     </div>
@@ -436,14 +436,14 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
             )}
 
             {/* Info Gestione */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <FileText className="w-5 h-5 mr-2" />
+            <div className="border-t pt-3">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
+                <FileText className="w-4 h-4 mr-2" />
                 Gestione
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Fonte Acquisizione</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fonte Acquisizione</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {FONTI_ACQUISIZIONE.find(f => f.value === prospect.fonte_acquisizione)?.label || prospect.fonte_acquisizione || '-'}
                     {prospect.fonte_dettaglio && (
@@ -452,20 +452,20 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Assegnato a</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Assegnato a</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {prospect.assegnato_a || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Note</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Note</label>
                   <div className="input bg-gray-50 cursor-not-allowed min-h-[80px]">
                     {prospect.note || '-'}
                   </div>
                 </div>
                 {prospect.note_valutazione && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Note Valutazione</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Note Valutazione</label>
                     <div className="input bg-gray-50 cursor-not-allowed min-h-[80px]">
                       {prospect.note_valutazione || '-'}
                     </div>
@@ -478,16 +478,16 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
 
       case 'profilazione':
         return (
-          <div className="space-y-6">
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <div className="space-y-3">
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <ClipboardList className="w-5 h-5 text-purple-600 mr-2" />
-                  <h3 className="text-lg font-semibold text-purple-900">Risultati Profilazione</h3>
+                  <ClipboardList className="w-4 h-4 text-purple-600 mr-2" />
+                  <h3 className="text-sm font-semibold text-purple-900">Risultati Profilazione</h3>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Star className="w-5 h-5 text-yellow-400" />
-                  <span className="text-xl font-bold text-purple-900">
+                  <Star className="w-4 h-4 text-yellow-400" />
+                  <span className="text-lg font-bold text-purple-900">
                     {prospect.profiling_score ?? 0}
                   </span>
                   <span className="text-sm text-purple-700">punti</span>
@@ -498,7 +498,7 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
             {prospect.profiling_data && Object.keys(prospect.profiling_data).length > 0 ? (
               <div className="space-y-4">
                 {Object.entries(prospect.profiling_data).map(([key, value]) => (
-                  <div key={key} className="border rounded-lg p-4">
+                  <div key={key} className="border rounded-lg p-3">
                     <div className="flex items-center justify-between">
                       <div>
                         <label className="block text-sm font-medium text-gray-700">{key}</label>
@@ -514,7 +514,7 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
               </div>
             ) : (
               <div className="text-center py-12 text-gray-500">
-                <ClipboardList className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <ClipboardList className="w-8 h-8 mx-auto mb-1 opacity-50" />
                 <p className="text-sm">Nessun dato di profilazione disponibile</p>
                 <p className="text-xs mt-1">Modifica il prospect per compilare la scheda di profilazione</p>
               </div>
@@ -524,15 +524,15 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
 
       case 'timeline':
         return (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <Clock className="w-5 h-5 mr-2" />
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center">
+              <Clock className="w-4 h-4 mr-2" />
               Storico Cambiamenti
             </h3>
 
             {history.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
-                <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <Clock className="w-8 h-8 mx-auto mb-1 opacity-50" />
                 <p className="text-sm">Nessun evento nello storico</p>
               </div>
             ) : (
@@ -540,21 +540,21 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
                 {/* Vertical line */}
                 <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
 
-                <div className="space-y-6">
+                <div className="space-y-3">
                   {history.map((entry, index) => (
                     <div key={entry.id} className="relative flex items-start space-x-4">
                       {/* Dot */}
                       <div className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
                         index === 0 ? 'bg-primary-100' : 'bg-gray-100'
                       }`}>
-                        <ArrowRight className={`w-5 h-5 ${
+                        <ArrowRight className={`w-4 h-4 ${
                           index === 0 ? 'text-primary-600' : 'text-gray-400'
                         }`} />
                       </div>
 
                       {/* Content */}
-                      <div className="flex-1 bg-white border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
+                      <div className="flex-1 bg-white border rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center space-x-2">
                             {entry.stato_precedente && (
                               <>
@@ -589,14 +589,14 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
 
       case 'azioni':
         return (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <Zap className="w-5 h-5 mr-2" />
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center">
+              <Zap className="w-4 h-4 mr-2" />
               Azioni Disponibili
             </h3>
 
             {/* Info stato corrente */}
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
               <div className="flex items-center space-x-3">
                 <span className="text-sm text-gray-600">Stato corrente:</span>
                 <span className={`badge ${getStatoBadge(prospect.stato)}`}>
@@ -607,8 +607,8 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
 
             {/* Azioni condizionali per stato */}
             {prospect.stato === 'nuovo' && (
-              <div className="border rounded-lg p-6">
-                <h4 className="font-medium text-gray-900 mb-2">Avvia Valutazione</h4>
+              <div className="border rounded-lg p-3">
+                <h4 className="font-medium text-gray-900 mb-1">Avvia Valutazione</h4>
                 <p className="text-sm text-gray-600 mb-4">
                   Avvia il processo di valutazione per questo prospect. Verra spostato nello stato "In Valutazione".
                 </p>
@@ -628,8 +628,8 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
             )}
 
             {prospect.stato === 'in_valutazione' && (
-              <div className="border rounded-lg p-6">
-                <h4 className="font-medium text-gray-900 mb-2">Completa Valutazione</h4>
+              <div className="border rounded-lg p-3">
+                <h4 className="font-medium text-gray-900 mb-1">Completa Valutazione</h4>
                 <p className="text-sm text-gray-600 mb-4">
                   Segna la valutazione come completata. Il prospect passera allo stato "Valutato" e sara pronto per l'approvazione.
                 </p>
@@ -650,8 +650,8 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
 
             {prospect.stato === 'valutato' && (
               <div className="space-y-4">
-                <div className="border border-green-200 rounded-lg p-6 bg-green-50">
-                  <h4 className="font-medium text-green-900 mb-2">Approva Prospect</h4>
+                <div className="border border-green-200 rounded-lg p-3 bg-green-50">
+                  <h4 className="font-medium text-green-900 mb-1">Approva Prospect</h4>
                   <p className="text-sm text-green-700 mb-4">
                     Approva il prospect. Sara possibile poi convertirlo in cliente.
                   </p>
@@ -665,8 +665,8 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
                   </button>
                 </div>
 
-                <div className="border border-red-200 rounded-lg p-6 bg-red-50">
-                  <h4 className="font-medium text-red-900 mb-2">Rifiuta Prospect</h4>
+                <div className="border border-red-200 rounded-lg p-3 bg-red-50">
+                  <h4 className="font-medium text-red-900 mb-1">Rifiuta Prospect</h4>
                   <p className="text-sm text-red-700 mb-4">
                     Rifiuta il prospect con una motivazione.
                   </p>
@@ -683,8 +683,8 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
             )}
 
             {prospect.stato === 'approvato' && (
-              <div className="border border-emerald-200 rounded-lg p-6 bg-emerald-50">
-                <h4 className="font-medium text-emerald-900 mb-2">Converti a Cliente</h4>
+              <div className="border border-emerald-200 rounded-lg p-3 bg-emerald-50">
+                <h4 className="font-medium text-emerald-900 mb-1">Converti a Cliente</h4>
                 <p className="text-sm text-emerald-700 mb-4">
                   Avvia il processo di conversione del prospect in cliente. I dati verranno mappati automaticamente.
                 </p>
@@ -700,9 +700,9 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
             )}
 
             {prospect.stato === 'convertito' && (
-              <div className="border border-emerald-200 rounded-lg p-6 bg-emerald-50">
-                <div className="flex items-center space-x-2 mb-2">
-                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+              <div className="border border-emerald-200 rounded-lg p-3 bg-emerald-50">
+                <div className="flex items-center space-x-2 mb-1">
+                  <CheckCircle className="w-4 h-4 text-emerald-600" />
                   <h4 className="font-medium text-emerald-900">Prospect Convertito</h4>
                 </div>
                 <p className="text-sm text-emerald-700 mb-4">
@@ -725,9 +725,9 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
             )}
 
             {prospect.stato === 'rifiutato' && (
-              <div className="border border-red-200 rounded-lg p-6 bg-red-50">
-                <div className="flex items-center space-x-2 mb-2">
-                  <XCircle className="w-5 h-5 text-red-600" />
+              <div className="border border-red-200 rounded-lg p-3 bg-red-50">
+                <div className="flex items-center space-x-2 mb-1">
+                  <XCircle className="w-4 h-4 text-red-600" />
                   <h4 className="font-medium text-red-900">Prospect Rifiutato</h4>
                 </div>
                 {prospect.motivo_rifiuto && (
@@ -745,7 +745,7 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
 
             {/* Elimina Prospect - sempre visibile (tranne se convertito) */}
             {prospect.stato !== 'convertito' && (
-              <div className="border-t border-gray-200 pt-6 mt-6">
+              <div className="border-t border-gray-200 pt-3 mt-6">
                 {!showDeleteConfirm ? (
                   <button
                     onClick={() => setShowDeleteConfirm(true)}
@@ -755,7 +755,7 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
                     <span>Elimina prospect</span>
                   </button>
                 ) : (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                     <p className="text-sm text-red-800 font-medium mb-3">
                       Eliminare definitivamente questo prospect?
                     </p>
@@ -794,13 +794,13 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-hard max-w-7xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+        <div className="bg-white rounded-xl shadow-hard max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="gradient-primary text-white p-6 flex items-center justify-between">
+          <div className="gradient-primary text-white p-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Building2 className="w-6 h-6" />
+              <Building2 className="w-4 h-4" />
               <div>
-                <h2 className="text-xl font-bold">{prospect.denominazione}</h2>
+                <h2 className="text-sm font-semibold">{prospect.denominazione}</h2>
                 <div className="flex items-center space-x-2 mt-1">
                   <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatoBadge(prospect.stato)}`}>
                     {getStatoLabel(prospect.stato)}
@@ -817,27 +817,27 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
                 className="p-2 hover:bg-white/20 rounded-lg transition-colors"
                 title="Modifica prospect"
               >
-                <Edit className="w-5 h-5" />
+                <Edit className="w-4 h-4" />
               </button>
               <button
                 onClick={onClose}
                 className="p-2 hover:bg-white/20 rounded-lg transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="border-b border-gray-200 px-6">
-            <div className="flex space-x-6 overflow-x-auto min-w-full">
+          <div className="border-b border-gray-200 px-4">
+            <div className="flex space-x-3 overflow-x-auto min-w-full">
               {tabs.map((tab) => {
                 const Icon = tab.icon
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setCurrentTab(tab.id)}
-                    className={`py-4 px-2 border-b-2 font-medium text-sm flex items-center space-x-2 transition-colors flex-shrink-0 ${
+                    className={`py-2 px-1.5 border-b-2 font-medium text-xs flex items-center space-x-2 transition-colors flex-shrink-0 ${
                       currentTab === tab.id
                         ? 'border-primary-500 text-primary-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -852,7 +852,7 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
           </div>
 
           {/* Content */}
-          <div className="p-6 overflow-y-auto flex-1">
+          <div className="p-4 overflow-y-auto flex-1">
             {renderTabContent()}
           </div>
         </div>
@@ -862,10 +862,10 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
       {showDecisioneModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="p-6">
+            <div className="p-4">
               <div className="flex items-center mb-4">
                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  <CheckCircle className="w-4 h-4 text-green-600" />
                 </div>
                 <div>
                   <h3 className="text-lg font-medium text-gray-900">Approva Prospect</h3>
@@ -874,7 +874,7 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Note (opzionale)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Note (opzionale)</label>
                 <textarea
                   value={noteDecisione}
                   onChange={(e) => setNoteDecisione(e.target.value)}
@@ -914,10 +914,10 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
       {showRifiutoModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="p-6">
+            <div className="p-4">
               <div className="flex items-center mb-4">
                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
-                  <XCircle className="w-6 h-6 text-red-600" />
+                  <XCircle className="w-4 h-4 text-red-600" />
                 </div>
                 <div>
                   <h3 className="text-lg font-medium text-gray-900">Rifiuta Prospect</h3>
@@ -926,7 +926,7 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Motivo del rifiuto *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Motivo del rifiuto *</label>
                 <textarea
                   value={motivoRifiuto}
                   onChange={(e) => setMotivoRifiuto(e.target.value)}

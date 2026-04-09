@@ -41,13 +41,13 @@ export default function ConfirmDialog({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg max-w-md w-full mx-4">
-        <div className="p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${colors[variant].icon}`}>
-              <Icon className="w-5 h-5" />
+        <div className="p-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${colors[variant].icon}`}>
+              <Icon className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+              <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
               <p className="text-gray-600">{message}</p>
             </div>
           </div>

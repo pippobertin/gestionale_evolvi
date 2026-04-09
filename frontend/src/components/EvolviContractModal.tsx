@@ -260,8 +260,8 @@ export default function EvolviContractModal({
         {/* Header */}
         <div className="gradient-primary text-white p-4 flex items-center justify-between rounded-t-lg">
           <div className="flex items-center space-x-2">
-            <FileText className="w-5 h-5" />
-            <h3 className="text-lg font-semibold">Nuovo Contratto Evolvi</h3>
+            <FileText className="w-4 h-4" />
+            <h3 className="text-sm font-semibold">Nuovo Contratto Evolvi</h3>
           </div>
           <div className="flex items-center space-x-3">
             {/* Step indicator */}
@@ -286,7 +286,7 @@ export default function EvolviContractModal({
         </div>
 
         {/* Body */}
-        <div className="p-6">
+        <div className="p-4">
           {/* Step 1: Form */}
           {step === 1 && (
             <div className="space-y-5">
@@ -300,7 +300,7 @@ export default function EvolviContractModal({
 
               {/* 1. Modalita pagamento - scelta principale */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Modalita di Pagamento *
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -314,7 +314,7 @@ export default function EvolviContractModal({
                     }`}
                   >
                     <div className="font-semibold text-gray-900">Mensile</div>
-                    <div className="text-lg font-bold text-primary-600 mt-1">
+                    <div className="text-sm font-bold text-primary-600 mt-1">
                       {new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(IMPORTI_STANDARD.mensile)}/mese
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
@@ -331,7 +331,7 @@ export default function EvolviContractModal({
                     }`}
                   >
                     <div className="font-semibold text-gray-900">Annuale</div>
-                    <div className="text-lg font-bold text-primary-600 mt-1">
+                    <div className="text-sm font-bold text-primary-600 mt-1">
                       {new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(IMPORTI_STANDARD.annuale)}/anno
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
@@ -400,7 +400,7 @@ export default function EvolviContractModal({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Data Inizio *

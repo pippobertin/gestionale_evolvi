@@ -509,10 +509,10 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Gestione Progetti</h1>
+        <h1 className="text-sm font-semibold text-gray-900">Gestione Progetti</h1>
         <div className="flex items-center gap-3">
           {isSelectMode ? (
             <>
@@ -550,14 +550,14 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
       </div>
 
       {/* Statistiche Rapide */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="bg-gradient-to-br from-amber-500 to-yellow-500 p-4 rounded-xl border border-amber-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-white drop-shadow-sm">Decreto Atteso</p>
-              <p className="text-2xl font-black text-white drop-shadow">{progettiDecretoAtteso.length}</p>
+              <p className="text-lg font-black text-white drop-shadow">{progettiDecretoAtteso.length}</p>
             </div>
-            <Clock className="w-8 h-8 text-white drop-shadow" />
+            <Clock className="w-6 h-6 text-white drop-shadow" />
           </div>
         </div>
 
@@ -565,9 +565,9 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-cyan-100 drop-shadow-sm">Decreto Ricevuto</p>
-              <p className="text-2xl font-black text-white drop-shadow">{progettiDecretoRicevuto.length}</p>
+              <p className="text-lg font-black text-white drop-shadow">{progettiDecretoRicevuto.length}</p>
             </div>
-            <AlertTriangle className="w-8 h-8 text-cyan-200 drop-shadow" />
+            <AlertTriangle className="w-6 h-6 text-cyan-200 drop-shadow" />
           </div>
         </div>
 
@@ -575,9 +575,9 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-emerald-100 drop-shadow-sm">In Corso</p>
-              <p className="text-2xl font-black text-white drop-shadow">{progettiInCorso.length}</p>
+              <p className="text-lg font-black text-white drop-shadow">{progettiInCorso.length}</p>
             </div>
-            <Building className="w-8 h-8 text-emerald-200 drop-shadow" />
+            <Building className="w-6 h-6 text-emerald-200 drop-shadow" />
           </div>
         </div>
 
@@ -585,15 +585,15 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-red-100 drop-shadow-sm">Completati</p>
-              <p className="text-2xl font-black text-white drop-shadow">{progettiCompletati.length}</p>
+              <p className="text-lg font-black text-white drop-shadow">{progettiCompletati.length}</p>
             </div>
-            <CheckCircle className="w-8 h-8 text-red-200 drop-shadow" />
+            <CheckCircle className="w-6 h-6 text-red-200 drop-shadow" />
           </div>
         </div>
       </div>
 
       {/* Filtri e Ricerca */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+      <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
         <div className="flex gap-3 flex-wrap">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -649,7 +649,7 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
             <thead className="bg-gray-50">
               <tr>
                 {isSelectMode && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
                     <button
                       onClick={toggleSelectAll}
                       className="text-gray-600 hover:text-gray-800"
@@ -662,22 +662,22 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
                     </button>
                   </th>
                 )}
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Progetto
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Cliente
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Bando
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Importi
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Stato
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Scadenze
                 </th>
               </tr>
@@ -691,7 +691,7 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
                 >
                   {isSelectMode && (
                     <td
-                      className="px-6 py-4 whitespace-nowrap w-12"
+                      className="px-3 py-1.5 whitespace-nowrap w-12"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
@@ -795,13 +795,13 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg max-w-md w-full mx-4">
-            <div className="p-6">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                  <Trash2 className="w-5 h-5 text-red-600" />
+            <div className="p-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                  <Trash2 className="w-4 h-4 text-red-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-sm font-semibold text-gray-900">
                     Conferma eliminazione
                   </h3>
                   <p className="text-gray-600">

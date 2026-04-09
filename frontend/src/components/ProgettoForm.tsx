@@ -1369,16 +1369,16 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-6xl w-full h-[95vh] flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="p-6 border-b border-gray-200">
+          <div className="p-4 border-b border-gray-200">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className="text-sm font-semibold text-gray-900">
                 {progetto ? 'Modifica Progetto' : 'Nuovo Progetto'}
               </h2>
               <button
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <X className="w-6 h-6" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -1406,13 +1406,13 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
           {/* Form Content */}
           <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-4">
               {activeTab === 'generale' && (
-                <div className="space-y-6">
+                <div className="space-y-3">
                   {/* Selezione Bando e Cliente */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Bando *
                       </label>
                       <select
@@ -1437,7 +1437,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Cliente *
                       </label>
                       <select
@@ -1463,9 +1463,9 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                   </div>
 
                   {/* Codice e Titolo Progetto */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Codice Progetto *
                       </label>
                       <div className="flex gap-2">
@@ -1487,7 +1487,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Titolo Progetto *
                       </label>
                       <div className="flex gap-2">
@@ -1511,7 +1511,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
                   {/* Descrizione */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Descrizione Progetto
                     </label>
                     <textarea
@@ -1524,7 +1524,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
                   {/* Stato */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Stato Progetto *
                     </label>
                     <select
@@ -1543,10 +1543,10 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
               )}
 
               {activeTab === 'importi' && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Importo Totale Progetto (€) *
                       </label>
                       <input
@@ -1560,7 +1560,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Contributo Ammesso (€) *
                       </label>
                       <input
@@ -1574,9 +1574,9 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Percentuale Contributo (%)
                       </label>
                       <input
@@ -1591,7 +1591,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Numero SAL
                       </label>
                       <select
@@ -1609,7 +1609,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                   {/* Contributo Ottenuto - appare solo se stato è COMPLETATO */}
                   {formData.stato === 'COMPLETATO' && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <label className="block text-sm font-medium text-blue-900 mb-2">
+                      <label className="block text-sm font-medium text-blue-900 mb-1">
                         Contributo Ottenuto (€)
                       </label>
                       <input
@@ -1630,14 +1630,14 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
               )}
 
               {activeTab === 'scadenze' && (
-                <div className="space-y-6">
+                <div className="space-y-3">
                   {/* Date Principali */}
 
                   {/* Sezione Eventi Dinamici del Bando */}
                   {eventiDelBando.length > 0 && (
                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <Calendar className="w-5 h-5 text-blue-600" />
+                      <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-blue-600" />
                         Eventi del Bando
                       </h3>
                       <p className="text-sm text-gray-600 mb-4">
@@ -1646,11 +1646,11 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                         permettendo di identificare eventuali ritardi rispetto alle tempistiche previste.
                       </p>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {eventiDelBando.map((evento) => (
                           <div key={evento.id} className="space-y-3">
                             <div className="bg-white p-3 rounded border">
-                              <h4 className="font-medium text-gray-900 mb-2">{evento.nome}</h4>
+                              <h4 className="font-medium text-gray-900 mb-1">{evento.nome}</h4>
                               {evento.descrizione && (
                                 <p className="text-xs text-gray-500 mb-3">{evento.descrizione}</p>
                               )}
@@ -1714,7 +1714,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                   {/* Scadenze Esistenti */}
                   {scadenzeSalvate.length > 0 && (
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                      <h4 className="font-medium text-gray-900 mb-2">Scadenze calcolate dal template</h4>
+                      <h4 className="font-medium text-gray-900 mb-1">Scadenze calcolate dal template</h4>
                       <div className="space-y-4">
                         {scadenzeSalvate.map((scadenza) => (
                           <div key={scadenza.id} className="bg-white border border-gray-200 rounded-lg p-4">
@@ -1736,12 +1736,12 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
                             {/* Campo Data Effettiva */}
                             <div className="border-t border-gray-100 pt-3">
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Data Effettiva *
                               </label>
                               <div className="flex gap-2 items-start">
                                 <div className="flex-1">
-                                  <div className="flex gap-2 items-center mb-2">
+                                  <div className="flex gap-2 items-center mb-1">
                                     <input
                                       type="date"
                                       value={dateEffettiveScadenze[scadenza.id] || ''}
@@ -1766,7 +1766,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                                       !isNaN(new Date(scadenza.data_scadenza).getTime()) &&
                                       new Date(dateEffettiveScadenze[scadenza.id]) > new Date(scadenza.data_scadenza) && (
                                       <div className="text-red-500" title="Scadenza sforata">
-                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                           <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                                         </svg>
                                       </div>
@@ -1824,12 +1824,12 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
               )}
 
               {activeTab === 'documenti' && (
-                <div className="space-y-6">
+                <div className="space-y-3">
                   {/* Google Drive Status */}
                   {(
                     <div className="border rounded-lg p-4 bg-green-50 border-green-200">
                       <div className="flex items-center gap-3">
-                        <div className="w-5 h-5 rounded-full bg-green-500"></div>
+                        <div className="w-4 h-4 rounded-full bg-green-500"></div>
                         <div>
                           <h4 className="text-sm font-medium">
                             ✅ Google Drive connesso (Service Account)
@@ -1846,7 +1846,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                   {!progetto && documenti.some(doc => doc.inherited_from_bando) && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <div className="flex items-start gap-3">
-                        <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                         </svg>
                         <div>
@@ -1865,10 +1865,10 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
 
                   {/* Upload Section */}
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
                     <div className="text-center">
                       <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">Carica Documenti</h3>
+                      <h3 className="text-lg font-medium text-gray-900 mb-1">Carica Documenti</h3>
                       <p className="text-gray-600 mb-4">
                         Seleziona i file da caricare per questo progetto
                       </p>
@@ -1917,7 +1917,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                             doc.inherited_from_bando ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
                           }`}>
                             <div className="flex items-center gap-3">
-                              <FileText className={`w-5 h-5 ${doc.inherited_from_bando ? 'text-blue-500' : 'text-gray-400'}`} />
+                              <FileText className={`w-4 h-4 ${doc.inherited_from_bando ? 'text-blue-500' : 'text-gray-400'}`} />
                               <div>
                                 <div className="flex items-center gap-2">
                                   <p className="font-medium text-gray-900">{doc.nome_file}</p>
@@ -2089,7 +2089,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                   {documenti.length === 0 && (
                     <div className="text-center py-8">
                       <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">Nessun documento</h3>
+                      <h3 className="text-lg font-medium text-gray-900 mb-1">Nessun documento</h3>
                       <p className="text-gray-600">
                         I documenti caricati appariranno qui
                       </p>
@@ -2109,11 +2109,11 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
               )}
 
               {activeTab === 'avanzate' && (
-                <div className="space-y-6">
+                <div className="space-y-3">
                   {/* Referente Interno */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Referente Interno
                       </label>
                       <input
@@ -2125,7 +2125,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Email Referente Interno
                       </label>
                       <input
@@ -2152,7 +2152,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
                   {/* Note */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Note Progetto
                     </label>
                     <textarea
@@ -2168,7 +2168,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
             </div>
 
             {/* Footer */}
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
               <div className="flex justify-between items-center">
                 {/* Pulsante Elimina (solo nel tab avanzate per progetti esistenti) */}
                 <div>
@@ -2230,7 +2230,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
           <div className="bg-white rounded-lg max-w-4xl w-full h-[90vh] flex flex-col overflow-hidden">
             {/* Header Modal */}
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">{documentModal.title}</h3>
+              <h3 className="text-sm font-semibold text-gray-900">{documentModal.title}</h3>
               <button
                 onClick={() => {
                   URL.revokeObjectURL(documentModal.url)
@@ -2238,7 +2238,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                 }}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <X className="w-6 h-6" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -2277,7 +2277,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
                         {/* Info e fallback */}
                         <div className="text-center p-3 bg-gray-50 rounded border text-sm">
-                          <p className="text-gray-600 mb-2">
+                          <p className="text-gray-600 mb-1">
                             🔗 URL temporaneo per anteprima (valido 1 ora)
                           </p>
                           {documentModal.title.includes('TEMPLATE') && (
@@ -2295,7 +2295,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                     </div>
                   ) : documentModal.type === 'txt' ? (
                     <div>
-                      <p className="text-gray-800 mb-2 text-lg font-medium">
+                      <p className="text-gray-800 mb-1 text-lg font-medium">
                         📝 File di testo
                       </p>
                       <iframe

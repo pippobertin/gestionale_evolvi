@@ -62,15 +62,15 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
       onMouseLeave={() => !isPinned && setIsHovered(false)}
     >
       {/* Header with Logo and Controls */}
-      <div className="p-4 border-b border-gray-800">
+      <div className="p-3 border-b border-gray-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center shadow-medium">
-              <Clock className="w-6 h-6 text-white" />
+            <div className="w-8 h-8 bg-gradient-primary rounded-xl flex items-center justify-center shadow-medium">
+              <Clock className="w-4 h-4 text-white" />
             </div>
             {shouldShowExpanded && (
               <div>
-                <h1 className="text-xl font-bold text-white">Gestionale Evolvi</h1>
+                <h1 className="text-sm font-bold text-white">Gestionale Evolvi</h1>
                 <p className="text-xs text-gray-400">Business Management</p>
               </div>
             )}

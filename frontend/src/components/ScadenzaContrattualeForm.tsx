@@ -231,8 +231,8 @@ export default function ScadenzaContrattualeForm({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <h2 className="text-sm font-semibold text-gray-900">
             {isEdit ? 'Modifica Scadenza Contrattuale' : 'Nuova Scadenza Contrattuale'}
           </h2>
           <button
@@ -244,7 +244,7 @@ export default function ScadenzaContrattualeForm({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-3">
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
               <p className="text-red-800 text-sm">{error}</p>
@@ -252,7 +252,7 @@ export default function ScadenzaContrattualeForm({
           )}
 
           {/* Campi principali */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Titolo *
@@ -371,7 +371,7 @@ export default function ScadenzaContrattualeForm({
           {/* Entity */}
           <div className="border border-gray-200 rounded-lg p-4">
             <h3 className="text-sm font-semibold text-gray-700 mb-3">Collegamento Entita</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Tipo Entita
@@ -446,7 +446,7 @@ export default function ScadenzaContrattualeForm({
             </div>
 
             {isRecurring && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Pattern
@@ -560,7 +560,7 @@ export default function ScadenzaContrattualeForm({
         </form>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
+        <div className="flex justify-end gap-3 p-4 border-t border-gray-200 bg-gray-50">
           <button
             type="button"
             onClick={onClose}

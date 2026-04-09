@@ -247,7 +247,7 @@ export default function ScadenzeContrattualiContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Scadenze Contrattuali</h1>
@@ -261,12 +261,12 @@ export default function ScadenzeContrattualiContent() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-4 rounded-xl border border-blue-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-blue-100">Totale</p>
-              <p className="text-2xl font-black text-white">{stats.totale}</p>
+              <p className="text-lg font-black text-white">{stats.totale}</p>
             </div>
             <Calendar className="w-8 h-8 text-blue-200" />
           </div>
@@ -276,7 +276,7 @@ export default function ScadenzeContrattualiContent() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-cyan-100">Aperte</p>
-              <p className="text-2xl font-black text-white">{stats.aperte}</p>
+              <p className="text-lg font-black text-white">{stats.aperte}</p>
             </div>
             <Clock className="w-8 h-8 text-cyan-200" />
           </div>
@@ -286,7 +286,7 @@ export default function ScadenzeContrattualiContent() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-red-100">Scadute</p>
-              <p className="text-2xl font-black text-white">{stats.scadute}</p>
+              <p className="text-lg font-black text-white">{stats.scadute}</p>
             </div>
             <AlertTriangle className="w-8 h-8 text-red-200" />
           </div>
@@ -296,7 +296,7 @@ export default function ScadenzeContrattualiContent() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-emerald-100">Completate</p>
-              <p className="text-2xl font-black text-white">{stats.completate}</p>
+              <p className="text-lg font-black text-white">{stats.completate}</p>
             </div>
             <CheckCircle className="w-8 h-8 text-emerald-200" />
           </div>
@@ -304,7 +304,7 @@ export default function ScadenzeContrattualiContent() {
       </div>
 
       {/* Controls */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+      <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
         {/* Toggle Vista */}
         <div className="flex bg-gray-100 rounded-lg p-1">
           <button
@@ -410,31 +410,31 @@ export default function ScadenzeContrattualiContent() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Titolo
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Tipo
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Data Scadenza
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Priorita
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Stato
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Responsabile
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Entity
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Tags
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Azioni
                   </th>
                 </tr>
@@ -448,7 +448,7 @@ export default function ScadenzeContrattualiContent() {
 
                   return (
                     <tr key={scadenza.id} className={`hover:bg-gray-50 ${getRowColor(scadenza)}`}>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-1.5 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
                           {scadenza.titolo}
                         </div>
@@ -464,12 +464,12 @@ export default function ScadenzeContrattualiContent() {
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-1.5 whitespace-nowrap">
                         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">
                           {tipoLabel}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-1.5 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{formatDate(scadenza.data_scadenza)}</div>
                         <div className={`text-xs font-medium ${
                           giorniRim < 0 ? 'text-red-600' :
@@ -488,30 +488,30 @@ export default function ScadenzeContrattualiContent() {
                           }
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-1.5 whitespace-nowrap">
                         {prioritaInfo && (
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${prioritaInfo.bgColor} ${prioritaInfo.color}`}>
                             {prioritaInfo.label}
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-1.5 whitespace-nowrap">
                         {statoInfo && (
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statoInfo.bgColor} ${statoInfo.color}`}>
                             {statoInfo.label}
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-600">
                         {scadenza.responsabile_email || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-600">
                         <div>{scadenza.entity_type}</div>
                         {scadenza.entity_id && (
                           <div className="text-xs text-gray-400 truncate max-w-24">{scadenza.entity_id}</div>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-1.5 whitespace-nowrap">
                         <div className="flex flex-wrap gap-1">
                           {(scadenza.tags || []).slice(0, 2).map((tag, idx) => (
                             <span key={idx} className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded bg-gray-100 text-gray-600">
@@ -524,7 +524,7 @@ export default function ScadenzeContrattualiContent() {
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-1.5 whitespace-nowrap">
                         <div className="flex items-center gap-1">
                           {scadenza.stato !== 'COMPLETATA' && scadenza.stato !== 'ANNULLATA' && (
                             <button
@@ -572,23 +572,23 @@ export default function ScadenzeContrattualiContent() {
 
       {/* Vista Calendario */}
       {viewMode === 'calendario' && (
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-4">
           {/* Header Calendario */}
           <div className="flex items-center justify-between mb-6">
             <button
               onClick={prevMonth}
               className="p-2 hover:bg-gray-100 rounded-lg"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-sm font-semibold text-gray-900">
               {calendarioMese.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
             </h2>
             <button
               onClick={nextMonth}
               className="p-2 hover:bg-gray-100 rounded-lg"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
@@ -675,14 +675,14 @@ export default function ScadenzeContrattualiContent() {
       {/* Modal Completamento */}
       {showCompletaModal && scadenzaDaCompletare && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-medium text-gray-900">Completa Scadenza</h3>
               <button
                 onClick={() => setShowCompletaModal(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <XCircle className="w-5 h-5" />
+                <XCircle className="w-4 h-4" />
               </button>
             </div>
 
@@ -736,14 +736,14 @@ export default function ScadenzeContrattualiContent() {
       {/* Modal Elimina */}
       {showDeleteModal && scadenzaDaEliminare && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-medium text-red-600">Elimina Scadenza</h3>
               <button
                 onClick={() => { setShowDeleteModal(false); setScadenzaDaEliminare(null) }}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <XCircle className="w-5 h-5" />
+                <XCircle className="w-4 h-4" />
               </button>
             </div>
 

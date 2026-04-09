@@ -227,46 +227,46 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
     switch (currentTab) {
       case 'anagrafica':
         return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Denominazione</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Denominazione</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.denominazione || '-'}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Numero Azienda</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Numero Azienda</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.numero_azienda || '-'}
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Partita IVA</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Partita IVA</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.partita_iva || '-'}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Codice Fiscale</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Codice Fiscale</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.codice_fiscale || '-'}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">REA</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">REA</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.rea || '-'}
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Codice ATECO 2025</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Codice ATECO 2025</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.ateco_2025 || '-'}
                 </div>
@@ -277,16 +277,16 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Data Costituzione</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Data Costituzione</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.data_costituzione ? new Date(cliente.data_costituzione).toLocaleDateString('it-IT') : '-'}
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Estremi iscrizione al RUNTS</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estremi iscrizione al RUNTS</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.estremi_iscrizione_runts || '-'}
                 </div>
@@ -294,26 +294,26 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
             </div>
 
             {/* Sezione Dati Bancari */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Euro className="w-5 h-5 mr-2" />
+            <div className="border-t pt-3">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                <Euro className="w-4 h-4 mr-2" />
                 Dati Bancari e Fatturazione
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Coordinate Bancarie (IBAN)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Coordinate Bancarie (IBAN)</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.coordinate_bancarie || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Banca/Filiale</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Banca/Filiale</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.banca_filiale || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Codice SDI</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Codice SDI</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.sdi || '-'}
                   </div>
@@ -322,38 +322,38 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
             </div>
 
             {/* Indirizzo */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <MapPin className="w-5 h-5 mr-2" />
+            <div className="border-t pt-3">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                <MapPin className="w-4 h-4 mr-2" />
                 Indirizzo di Fatturazione
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Indirizzo</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Indirizzo</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.indirizzo_fatturazione || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">CAP</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">CAP</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.cap_fatturazione || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Città</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Città</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.citta_fatturazione || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Provincia</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Provincia</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.provincia_fatturazione || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Stato</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Stato</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.stato_fatturazione || '-'}
                   </div>
@@ -365,34 +365,34 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
 
       case 'contatti':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             {/* Contatti aziendali principali */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Mail className="w-5 h-5 mr-2" />
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                <Mail className="w-4 h-4 mr-2" />
                 Contatti Aziendali Principali
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.email || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">PEC</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">PEC</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.pec || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Telefono</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.telefono || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Sito Web</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sito Web</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.sito_web || '-'}
                   </div>
@@ -401,7 +401,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
             </div>
 
             {/* Referenti aziendali */}
-            <div className="border-t pt-6">
+            <div className="border-t pt-3">
               <ReferentiManager
                 clienteId={cliente.id}
                 isNewClient={false}
@@ -412,52 +412,52 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
 
       case 'legale':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             {/* Dati Anagrafici */}
             <div>
-              <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                 <User className="w-4 h-4 mr-2" />
                 Dati Anagrafici
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.legale_rappresentante_nome || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Cognome</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cognome</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.legale_rappresentante_cognome || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Codice Fiscale</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Codice Fiscale</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.legale_rappresentante_codice_fiscale || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Data di Nascita</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Data di Nascita</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.legale_rappresentante_data_nascita ? new Date(cliente.legale_rappresentante_data_nascita).toLocaleDateString('it-IT') : '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Luogo di Nascita</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Luogo di Nascita</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.legale_rappresentante_luogo_nascita || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Provincia di Nascita</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Provincia di Nascita</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.legale_rappresentante_provincia_nascita || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nazionalità</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nazionalità</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.legale_rappresentante_nazionalita || '-'}
                   </div>
@@ -467,31 +467,31 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
 
             {/* Indirizzo */}
             <div>
-              <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                 <MapPin className="w-4 h-4 mr-2" />
                 Indirizzo di Residenza
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Indirizzo</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Indirizzo</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.legale_rappresentante_indirizzo || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">CAP</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">CAP</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.legale_rappresentante_cap || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Città</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Città</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.legale_rappresentante_citta || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Provincia</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Provincia</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.legale_rappresentante_provincia || '-'}
                   </div>
@@ -501,26 +501,26 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
 
             {/* Contatti */}
             <div>
-              <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                 <Mail className="w-4 h-4 mr-2" />
                 Contatti
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.legale_rappresentante_email || '-'}
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Telefono</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {cliente.legale_rappresentante_telefono || '-'}
                   </div>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Note</label>
-                  <div className="input bg-gray-50 cursor-not-allowed min-h-[80px]">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Note</label>
+                  <div className="input bg-gray-50 cursor-not-allowed min-h-[60px]">
                     {cliente.legale_rappresentante_note || '-'}
                   </div>
                 </div>
@@ -531,58 +531,58 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
 
       case 'dimensionamento':
         return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">ULA (Unità Lavorative Annue)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">ULA (Unità Lavorative Annue)</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.ula || '-'}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ultimo Fatturato (€)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ultimo Fatturato (€)</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.ultimo_fatturato ? cliente.ultimo_fatturato.toLocaleString('it-IT') : '-'}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Attivo di Bilancio (€)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Attivo di Bilancio (€)</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.attivo_bilancio ? cliente.attivo_bilancio.toLocaleString('it-IT') : '-'}
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Numero Dipendenti</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Numero Dipendenti</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.numero_dipendenti || 0}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Numero Volontari</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Numero Volontari</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.numero_volontari || 0}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Numero Collaboratori</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Numero Collaboratori</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.numero_collaboratori || 0}
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Matricola INPS</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Matricola INPS</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.matricola_inps || '-'}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">PAT INAIL</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">PAT INAIL</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.pat_inail || '-'}
                 </div>
@@ -593,8 +593,8 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
 
       case 'collegamenti':
         return (
-          <div className="space-y-6">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="space-y-3">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
               <h4 className="text-sm font-medium text-yellow-800 mb-2">
                 ⚖️ Rapporti di Collegamento/Controllo (UE 2003/361/CE)
               </h4>
@@ -623,7 +623,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
                 ) : (
                   <div className="space-y-3">
                     {collegamenti.map((collegamento, index) => (
-                      <div key={collegamento.id || index} className="border rounded-lg p-4 bg-gray-50">
+                      <div key={collegamento.id || index} className="border rounded-lg p-3 bg-gray-50">
                         <div className="flex items-start">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
@@ -639,7 +639,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
                               </span>
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                               <div>
                                 <span className="text-gray-500">Partecipazione:</span>
                                 <span className="ml-1 font-medium">
@@ -686,7 +686,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
 
             {/* Calcolo dimensione aggregata - solo se ci sono collegamenti */}
             {collegamenti.length > 0 && cliente && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <h4 className="text-sm font-medium text-blue-800 mb-2">
                   📊 Informazioni Dimensione Aggregata
                 </h4>
@@ -715,10 +715,10 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
         const showEvolviFields = cliente.categoria_evolvi === 'EVOLVI'
 
         return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.categoria_evolvi === 'CLIENTE_SPOT' ? 'Spot' :
                    cliente.categoria_evolvi === 'EVOLVI' ? 'Evolvi' : '-'}
@@ -728,13 +728,13 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
               {showEvolviFields && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Scadenza Evolvi</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Scadenza Evolvi</label>
                     <div className="input bg-gray-50 cursor-not-allowed">
                       {cliente.scadenza_evolvi ? new Date(cliente.scadenza_evolvi).toLocaleDateString('it-IT') : '-'}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Durata Evolvi</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Durata Evolvi</label>
                     <div className="input bg-gray-50 cursor-not-allowed">
                       {cliente.durata_evolvi || '-'}
                     </div>
@@ -745,7 +745,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
 
             {/* Informazione per clienti spot */}
             {(cliente.categoria_evolvi === 'CLIENTE_SPOT' || !cliente.categoria_evolvi) && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                 <div className="flex items-center">
                   <FileText className="w-5 h-5 text-yellow-600 mr-2" />
                   <h4 className="text-yellow-800 font-medium">Cliente Spot</h4>
@@ -758,7 +758,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
 
             {/* Informazione per clienti Evolvi */}
             {showEvolviFields && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <div className="flex items-center">
                   <FileText className="w-5 h-5 text-blue-600 mr-2" />
                   <h4 className="text-blue-800 font-medium">Cliente Evolvi</h4>
@@ -770,15 +770,15 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Descrizione</label>
-              <div className="input bg-gray-50 cursor-not-allowed min-h-[80px]">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione</label>
+              <div className="input bg-gray-50 cursor-not-allowed min-h-[60px]">
                 {cliente.descrizione || '-'}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Note</label>
-              <div className="input bg-gray-50 cursor-not-allowed min-h-[80px]">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Note</label>
+              <div className="input bg-gray-50 cursor-not-allowed min-h-[60px]">
                 {cliente.note || '-'}
               </div>
             </div>
@@ -787,14 +787,14 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
 
       case 'doc_amministrativi':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <DocumentiAmministrativiManager clienteId={cliente.id} />
           </div>
         )
 
       case 'contratti_evolvi':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <ContrattiEvolviManager
               clienteId={cliente.id}
               clienteDenominazione={cliente.denominazione}
@@ -804,7 +804,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
 
       case 'fatturazione':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <EvolviInvoicesContent clienteId={cliente.id} />
           </div>
         )
@@ -816,48 +816,48 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-hard max-w-7xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-xl shadow-hard max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="gradient-primary text-white p-6 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Building2 className="w-6 h-6" />
-            <h2 className="text-xl font-bold">
+        <div className="gradient-primary text-white p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Building2 className="w-4 h-4" />
+            <h2 className="text-sm font-semibold">
               {cliente.denominazione}
             </h2>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1.5">
             <button
               onClick={() => onEdit(cliente)}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
               title="Modifica cliente"
             >
-              <Edit className="w-5 h-5" />
+              <Edit className="w-4 h-4" />
             </button>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-gray-200 px-6">
-          <div className="flex space-x-6 overflow-x-auto min-w-full">
+        <div className="border-b border-gray-200 px-4">
+          <div className="flex space-x-3 overflow-x-auto min-w-full">
             {tabs.map((tab) => {
               const Icon = tab.icon
               return (
                 <button
                   key={tab.id}
                   onClick={() => setCurrentTab(tab.id)}
-                  className={`py-4 px-2 border-b-2 font-medium text-sm flex items-center space-x-2 transition-colors flex-shrink-0 ${
+                  className={`py-2 px-1.5 border-b-2 font-medium text-xs flex items-center space-x-1.5 transition-colors flex-shrink-0 ${
                     currentTab === tab.id
                       ? 'border-primary-500 text-primary-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3.5 h-3.5" />
                   <span>{tab.label}</span>
                 </button>
               )
@@ -866,7 +866,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-4 overflow-y-auto flex-1">
           {renderTabContent()}
         </div>
       </div>

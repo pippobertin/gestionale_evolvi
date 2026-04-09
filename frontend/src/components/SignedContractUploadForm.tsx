@@ -77,11 +77,11 @@ export default function SignedContractUploadForm({ trackingId, onSuccess, onClos
   }
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-4 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium text-gray-900 flex items-center">
-          <Upload className="w-5 h-5 mr-2" />
+        <h3 className="text-sm font-medium text-gray-900 flex items-center">
+          <Upload className="w-4 h-4 mr-2" />
           Carica Contratto Firmato
         </h3>
         <button
@@ -89,14 +89,14 @@ export default function SignedContractUploadForm({ trackingId, onSuccess, onClos
           onClick={onClose}
           className="text-gray-400 hover:text-gray-600"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
       </div>
 
       {/* Success message */}
       {success && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center space-x-3">
-          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+          <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
           <div>
             <p className="text-sm font-medium text-green-800">Contratto firmato caricato con successo!</p>
             <p className="text-xs text-green-600 mt-0.5">Lo stato del tracking verrà aggiornato automaticamente.</p>
@@ -116,14 +116,14 @@ export default function SignedContractUploadForm({ trackingId, onSuccess, onClos
         <>
           {/* File input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               File PDF del contratto firmato *
             </label>
 
             {file ? (
               <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <div className="flex items-center space-x-2 min-w-0">
-                  <FileText className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                  <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-blue-900 truncate">{file.name}</p>
                     <p className="text-xs text-blue-600">{formatBytes(file.size)}</p>
@@ -145,7 +145,7 @@ export default function SignedContractUploadForm({ trackingId, onSuccess, onClos
                 className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-colors"
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                <Upload className="w-6 h-6 mx-auto mb-1 text-gray-400" />
                 <p className="text-sm text-gray-600">Clicca per selezionare il file PDF</p>
                 <p className="text-xs text-gray-400 mt-1">Solo file PDF</p>
               </div>

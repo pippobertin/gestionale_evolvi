@@ -739,10 +739,10 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
     switch (currentTab) {
       case 'anagrafica':
         return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Denominazione *
                 </label>
                 <input
@@ -755,7 +755,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Numero Azienda (Auto-generato)
                 </label>
                 <input
@@ -771,9 +771,9 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Partita IVA
                 </label>
                 <input
@@ -785,7 +785,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Codice Fiscale
                 </label>
                 <input
@@ -797,7 +797,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   REA
                 </label>
                 <input
@@ -810,10 +810,10 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* Selezione Sezione ATECO */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Sezione Attività ATECO 2025
                 </label>
                 <select
@@ -832,7 +832,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
               {/* Selezione Codice ATECO specifico */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Codice ATECO specifico
                 </label>
                 <select
@@ -866,9 +866,9 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Data Costituzione
                 </label>
                 <input
@@ -879,7 +879,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Estremi iscrizione al RUNTS
                 </label>
                 <input
@@ -893,14 +893,14 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
             </div>
 
             {/* Sezione Dati Bancari */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Euro className="w-5 h-5 mr-2" />
+            <div className="border-t pt-3">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                <Euro className="w-4 h-4 mr-2" />
                 Dati Bancari e Fatturazione
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Coordinate Bancarie (IBAN)
                   </label>
                   <input
@@ -912,7 +912,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Banca/Filiale
                   </label>
                   <input
@@ -924,7 +924,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Codice SDI
                   </label>
                   <input
@@ -939,14 +939,14 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
             </div>
 
             {/* Indirizzo */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <MapPin className="w-5 h-5 mr-2" />
+            <div className="border-t pt-3">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                <MapPin className="w-4 h-4 mr-2" />
                 Indirizzo di Fatturazione
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Indirizzo
                   </label>
                   <input
@@ -958,7 +958,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     CAP
                   </label>
                   <input
@@ -970,7 +970,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Città
                   </label>
                   <input
@@ -982,7 +982,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Provincia
                   </label>
                   <input
@@ -995,7 +995,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Stato
                   </label>
                   <input
@@ -1012,16 +1012,16 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
       case 'contatti':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             {/* Contatti aziendali principali */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Mail className="w-5 h-5 mr-2" />
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                <Mail className="w-4 h-4 mr-2" />
                 Contatti Aziendali Principali
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Email
                   </label>
                   <input
@@ -1033,7 +1033,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     PEC
                   </label>
                   <input
@@ -1045,7 +1045,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Telefono
                   </label>
                   <input
@@ -1057,7 +1057,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Sito Web
                   </label>
                   <input
@@ -1072,7 +1072,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
             </div>
 
             {/* Referenti aziendali */}
-            <div className="border-t pt-6">
+            <div className="border-t pt-3">
               <ReferentiManager
                 clienteId={cliente?.id || ''}
                 isNewClient={!cliente?.id}
@@ -1083,11 +1083,11 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
       case 'legale':
         return (
-          <div className="space-y-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="space-y-3">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
               <div className="flex items-center">
                 <User className="w-5 h-5 text-blue-600 mr-2" />
-                <h3 className="text-lg font-semibold text-blue-900">Dati Legale Rappresentante</h3>
+                <h3 className="text-sm font-semibold text-blue-900">Dati Legale Rappresentante</h3>
               </div>
               <p className="text-blue-700 mt-2 text-sm">
                 Inserisci i dati del legale rappresentante dell'azienda
@@ -1096,13 +1096,13 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
             {/* Dati Anagrafici */}
             <div>
-              <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                 <User className="w-4 h-4 mr-2" />
                 Dati Anagrafici
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Nome *
                   </label>
                   <input
@@ -1114,7 +1114,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Cognome *
                   </label>
                   <input
@@ -1126,7 +1126,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Codice Fiscale
                   </label>
                   <input
@@ -1139,7 +1139,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Data di Nascita
                   </label>
                   <input
@@ -1150,7 +1150,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Luogo di Nascita
                   </label>
                   <input
@@ -1162,7 +1162,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Provincia di Nascita
                   </label>
                   <input
@@ -1175,7 +1175,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Nazionalità
                   </label>
                   <input
@@ -1191,13 +1191,13 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
             {/* Indirizzo */}
             <div>
-              <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                 <MapPin className="w-4 h-4 mr-2" />
                 Indirizzo di Residenza
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Indirizzo
                   </label>
                   <input
@@ -1209,7 +1209,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     CAP
                   </label>
                   <input
@@ -1222,7 +1222,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Città
                   </label>
                   <input
@@ -1234,7 +1234,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Provincia
                   </label>
                   <input
@@ -1251,13 +1251,13 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
             {/* Contatti */}
             <div>
-              <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                 <Mail className="w-4 h-4 mr-2" />
                 Contatti
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Email
                   </label>
                   <input
@@ -1269,7 +1269,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Telefono
                   </label>
                   <input
@@ -1281,7 +1281,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Note
                   </label>
                   <textarea
@@ -1302,10 +1302,10 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
         const dimensioneCalcolata = dimensioneCalcolataCorrente
 
         return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   ULA (Unità Lavorative Annue)
                 </label>
                 <input
@@ -1318,7 +1318,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Ultimo Fatturato (€)
                 </label>
                 <input
@@ -1330,7 +1330,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Attivo di Bilancio (€)
                 </label>
                 <input
@@ -1344,11 +1344,11 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
             </div>
 
             {/* Dimensione calcolata automaticamente */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <h4 className="text-sm font-medium text-blue-800 mb-2">
                 📊 Dimensione Aziendale (Calcolata automaticamente secondo UE 2003/361/CE)
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <span className="text-lg font-bold text-blue-600">
                     {dimensioneCalcolata || 'Non calcolabile'}
@@ -1367,7 +1367,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Rating (1-5)
                   </label>
                   <select
@@ -1386,9 +1386,9 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Numero Dipendenti
                 </label>
                 <input
@@ -1400,7 +1400,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Numero Volontari
                 </label>
                 <input
@@ -1412,7 +1412,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Numero Collaboratori
                 </label>
                 <input
@@ -1425,9 +1425,9 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Matricola INPS
                 </label>
                 <input
@@ -1439,7 +1439,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   PAT INAIL
                 </label>
                 <input
@@ -1456,8 +1456,8 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
       case 'collegamenti':
         return (
-          <div className="space-y-6">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="space-y-3">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
               <h4 className="text-sm font-medium text-yellow-800 mb-2">
                 ⚖️ Rapporti di Collegamento/Controllo (UE 2003/361/CE)
               </h4>
@@ -1491,7 +1491,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 ) : (
                   <div className="space-y-3">
                     {collegamenti.map((collegamento, index) => (
-                      <div key={collegamento.id || index} className="border rounded-lg p-4 bg-white">
+                      <div key={collegamento.id || index} className="border rounded-lg p-3 bg-white">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
@@ -1507,7 +1507,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                               </span>
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                               <div>
                                 <span className="text-gray-500">Partecipazione:</span>
                                 <span className="ml-1 font-medium">
@@ -1576,7 +1576,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
             {/* Calcolo dimensione aggregata */}
             {collegamenti.length > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <h4 className="text-sm font-medium text-blue-800 mb-2">
                   📊 Calcolo Dimensione Aggregata
                 </h4>
@@ -1613,7 +1613,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
               />
             )}
 
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
               <h4 className="text-sm font-medium text-gray-800 mb-2">
                 📖 Criteri di Collegamento UE 2003/361/CE
               </h4>
@@ -1629,10 +1629,10 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
         const showEvolviFields = formData.categoria_evolvi === 'EVOLVI'
 
         return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Categoria
                 </label>
                 <select
@@ -1650,7 +1650,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
               {showEvolviFields && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Scadenza Evolvi
                     </label>
                     <input
@@ -1661,7 +1661,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Durata Evolvi
                     </label>
                     <input
@@ -1678,7 +1678,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
             {/* Informazione per clienti spot */}
             {formData.categoria_evolvi === 'CLIENTE_SPOT' && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                 <div className="flex items-center">
                   <FileText className="w-5 h-5 text-yellow-600 mr-2" />
                   <h4 className="text-yellow-800 font-medium">Cliente Spot</h4>
@@ -1691,7 +1691,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
             {/* Informazione per clienti Evolvi */}
             {showEvolviFields && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <div className="flex items-center">
                   <FileText className="w-5 h-5 text-blue-600 mr-2" />
                   <h4 className="text-blue-800 font-medium">Cliente Evolvi</h4>
@@ -1704,7 +1704,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Descrizione
               </label>
               <textarea
@@ -1717,7 +1717,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Note
               </label>
               <textarea
@@ -1733,7 +1733,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
       case 'documenti':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <DocumentiManager
               clienteId={cliente?.id || ''}
               isNewClient={!cliente?.id}
@@ -1748,51 +1748,46 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-hard max-w-7xl w-full max-h-[95vh] overflow-hidden flex flex-col border-4 border-orange-400">
+      <div className="bg-white rounded-xl shadow-hard max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col border-4 border-orange-400">
         {/* Header */}
-        <div className="gradient-primary text-white p-6 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Building2 className="w-6 h-6" />
+        <div className="gradient-primary text-white p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Building2 className="w-4 h-4" />
             <div>
-              <h2 className="text-xl font-bold">
+              <h2 className="text-sm font-semibold">
                 {cliente ? 'Modifica Cliente' : 'Nuovo Cliente'}
               </h2>
-              <div className="flex items-center space-x-2 mt-1">
-                <span className="px-2 py-1 bg-orange-400 text-orange-900 text-xs font-semibold rounded-full">
-                  ✏️ MODIFICA
+              {cliente?.denominazione && (
+                <span className="text-primary-100 text-xs">
+                  {cliente.denominazione}
                 </span>
-                {cliente?.denominazione && (
-                  <span className="text-primary-100 text-sm">
-                    {cliente.denominazione}
-                  </span>
-                )}
-              </div>
+              )}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-gray-200 px-6">
-          <div className="flex space-x-6 overflow-x-auto min-w-full">
+        <div className="border-b border-gray-200 px-4">
+          <div className="flex space-x-3 overflow-x-auto min-w-full">
             {tabs.map((tab) => {
               const Icon = tab.icon
               return (
                 <button
                   key={tab.id}
                   onClick={() => setCurrentTab(tab.id)}
-                  className={`py-4 px-2 border-b-2 font-medium text-sm flex items-center space-x-2 transition-colors flex-shrink-0 ${
+                  className={`py-2 px-1.5 border-b-2 font-medium text-xs flex items-center space-x-1.5 transition-colors flex-shrink-0 ${
                     currentTab === tab.id
                       ? 'border-primary-500 text-primary-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3.5 h-3.5" />
                   <span>{tab.label}</span>
                 </button>
               )
@@ -1801,12 +1796,12 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-4 overflow-y-auto flex-1">
           {renderTabContent()}
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex items-center justify-between flex-shrink-0">
+        <div className="border-t border-gray-200 px-4 py-2.5 bg-gray-50 flex items-center justify-between flex-shrink-0">
           {/* Pulsante Elimina a sinistra - solo se siamo in modalità modifica e abbiamo i permessi */}
           <div className="flex items-center">
             {cliente?.id && canDelete(cliente.creato_da) && (
@@ -1857,18 +1852,18 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="p-6">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
-                  <Trash2 className="w-6 h-6 text-red-600" />
+            <div className="p-4">
+              <div className="flex items-center mb-3">
+                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                  <Trash2 className="w-4 h-4 text-red-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">Elimina Cliente</h3>
+                  <h3 className="text-sm font-medium text-gray-900">Elimina Cliente</h3>
                   <p className="text-sm text-gray-500">Questa azione non può essere annullata</p>
                 </div>
               </div>
 
-              <div className="mb-6">
+              <div className="mb-3">
                 <p className="text-gray-700">
                   Sei sicuro di voler eliminare il cliente <strong>"{formData.denominazione}"</strong>?
                 </p>

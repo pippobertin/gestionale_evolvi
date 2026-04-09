@@ -163,7 +163,7 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
+            <FileText className="h-4 w-4" />
             Genera e Invia Contratto
           </DialogTitle>
           <DialogDescription>
@@ -171,7 +171,7 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-3">
           {/* Info Progetto */}
           <div className="bg-gray-50 p-4 rounded-lg space-y-2">
             <h3 className="font-medium text-sm text-gray-700">Dettagli Progetto</h3>
@@ -184,7 +184,7 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
 
           {/* Form Step */}
           {state.step === 'form' && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
                 <Label htmlFor="importo">Importo Consulenza *</Label>
                 <div className="flex items-center space-x-2 mt-1">
@@ -262,8 +262,8 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
           {/* Preview Step - Generazione in corso */}
           {state.step === 'preview' && (
             <div className="text-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
-              <h3 className="text-lg font-medium">Generazione contratto Word...</h3>
+              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-4 text-blue-500" />
+              <h3 className="text-sm font-medium">Generazione contratto Word...</h3>
               <p className="text-sm text-gray-600 mt-2">
                 Creazione contratto formattato da template Word
               </p>
@@ -272,7 +272,7 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
 
           {/* Generated Step - Contratto generato, richiede approvazione */}
           {state.step === 'generated' && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <Alert>
                 <FileText className="h-4 w-4" />
                 <AlertDescription>
@@ -341,8 +341,8 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
           {/* Approving Step */}
           {state.step === 'approving' && (
             <div className="text-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-green-500" />
-              <h3 className="text-lg font-medium">Approvazione in corso...</h3>
+              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-4 text-green-500" />
+              <h3 className="text-sm font-medium">Approvazione in corso...</h3>
               <p className="text-sm text-gray-600 mt-2">
                 Conversione in PDF e invio email al cliente
               </p>
@@ -353,7 +353,7 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
           {state.step === 'success' && (
             <div className="text-center py-8">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-green-900">Contratto approvato e inviato!</h3>
+              <h3 className="text-sm font-medium text-green-900">Contratto approvato e inviato!</h3>
               <div className="text-sm text-gray-600 mt-2 space-y-1">
                 <div>📄 PDF generato: {state.contractData?.pdfFileName}</div>
                 <div>📧 Email inviata a: {state.emailTarget}</div>
@@ -375,7 +375,7 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
 
           {/* Error Step */}
           {state.step === 'error' && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{state.error}</AlertDescription>

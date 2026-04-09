@@ -583,12 +583,12 @@ export default function ReportsContent() {
   const getStatoIcon = (stato: string) => {
     switch (stato) {
       case 'COMPLETATO':
-        return <CheckCircle className="w-5 h-5 text-green-500" />
+        return <CheckCircle className="w-4 h-4 text-green-500" />
       case 'IN_CORSO':
       case 'ACCETTATO':
-        return <Clock className="w-5 h-5 text-blue-500" />
+        return <Clock className="w-4 h-4 text-blue-500" />
       default:
-        return <XCircle className="w-5 h-5 text-gray-400" />
+        return <XCircle className="w-4 h-4 text-gray-400" />
     }
   }
 
@@ -626,11 +626,11 @@ export default function ReportsContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reports & Analytics</h1>
+          <h1 className="text-sm font-semibold text-gray-900">Reports & Analytics</h1>
           <p className="text-gray-600 mt-1">Analisi dati e statistiche</p>
         </div>
       </div>
@@ -638,8 +638,8 @@ export default function ReportsContent() {
       {/* Filtri (solo per tabs non-benchmarking) */}
       {activeTab !== 'benchmarking' && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center gap-4 flex-wrap">
-            <Filter className="w-5 h-5 text-gray-400" />
+          <div className="flex items-center gap-3 flex-wrap">
+            <Filter className="w-4 h-4 text-gray-400" />
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -749,7 +749,7 @@ export default function ReportsContent() {
             }`}
           >
             <div className="flex items-center gap-2">
-              <Euro className="w-5 h-5" />
+              <Euro className="w-4 h-4" />
               Contributi per Cliente
             </div>
           </button>
@@ -762,7 +762,7 @@ export default function ReportsContent() {
             }`}
           >
             <div className="flex items-center gap-2">
-              <Award className="w-5 h-5" />
+              <Award className="w-4 h-4" />
               Performance Bandi
             </div>
           </button>
@@ -775,7 +775,7 @@ export default function ReportsContent() {
             }`}
           >
             <div className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5" />
+              <BarChart3 className="w-4 h-4" />
               Overview Progetti
             </div>
           </button>
@@ -788,7 +788,7 @@ export default function ReportsContent() {
             }`}
           >
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
+              <TrendingUp className="w-4 h-4" />
               Benchmarking
             </div>
           </button>
@@ -801,7 +801,7 @@ export default function ReportsContent() {
             }`}
           >
             <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
+              <Calendar className="w-4 h-4" />
               Scadenze Contrattuali
             </div>
           </button>
@@ -810,7 +810,7 @@ export default function ReportsContent() {
 
       {/* Content */}
       {loading && activeTab !== 'benchmarking' ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
           <p className="text-gray-600 mt-4">Caricamento dati...</p>
         </div>
@@ -820,7 +820,7 @@ export default function ReportsContent() {
           {activeTab === 'contributi' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-sm font-semibold text-gray-900">
                   Contributi Ottenuti per Cliente
                 </h2>
                 <button
@@ -836,25 +836,25 @@ export default function ReportsContent() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Cliente
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         N. Progetti
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Progetti Completati
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Contributo Ammesso
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Contributo Ottenuto
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Tasso Realizzazione
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Azioni
                       </th>
                     </tr>
@@ -867,29 +867,29 @@ export default function ReportsContent() {
 
                       return (
                         <tr key={cliente.cliente_id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-3 py-1.5 whitespace-nowrap">
                             <div className="flex items-center">
-                              <Users className="w-5 h-5 text-gray-400 mr-2" />
+                              <Users className="w-4 h-4 text-gray-400 mr-2" />
                               <div className="text-sm font-medium text-gray-900">
                                 {cliente.cliente_nome}
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                             {cliente.numero_progetti}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                             {cliente.progetti_completati}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                             {formatCurrency(cliente.contributo_totale_ammesso)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-3 py-1.5 whitespace-nowrap">
                             <div className="text-sm font-semibold text-green-600">
                               {formatCurrency(cliente.contributo_totale_ottenuto)}
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-3 py-1.5 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
                                 <div
@@ -902,7 +902,7 @@ export default function ReportsContent() {
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-sm">
                             <button
                               onClick={() => loadDettaglioCliente(cliente)}
                               className="flex items-center gap-1 text-primary-600 hover:text-primary-800 font-medium"
@@ -926,38 +926,38 @@ export default function ReportsContent() {
 
               {/* Summary Cards */}
               {contributiClienti.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-blue-600 font-medium">Totale Clienti</p>
-                        <p className="text-2xl font-bold text-blue-900 mt-1">
+                        <p className="text-lg font-bold text-blue-900 mt-1">
                           {contributiClienti.length}
                         </p>
                       </div>
-                      <Users className="w-8 h-8 text-blue-400" />
+                      <Users className="w-6 h-6 text-blue-400" />
                     </div>
                   </div>
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-green-600 font-medium">Contributi Ammessi</p>
-                        <p className="text-2xl font-bold text-green-900 mt-1">
+                        <p className="text-lg font-bold text-green-900 mt-1">
                           {formatCurrency(contributiClienti.reduce((sum, c) => sum + c.contributo_totale_ammesso, 0))}
                         </p>
                       </div>
-                      <Target className="w-8 h-8 text-green-400" />
+                      <Target className="w-6 h-6 text-green-400" />
                     </div>
                   </div>
                   <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-primary-600 font-medium">Contributi Ottenuti</p>
-                        <p className="text-2xl font-bold text-primary-900 mt-1">
+                        <p className="text-lg font-bold text-primary-900 mt-1">
                           {formatCurrency(contributiClienti.reduce((sum, c) => sum + c.contributo_totale_ottenuto, 0))}
                         </p>
                       </div>
-                      <TrendingUp className="w-8 h-8 text-primary-400" />
+                      <TrendingUp className="w-6 h-6 text-primary-400" />
                     </div>
                   </div>
                 </div>
@@ -969,7 +969,7 @@ export default function ReportsContent() {
           {activeTab === 'bandi' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-sm font-semibold text-gray-900">
                   Performance per Bando
                 </h2>
                 <button
@@ -985,22 +985,22 @@ export default function ReportsContent() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Bando
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Totale Progetti
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Completati
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         In Corso
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Tasso Successo
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Contributo Ottenuto
                       </th>
                     </tr>
@@ -1008,28 +1008,28 @@ export default function ReportsContent() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {statiBandi.map((bando) => (
                       <tr key={bando.bando_id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-1.5">
                           <div className="flex items-center">
-                            <FileText className="w-5 h-5 text-gray-400 mr-2" />
+                            <FileText className="w-4 h-4 text-gray-400 mr-2" />
                             <div className="text-sm font-medium text-gray-900">
                               {bando.bando_nome}
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                           {bando.totale_progetti}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-3 py-1.5 whitespace-nowrap">
                           <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                             {bando.progetti_completati}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-3 py-1.5 whitespace-nowrap">
                           <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                             {bando.progetti_in_corso}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-3 py-1.5 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
                               <div
@@ -1045,7 +1045,7 @@ export default function ReportsContent() {
                             </span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-sm font-semibold text-green-600">
                           {formatCurrency(bando.contributo_totale_ottenuto)}
                         </td>
                       </tr>
@@ -1064,65 +1064,65 @@ export default function ReportsContent() {
 
           {/* Tab: Overview Progetti */}
           {activeTab === 'overview' && overviewProgetti && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-gray-900">
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-gray-900">
                 Panoramica Generale Progetti
               </h2>
 
               {/* KPI Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-600">Totale Progetti</p>
-                      <p className="text-3xl font-bold text-gray-900 mt-2">
+                      <p className="text-lg font-bold text-gray-900 mt-2">
                         {overviewProgetti.totale}
                       </p>
                     </div>
-                    <FileText className="w-12 h-12 text-gray-300" />
+                    <FileText className="w-6 h-6 text-gray-300" />
                   </div>
                 </div>
 
-                <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-green-600 font-medium">Completati</p>
-                      <p className="text-3xl font-bold text-green-900 mt-2">
+                      <p className="text-lg font-bold text-green-900 mt-2">
                         {overviewProgetti.completato}
                       </p>
                     </div>
-                    <Award className="w-12 h-12 text-green-300" />
+                    <Award className="w-6 h-6 text-green-300" />
                   </div>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-blue-600 font-medium">In Corso</p>
-                      <p className="text-3xl font-bold text-blue-900 mt-2">
+                      <p className="text-lg font-bold text-blue-900 mt-2">
                         {overviewProgetti.in_corso}
                       </p>
                     </div>
-                    <TrendingUp className="w-12 h-12 text-blue-300" />
+                    <TrendingUp className="w-6 h-6 text-blue-300" />
                   </div>
                 </div>
 
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-yellow-600 font-medium">In Attesa</p>
-                      <p className="text-3xl font-bold text-yellow-900 mt-2">
+                      <p className="text-lg font-bold text-yellow-900 mt-2">
                         {overviewProgetti.decreto_atteso + overviewProgetti.decreto_ricevuto + overviewProgetti.accettato}
                       </p>
                     </div>
-                    <Calendar className="w-12 h-12 text-yellow-300" />
+                    <Calendar className="w-6 h-6 text-yellow-300" />
                   </div>
                 </div>
               </div>
 
               {/* Stati Dettaglio */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">
                   Distribuzione Stati
                 </h3>
                 <div className="space-y-4">
@@ -1156,13 +1156,13 @@ export default function ReportsContent() {
               </div>
 
               {/* Contributi */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">
                     Contributo Totale Ammesso
                   </h3>
                   <div className="flex items-baseline">
-                    <p className="text-4xl font-bold text-green-600">
+                    <p className="text-lg font-bold text-green-600">
                       {formatCurrency(overviewProgetti.contributo_totale_ammesso)}
                     </p>
                   </div>
@@ -1171,12 +1171,12 @@ export default function ReportsContent() {
                   </p>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">
                     Contributo Totale Ottenuto
                   </h3>
                   <div className="flex items-baseline">
-                    <p className="text-4xl font-bold text-primary-600">
+                    <p className="text-lg font-bold text-primary-600">
                       {formatCurrency(overviewProgetti.contributo_totale_ottenuto)}
                     </p>
                   </div>
@@ -1208,12 +1208,12 @@ export default function ReportsContent() {
 
           {/* Tab: Benchmarking */}
           {activeTab === 'benchmarking' && (
-            <div className="space-y-6">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            <div className="space-y-3">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <h2 className="text-sm font-semibold text-gray-900 mb-2">
                   Seleziona Periodi da Confrontare
                 </h2>
-                <p className="text-sm text-gray-600 mb-4">
+                <p className="text-sm text-gray-600 mb-2">
                   Seleziona da 2 a 4 periodi da confrontare (max 4 periodi)
                 </p>
 
@@ -1262,33 +1262,33 @@ export default function ReportsContent() {
               </div>
 
               {periodiComparazione.length === 0 && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center">
-                  <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                  <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-2" />
                   <p className="text-gray-600">Seleziona almeno 2 periodi da confrontare</p>
                 </div>
               )}
 
               {periodiComparazione.length === 1 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-12 text-center">
-                  <Calendar className="w-16 h-16 text-yellow-300 mx-auto mb-4" />
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+                  <Calendar className="w-16 h-16 text-yellow-300 mx-auto mb-2" />
                   <p className="text-yellow-700">Seleziona almeno un altro periodo per vedere il confronto</p>
                 </div>
               )}
 
               {loadingBenchmark && periodiComparazione.length >= 2 && (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
                   <p className="text-gray-600 mt-4">Caricamento dati di confronto...</p>
                 </div>
               )}
 
               {!loadingBenchmark && datiPeriodi.length >= 2 && (
-                <div className="space-y-6">
+                <div className="space-y-3">
                   {/* Grafici Comparativi */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     {/* Grafico Contributi Ottenuti per Periodo */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-2">
                         Contributi Ottenuti per Periodo
                       </h3>
                       <div style={{ height: '300px' }}>
@@ -1329,8 +1329,8 @@ export default function ReportsContent() {
                     </div>
 
                     {/* Grafico Progetti Completati */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-2">
                         Progetti Completati per Periodo
                       </h3>
                       <div style={{ height: '300px' }}>
@@ -1370,8 +1370,8 @@ export default function ReportsContent() {
                     </div>
 
                     {/* Grafico a Linee - Trend Contributi */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-2">
                         Trend Contributi
                       </h3>
                       <div style={{ height: '300px' }}>
@@ -1434,8 +1434,8 @@ export default function ReportsContent() {
                     </div>
 
                     {/* Grafico a Torta - Distribuzione Stati nel primo periodo */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-2">
                         Distribuzione Stati - {datiPeriodi[0].label}
                       </h3>
                       <div style={{ height: '300px' }}>
@@ -1472,8 +1472,8 @@ export default function ReportsContent() {
 
                   {/* Tabella Comparativa KPI */}
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-200">
-                      <h3 className="text-lg font-semibold text-gray-900">
+                    <div className="px-3 py-1.5 border-b border-gray-200">
+                      <h3 className="text-sm font-semibold text-gray-900">
                         Confronto KPI Principali
                       </h3>
                     </div>
@@ -1481,11 +1481,11 @@ export default function ReportsContent() {
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Metrica
                             </th>
                             {datiPeriodi.map((periodo, idx) => (
-                              <th key={periodo.periodo} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              <th key={periodo.periodo} className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 {periodo.label}
                                 {idx > 0 && <span className="ml-2 text-gray-400">vs {datiPeriodi[idx-1].label}</span>}
                               </th>
@@ -1494,11 +1494,11 @@ export default function ReportsContent() {
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                           <tr>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <td className="px-3 py-1.5 whitespace-nowrap text-sm font-medium text-gray-900">
                               Totale Progetti
                             </td>
                             {datiPeriodi.map((periodo, idx) => (
-                              <td key={periodo.periodo} className="px-6 py-4 whitespace-nowrap text-sm">
+                              <td key={periodo.periodo} className="px-3 py-1.5 whitespace-nowrap text-sm">
                                 <div className="flex items-center gap-2">
                                   <span className="font-semibold text-gray-900">
                                     {periodo.overview?.totale || 0}
@@ -1514,11 +1514,11 @@ export default function ReportsContent() {
                             ))}
                           </tr>
                           <tr>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <td className="px-3 py-1.5 whitespace-nowrap text-sm font-medium text-gray-900">
                               Progetti Completati
                             </td>
                             {datiPeriodi.map((periodo, idx) => (
-                              <td key={periodo.periodo} className="px-6 py-4 whitespace-nowrap text-sm">
+                              <td key={periodo.periodo} className="px-3 py-1.5 whitespace-nowrap text-sm">
                                 <div className="flex items-center gap-2">
                                   <span className="font-semibold text-green-600">
                                     {periodo.overview?.completato || 0}
@@ -1534,11 +1534,11 @@ export default function ReportsContent() {
                             ))}
                           </tr>
                           <tr>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <td className="px-3 py-1.5 whitespace-nowrap text-sm font-medium text-gray-900">
                               Contributo Ammesso
                             </td>
                             {datiPeriodi.map((periodo, idx) => (
-                              <td key={periodo.periodo} className="px-6 py-4 whitespace-nowrap text-sm">
+                              <td key={periodo.periodo} className="px-3 py-1.5 whitespace-nowrap text-sm">
                                 <div className="flex items-center gap-2">
                                   <span className="font-semibold text-gray-900">
                                     {formatCurrency(periodo.overview?.contributo_totale_ammesso || 0)}
@@ -1554,11 +1554,11 @@ export default function ReportsContent() {
                             ))}
                           </tr>
                           <tr>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <td className="px-3 py-1.5 whitespace-nowrap text-sm font-medium text-gray-900">
                               Contributo Ottenuto
                             </td>
                             {datiPeriodi.map((periodo, idx) => (
-                              <td key={periodo.periodo} className="px-6 py-4 whitespace-nowrap text-sm">
+                              <td key={periodo.periodo} className="px-3 py-1.5 whitespace-nowrap text-sm">
                                 <div className="flex items-center gap-2">
                                   <span className="font-semibold text-primary-600">
                                     {formatCurrency(periodo.overview?.contributo_totale_ottenuto || 0)}
@@ -1574,7 +1574,7 @@ export default function ReportsContent() {
                             ))}
                           </tr>
                           <tr>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <td className="px-3 py-1.5 whitespace-nowrap text-sm font-medium text-gray-900">
                               Tasso Realizzazione
                             </td>
                             {datiPeriodi.map((periodo, idx) => {
@@ -1585,7 +1585,7 @@ export default function ReportsContent() {
                                 ? (datiPeriodi[idx-1].overview!.contributo_totale_ottenuto / datiPeriodi[idx-1].overview!.contributo_totale_ammesso) * 100
                                 : 0
                               return (
-                                <td key={periodo.periodo} className="px-6 py-4 whitespace-nowrap text-sm">
+                                <td key={periodo.periodo} className="px-3 py-1.5 whitespace-nowrap text-sm">
                                   <div className="flex items-center gap-2">
                                     <span className="font-semibold text-gray-900">
                                       {tasso.toFixed(1)}%
@@ -1602,11 +1602,11 @@ export default function ReportsContent() {
                             })}
                           </tr>
                           <tr>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <td className="px-3 py-1.5 whitespace-nowrap text-sm font-medium text-gray-900">
                               Numero Clienti Attivi
                             </td>
                             {datiPeriodi.map((periodo, idx) => (
-                              <td key={periodo.periodo} className="px-6 py-4 whitespace-nowrap text-sm">
+                              <td key={periodo.periodo} className="px-3 py-1.5 whitespace-nowrap text-sm">
                                 <div className="flex items-center gap-2">
                                   <span className="font-semibold text-gray-900">
                                     {periodo.contributiClienti.length}
@@ -1628,8 +1628,8 @@ export default function ReportsContent() {
 
                   {/* Top 5 Clienti per Periodo */}
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-200">
-                      <h3 className="text-lg font-semibold text-gray-900">
+                    <div className="px-3 py-1.5 border-b border-gray-200">
+                      <h3 className="text-sm font-semibold text-gray-900">
                         Top 5 Clienti per Contributi Ottenuti
                       </h3>
                     </div>
@@ -1637,11 +1637,11 @@ export default function ReportsContent() {
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Posizione
                             </th>
                             {datiPeriodi.map((periodo) => (
-                              <th key={periodo.periodo} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              <th key={periodo.periodo} className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 {periodo.label}
                               </th>
                             ))}
@@ -1650,13 +1650,13 @@ export default function ReportsContent() {
                         <tbody className="bg-white divide-y divide-gray-200">
                           {[0, 1, 2, 3, 4].map((pos) => (
                             <tr key={pos}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              <td className="px-3 py-1.5 whitespace-nowrap text-sm font-medium text-gray-900">
                                 #{pos + 1}
                               </td>
                               {datiPeriodi.map((periodo) => {
                                 const cliente = periodo.contributiClienti[pos]
                                 return (
-                                  <td key={periodo.periodo} className="px-6 py-4 text-sm">
+                                  <td key={periodo.periodo} className="px-3 py-1.5 text-sm">
                                     {cliente ? (
                                       <div>
                                         <div className="font-medium text-gray-900">{cliente.cliente_nome}</div>
@@ -1696,9 +1696,9 @@ export default function ReportsContent() {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header Modale */}
-            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+            <div className="flex justify-between items-center p-4 border-b border-gray-200">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
+                <h2 className="text-lg font-bold text-gray-900">
                   Dettaglio Cliente: {clienteSelezionato.cliente_nome}
                 </h2>
                 <p className="text-sm text-gray-600 mt-1">
@@ -1712,41 +1712,41 @@ export default function ReportsContent() {
                 }}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <X className="w-6 h-6" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Content Modale */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-4">
               {loadingDettaglio ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-3">
                   {/* Summary Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <p className="text-sm text-blue-600 font-medium">Bandi Partecipati</p>
-                      <p className="text-2xl font-bold text-blue-900 mt-1">
+                      <p className="text-lg font-bold text-blue-900 mt-1">
                         {bandiDettaglio.length}
                       </p>
                     </div>
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                       <p className="text-sm text-green-600 font-medium">Progetti Vinti</p>
-                      <p className="text-2xl font-bold text-green-900 mt-1">
+                      <p className="text-lg font-bold text-green-900 mt-1">
                         {bandiDettaglio.reduce((sum, b) => sum + b.progetti_vinti, 0)}
                       </p>
                     </div>
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                       <p className="text-sm text-yellow-600 font-medium">Totale Progetti</p>
-                      <p className="text-2xl font-bold text-yellow-900 mt-1">
+                      <p className="text-lg font-bold text-yellow-900 mt-1">
                         {clienteSelezionato.numero_progetti}
                       </p>
                     </div>
                     <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                       <p className="text-sm text-primary-600 font-medium">Contributi Ottenuti</p>
-                      <p className="text-2xl font-bold text-primary-900 mt-1">
+                      <p className="text-lg font-bold text-primary-900 mt-1">
                         {formatCurrency(clienteSelezionato.contributo_totale_ottenuto)}
                       </p>
                     </div>
@@ -1756,11 +1756,11 @@ export default function ReportsContent() {
                   <div className="space-y-4">
                     {bandiDettaglio.map((bando) => (
                       <div key={bando.bando_id} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                        <div className="bg-gray-50 px-3 py-1.5 border-b border-gray-200">
                           <div className="flex justify-between items-start">
                             <div>
-                              <h3 className="text-lg font-semibold text-gray-900">{bando.bando_nome}</h3>
-                              <div className="flex gap-4 mt-2 text-sm text-gray-600">
+                              <h3 className="text-sm font-semibold text-gray-900">{bando.bando_nome}</h3>
+                              <div className="flex gap-3 mt-2 text-sm text-gray-600">
                                 <span>Progetti: {bando.progetti_totali}</span>
                                 <span className="text-green-600 font-medium">
                                   Vinti: {bando.progetti_vinti}
@@ -1772,7 +1772,7 @@ export default function ReportsContent() {
                             </div>
                             <div className="text-right">
                               <p className="text-sm text-gray-600">Contributo Ottenuto</p>
-                              <p className="text-xl font-bold text-green-600">
+                              <p className="text-sm font-bold text-green-600">
                                 {formatCurrency(bando.contributo_totale_ottenuto)}
                               </p>
                             </div>
@@ -1781,7 +1781,7 @@ export default function ReportsContent() {
 
                         <div className="divide-y divide-gray-200">
                           {bando.progetti.map((progetto) => (
-                            <div key={progetto.id} className="px-6 py-4 hover:bg-gray-50">
+                            <div key={progetto.id} className="px-3 py-1.5 hover:bg-gray-50">
                               <div className="flex justify-between items-start">
                                 <div className="flex items-start gap-3 flex-1">
                                   {getStatoIcon(progetto.stato)}
@@ -1792,7 +1792,7 @@ export default function ReportsContent() {
                                     <p className="text-sm text-gray-600 mt-1">
                                       Codice: {progetto.codice_progetto}
                                     </p>
-                                    <div className="flex gap-4 mt-2">
+                                    <div className="flex gap-3 mt-2">
                                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                                         {getStatoLabel(progetto.stato)}
                                       </span>
