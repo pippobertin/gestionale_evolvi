@@ -83,16 +83,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('email', googleUser.email)
         .single()
 
+      let userData: User | null = null
+
       if (existingUser) {
-        // Utente esiste, imposta la sessione
-        setUser({
+        userData = {
           id: existingUser.id,
           email: existingUser.email,
           nome: existingUser.nome,
           cognome: existingUser.cognome,
           livello_permessi: existingUser.livello_permessi,
           nome_completo: `${existingUser.nome} ${existingUser.cognome}`
-        })
+        }
       } else {
         // Nuovo utente Google, crealo nel database
         const [nome, cognome] = (googleUser.name || '').split(' ')
@@ -109,14 +110,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .single()
 
         if (newUser) {
-          setUser({
+          userData = {
             id: newUser.id,
             email: newUser.email,
             nome: newUser.nome,
             cognome: newUser.cognome,
             livello_permessi: newUser.livello_permessi,
             nome_completo: `${newUser.nome} ${newUser.cognome}`
-          })
+          }
+        }
+      }
+
+      if (userData) {
+        setUser(userData)
+
+        // Generate JWT for API route authentication
+        // Google OAuth users need this for routes that check auth_token cookie/header
+        try {
+          const jwtResponse = await fetch('/api/auth/google-jwt')
+          if (jwtResponse.ok) {
+            const jwtData = await jwtResponse.json()
+            if (jwtData.token) {
+              localStorage.setItem('auth_token', jwtData.token)
+              console.log('✅ JWT created for Google OAuth user')
+            }
+          }
+        } catch (jwtError) {
+          console.error('⚠️ Failed to create JWT for Google user:', jwtError)
         }
       }
     } catch (error) {
