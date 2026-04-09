@@ -14,11 +14,16 @@ import {
   Euro,
   Users,
   Hash,
-  FolderOpen
+  Receipt,
+  Shield,
+  ClipboardCheck
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import ReferentiManager from './ReferentiManager'
-import DocumentiManager from './DocumentiManager'
+import ContrattiEvolviManager from './ContrattiEvolviManager'
+import EvolviInvoicesContent from './EvolviInvoicesContent'
+import DocumentiAmministrativiManager from './DocumentiAmministrativiManager'
+import ContractTrackingPanel from './ContractTrackingPanel'
 
 interface CollegamentoAziendale {
   id: string
@@ -67,7 +72,7 @@ interface Cliente {
   numero_dipendenti?: number
   numero_volontari?: number
   numero_collaboratori?: number
-  categoria_evolvi?: 'CLIENTE_SPOT' | 'EVOLVI_BASE' | 'EVOLVI_FULL'
+  categoria_evolvi?: 'CLIENTE_SPOT' | 'EVOLVI'
   durata_evolvi?: string
   scadenza_evolvi?: string
   rating?: number
@@ -199,15 +204,24 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
     )
   }
 
-  const tabs = [
+  const isEvolviClient = cliente.categoria_evolvi === 'EVOLVI'
+
+  const baseTabs = [
     { id: 'anagrafica', label: 'Dati Anagrafici', icon: Building2 },
     { id: 'contatti', label: 'Contatti', icon: Mail },
     { id: 'legale', label: 'Legale Rappresentante', icon: User },
     { id: 'dimensionamento', label: 'Dimensionamento', icon: Users },
     { id: 'collegamenti', label: 'Rapporti di Collegamento', icon: Hash },
     { id: 'gestione', label: 'Gestione', icon: FileText },
-    { id: 'documenti', label: 'Documenti', icon: FolderOpen }
+    { id: 'doc_amministrativi', label: 'Doc. Amministrativi', icon: Shield }
   ]
+
+  const evolviTabs = isEvolviClient ? [
+    { id: 'contratti_evolvi', label: 'Contratti Evolvi', icon: ClipboardCheck },
+    { id: 'fatturazione', label: 'Fatturazione', icon: Receipt }
+  ] : []
+
+  const tabs = [...baseTabs, ...evolviTabs]
 
   const renderTabContent = () => {
     switch (currentTab) {
@@ -698,7 +712,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
         )
 
       case 'gestione':
-        const showEvolviFields = cliente.categoria_evolvi === 'EVOLVI_BASE' || cliente.categoria_evolvi === 'EVOLVI_FULL'
+        const showEvolviFields = cliente.categoria_evolvi === 'EVOLVI'
 
         return (
           <div className="space-y-6">
@@ -706,9 +720,8 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
-                  {cliente.categoria_evolvi === 'CLIENTE_SPOT' ? 'Cliente spot' :
-                   cliente.categoria_evolvi === 'EVOLVI_BASE' ? 'Evolvi Base' :
-                   cliente.categoria_evolvi === 'EVOLVI_FULL' ? 'Evolvi Full' : '-'}
+                  {cliente.categoria_evolvi === 'CLIENTE_SPOT' ? 'Spot' :
+                   cliente.categoria_evolvi === 'EVOLVI' ? 'Evolvi' : '-'}
                 </div>
               </div>
 
@@ -731,7 +744,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
             </div>
 
             {/* Informazione per clienti spot */}
-            {cliente.categoria_evolvi === 'CLIENTE_SPOT' && (
+            {(cliente.categoria_evolvi === 'CLIENTE_SPOT' || !cliente.categoria_evolvi) && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <div className="flex items-center">
                   <FileText className="w-5 h-5 text-yellow-600 mr-2" />
@@ -751,7 +764,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
                   <h4 className="text-blue-800 font-medium">Cliente Evolvi</h4>
                 </div>
                 <p className="text-blue-700 text-sm mt-2">
-                  Cliente con abbonamento attivo {cliente.categoria_evolvi === 'EVOLVI_BASE' ? 'Base' : 'Full'}.
+                  Cliente con abbonamento Metodo Evolvi attivo.
                 </p>
               </div>
             )}
@@ -772,13 +785,27 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
           </div>
         )
 
-      case 'documenti':
+      case 'doc_amministrativi':
         return (
           <div className="space-y-6">
-            <DocumentiManager
+            <DocumentiAmministrativiManager clienteId={cliente.id} />
+          </div>
+        )
+
+      case 'contratti_evolvi':
+        return (
+          <div className="space-y-6">
+            <ContrattiEvolviManager
               clienteId={cliente.id}
-              isNewClient={false}
+              clienteDenominazione={cliente.denominazione}
             />
+          </div>
+        )
+
+      case 'fatturazione':
+        return (
+          <div className="space-y-6">
+            <EvolviInvoicesContent clienteId={cliente.id} />
           </div>
         )
 

@@ -13,6 +13,7 @@ import ProgettiContent from '@/components/ProgettiContent'
 import SettingsContent from '@/components/SettingsContent'
 import GmailClient from '@/components/GmailClient'
 import ReportsContent from '@/components/ReportsContent'
+import ProspectContent from '@/components/ProspectContent'
 import { LoadingSpinner } from '@/components/shared'
 
 function AppContent() {
@@ -54,6 +55,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
     switch (activeItem) {
       case 'dashboard': return 'Dashboard'
       case 'scadenze': return 'Scadenzario'
+      case 'prospect': return 'Prospect'
       case 'clienti': return 'Clienti'
       case 'bandi': return 'Bandi'
       case 'progetti': return 'Progetti'
@@ -69,6 +71,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
     switch (activeItem) {
       case 'dashboard': return ['Home', 'Dashboard']
       case 'scadenze': return ['Home', 'Scadenzario']
+      case 'prospect': return ['Home', 'Gestione', 'Prospect']
       case 'clienti': return ['Home', 'Gestione', 'Clienti']
       case 'bandi': return ['Home', 'Gestione', 'Bandi']
       case 'progetti': return ['Home', 'Gestione', 'Progetti']
@@ -86,6 +89,8 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
         return <DashboardContent onNavigate={onNavigate} />
       case 'scadenze':
         return <ScadenzeContent />
+      case 'prospect':
+        return <ProspectContent />
       case 'clienti':
         return <ClientiContent onNavigate={onNavigate} />
       case 'bandi':

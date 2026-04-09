@@ -22,6 +22,7 @@ import { supabase } from '@/lib/supabase'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import DocumentPreviewModal from './DocumentPreviewModal'
 import ContractModal from './ContractModal'
+import ContractTrackingWidget from './ContractTrackingWidget'
 
 interface ProgettoFormData {
   bando_id: string
@@ -2092,6 +2093,16 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                       <p className="text-gray-600">
                         I documenti caricati appariranno qui
                       </p>
+                    </div>
+                  )}
+                  {/* Contract Tracking - solo per progetti esistenti */}
+                  {progetto && (
+                    <div className="mt-6">
+                      <h4 className="font-medium text-gray-900 mb-3">Tracking Contratto</h4>
+                      <ContractTrackingWidget
+                        entityType="PROGETTO"
+                        entityId={progetto.id}
+                      />
                     </div>
                   )}
                 </div>

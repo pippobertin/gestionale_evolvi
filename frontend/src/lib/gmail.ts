@@ -94,6 +94,42 @@ export async function getGmailClient(userId?: string) {
   return google.gmail({ version: 'v1', auth: oauth2Client })
 }
 
+/**
+ * Checks the delivery status of a Gmail message
+ * @param messageId - The Gmail message ID
+ * @param userId - Optional user ID for per-user tokens
+ */
+export async function getMessageStatus(messageId: string, userId?: string): Promise<{
+  status: 'SENT' | 'DELIVERED' | 'BOUNCED' | 'FAILED' | 'UNKNOWN'
+  error?: string
+}> {
+  try {
+    const gmail = await getGmailClient(userId)
+    const message = await gmail.users.messages.get({
+      userId: 'me',
+      id: messageId,
+      format: 'metadata',
+      metadataHeaders: ['X-Failed-Recipients']
+    })
+
+    if (!message.data) {
+      return { status: 'UNKNOWN' }
+    }
+
+    const labels = message.data.labelIds || []
+    if (labels.includes('SENT')) {
+      return { status: 'DELIVERED' }
+    }
+
+    return { status: 'SENT' }
+  } catch (error: any) {
+    if (error.code === 404) {
+      return { status: 'FAILED', error: 'Message not found' }
+    }
+    return { status: 'UNKNOWN', error: error.message }
+  }
+}
+
 export class GmailService {
   private oauth2Client: any
 
@@ -214,6 +250,50 @@ export class GmailService {
       .replace(/=+$/, '')
   }
 
+
+  /**
+   * Controlla lo stato di delivery di un messaggio Gmail
+   */
+  async getMessageStatus(messageId: string): Promise<{
+    status: 'SENT' | 'DELIVERED' | 'BOUNCED' | 'FAILED' | 'UNKNOWN'
+    error?: string
+  }> {
+    try {
+      await this.oauth2Client.getAccessToken()
+      const gmail = google.gmail({ version: 'v1', auth: this.oauth2Client })
+
+      const message = await gmail.users.messages.get({
+        userId: 'me',
+        id: messageId,
+        format: 'metadata',
+        metadataHeaders: ['X-Failed-Recipients', 'X-Mailer-Daemon-Error']
+      })
+
+      if (!message.data) {
+        return { status: 'UNKNOWN' }
+      }
+
+      const labels = message.data.labelIds || []
+
+      // Check for bounce indicators
+      if (labels.includes('BOUNCED') || labels.includes('DRAFT')) {
+        return { status: 'BOUNCED', error: 'Message bounced' }
+      }
+
+      // If message exists in SENT folder, it was at least sent
+      if (labels.includes('SENT')) {
+        return { status: 'DELIVERED' }
+      }
+
+      return { status: 'SENT' }
+    } catch (error: any) {
+      console.error('Error checking message status:', error)
+      if (error.code === 404) {
+        return { status: 'FAILED', error: 'Message not found' }
+      }
+      return { status: 'UNKNOWN', error: error.message }
+    }
+  }
 
   /**
    * Test connessione Gmail

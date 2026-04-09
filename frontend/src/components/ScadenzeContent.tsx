@@ -1,11 +1,12 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Calendar, List, Clock, AlertTriangle, CheckCircle, Plus, Filter, CalendarDays, Trash2 } from 'lucide-react'
+import { Calendar, List, Clock, AlertTriangle, CheckCircle, Plus, Filter, CalendarDays, Trash2, ToggleLeft, ToggleRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import CalendarioScadenze from './CalendarioScadenze'
 import CalendarioSettimana from './CalendarioSettimana'
 import ScadenzaForm from './ScadenzaForm'
+import ScadenzeContrattualiContent from './ScadenzeContrattualiContent'
 
 interface Scadenza {
   id: string
@@ -48,6 +49,7 @@ export default function ScadenzeContent() {
   const [showDayModal, setShowDayModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [scadenzaDaEliminare, setScadenzaDaEliminare] = useState<Scadenza | null>(null)
+  const [showContrattuali, setShowContrattuali] = useState(false)
 
   // Carica scadenze
   useEffect(() => {
@@ -371,15 +373,38 @@ export default function ScadenzeContent() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Gestione Scadenze</h1>
-        <button
-          onClick={() => setShowNuovaScadenza(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Nuova Scadenza
-        </button>
+        <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-bold text-gray-900">Gestione Scadenze</h1>
+          <button
+            onClick={() => setShowContrattuali(!showContrattuali)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              showContrattuali
+                ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
+            }`}
+          >
+            {showContrattuali ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+            Scadenze Contrattuali
+          </button>
+        </div>
+        {!showContrattuali && (
+          <button
+            onClick={() => setShowNuovaScadenza(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Nuova Scadenza
+          </button>
+        )}
       </div>
+
+      {/* Vista Scadenze Contrattuali */}
+      {showContrattuali && (
+        <ScadenzeContrattualiContent />
+      )}
+
+      {/* Scadenze Progetto (vista default) */}
+      {!showContrattuali && <>
 
       {/* Statistiche Rapide */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -892,6 +917,8 @@ export default function ScadenzeContent() {
           </div>
         </div>
       )}
+
+      </>}
     </div>
   )
 }

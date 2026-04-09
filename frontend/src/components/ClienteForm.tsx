@@ -65,7 +65,7 @@ interface Cliente {
   diritti_voto?: number
   influenza_dominante?: boolean
   note_collegamento?: string
-  categoria_evolvi?: 'CLIENTE_SPOT' | 'EVOLVI_BASE' | 'EVOLVI_FULL'
+  categoria_evolvi?: 'CLIENTE_SPOT' | 'EVOLVI'
   durata_evolvi?: string
   scadenza_evolvi?: string
   assegnato_a?: string
@@ -714,9 +714,9 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
       onSave()
       onClose()
-    } catch (error) {
-      console.error('Errore nel salvataggio:', error)
-      alert('Errore nel salvataggio del cliente')
+    } catch (error: any) {
+      console.error('Errore nel salvataggio:', error?.message || error?.details || error?.hint || error)
+      alert(`Errore nel salvataggio: ${error?.message || error?.details || 'Errore sconosciuto'}`)
     } finally {
       setSaving(false)
     }
@@ -1626,7 +1626,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
         )
 
       case 'gestione':
-        const showEvolviFields = formData.categoria_evolvi === 'EVOLVI_BASE' || formData.categoria_evolvi === 'EVOLVI_FULL'
+        const showEvolviFields = formData.categoria_evolvi === 'EVOLVI'
 
         return (
           <div className="space-y-6">
@@ -1641,9 +1641,8 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   className="input"
                 >
                   <option value="">Seleziona categoria</option>
-                  <option value="CLIENTE_SPOT">Cliente spot</option>
-                  <option value="EVOLVI_BASE">Evolvi Base</option>
-                  <option value="EVOLVI_FULL">Evolvi Full</option>
+                  <option value="CLIENTE_SPOT">Spot</option>
+                  <option value="EVOLVI">Evolvi</option>
                 </select>
               </div>
 
@@ -1698,7 +1697,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   <h4 className="text-blue-800 font-medium">Cliente Evolvi</h4>
                 </div>
                 <p className="text-blue-700 text-sm mt-2">
-                  Cliente con abbonamento attivo {formData.categoria_evolvi === 'EVOLVI_BASE' ? 'Base' : 'Full'}.
+                  Cliente con abbonamento Metodo Evolvi attivo.
                   Monitorare la scadenza per il rinnovo.
                 </p>
               </div>

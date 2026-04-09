@@ -5,6 +5,7 @@ import {
   Home,
   Calendar,
   Users,
+  UserPlus,
   FileText,
   Settings,
   BarChart3,
@@ -34,6 +35,7 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home, adminOnly: false },
     { id: 'scadenze', label: 'Scadenzario', icon: Calendar, adminOnly: false },
+    { id: 'prospect', label: 'Prospect', icon: UserPlus, adminOnly: false },
     { id: 'clienti', label: 'Clienti', icon: Users, adminOnly: false },
     { id: 'bandi', label: 'Bandi', icon: FileText, adminOnly: false },
     { id: 'progetti', label: 'Progetti', icon: Target, adminOnly: false },

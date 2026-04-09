@@ -215,6 +215,109 @@ export class NotificationService {
     }
   }
 
+  /**
+   * Processa notifiche per fatture Evolvi in scadenza e scadute
+   */
+  static async processEvolviInvoiceNotifications(): Promise<void> {
+    try {
+      console.log('🔄 Processamento notifiche fatture Evolvi...')
+      const today = new Date().toISOString().split('T')[0]
+      const in15Days = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+      // Fatture in scadenza nei prossimi 15 giorni
+      const { data: fatturePending, error: pendingError } = await supabase
+        .from('scadenze_bandi_evolvi_fatture')
+        .select('*, scadenze_bandi_clienti(denominazione, email)')
+        .eq('stato_pagamento', 'PENDING')
+        .gte('data_scadenza_pagamento', today)
+        .lte('data_scadenza_pagamento', in15Days)
+
+      if (pendingError) throw pendingError
+
+      // Fatture scadute non pagate - aggiorna stato
+      const { data: fattureOverdue, error: overdueError } = await supabase
+        .from('scadenze_bandi_evolvi_fatture')
+        .update({ stato_pagamento: 'OVERDUE' })
+        .eq('stato_pagamento', 'PENDING')
+        .lt('data_scadenza_pagamento', today)
+        .select()
+
+      if (overdueError) {
+        console.error('Errore aggiornamento fatture scadute:', overdueError)
+      }
+
+      console.log(`📋 Fatture in scadenza: ${fatturePending?.length || 0}, Scadute aggiornate: ${fattureOverdue?.length || 0}`)
+    } catch (error) {
+      console.error('❌ Errore processamento fatture Evolvi:', error)
+    }
+  }
+
+  /**
+   * Processa notifiche per contratti Evolvi in scadenza
+   */
+  static async processEvolviContractExpiryNotifications(): Promise<void> {
+    try {
+      console.log('🔄 Processamento scadenze contratti Evolvi...')
+      const today = new Date()
+
+      const alertDays = [30, 15, 7]
+      for (const days of alertDays) {
+        const targetDate = new Date(today.getTime() + days * 24 * 60 * 60 * 1000)
+        const dateStr = targetDate.toISOString().split('T')[0]
+
+        const { data: contratti } = await supabase
+          .from('scadenze_bandi_contratti_evolvi')
+          .select('*, scadenze_bandi_clienti(denominazione, email)')
+          .eq('stato', 'attivo')
+          .eq('data_fine', dateStr)
+
+        if (contratti && contratti.length > 0) {
+          console.log(`📋 ${contratti.length} contratti in scadenza tra ${days} giorni`)
+        }
+      }
+    } catch (error) {
+      console.error('❌ Errore processamento scadenze contratti Evolvi:', error)
+    }
+  }
+
+  /**
+   * Processa notifiche per scadenze contrattuali generiche
+   */
+  static async processScadenzeContrattualiNotifications(): Promise<void> {
+    try {
+      console.log('🔄 Processamento notifiche scadenze contrattuali...')
+      const today = new Date()
+      const todayStr = today.toISOString().split('T')[0]
+
+      const { data: scadenze, error } = await supabase
+        .from('scadenze_bandi_scadenze_contrattuali')
+        .select('*')
+        .eq('notifiche_attive', true)
+        .in('stato', ['APERTA', 'IN_CORSO'])
+
+      if (error) throw error
+
+      for (const scadenza of scadenze || []) {
+        const dataScadenza = new Date(scadenza.data_scadenza)
+        const giorniRimanenti = Math.ceil((dataScadenza.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+        const giorniNotifica = scadenza.notifica_giorni_prima || [30, 15, 7, 3, 1]
+
+        if (giorniNotifica.includes(giorniRimanenti) && giorniRimanenti >= 0) {
+          // Log notifica
+          await supabase.from('scadenze_bandi_scadenze_contrattuali_log').insert({
+            scadenza_id: scadenza.id,
+            azione: 'notifica_inviata',
+            dettagli: { giorni_rimanenti: giorniRimanenti, data: todayStr },
+            utente: 'system'
+          })
+          console.log(`📧 Notifica scadenza contrattuale: ${scadenza.titolo} (${giorniRimanenti}g)`)
+        }
+      }
+    } catch (error) {
+      console.error('❌ Errore processamento scadenze contrattuali:', error)
+    }
+  }
+
   // === HELPER METHODS ===
 
   private static async sendScadenzaEmailNotification(scadenza: any, giorniRimanenti: number): Promise<void> {

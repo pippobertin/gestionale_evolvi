@@ -25,6 +25,7 @@ import {
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
 import { ResponsivePie } from '@nivo/pie'
+import ScadenzeContrattualiReports from './ScadenzeContrattualiReports'
 
 interface ContributiCliente {
   cliente_id: string
@@ -88,7 +89,7 @@ interface PeriodoData {
 }
 
 export default function ReportsContent() {
-  const [activeTab, setActiveTab] = useState<'contributi' | 'bandi' | 'overview' | 'benchmarking'>('contributi')
+  const [activeTab, setActiveTab] = useState<'contributi' | 'bandi' | 'overview' | 'benchmarking' | 'scadenze_contrattuali'>('contributi')
   const [loading, setLoading] = useState(false)
 
   // Dati report singolo periodo
@@ -789,6 +790,19 @@ export default function ReportsContent() {
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5" />
               Benchmarking
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('scadenze_contrattuali')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'scadenze_contrattuali'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Scadenze Contrattuali
             </div>
           </button>
         </nav>
@@ -1668,6 +1682,11 @@ export default function ReportsContent() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Tab: Scadenze Contrattuali */}
+          {activeTab === 'scadenze_contrattuali' && (
+            <ScadenzeContrattualiReports />
           )}
         </>
       )}

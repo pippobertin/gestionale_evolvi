@@ -34,7 +34,7 @@ interface Cliente {
   numero_collegamenti?: number // Numero di collegamenti aziendali
   ultimo_fatturato?: number
   numero_dipendenti?: number
-  categoria_evolvi?: 'BASE' | 'PREMIUM' | 'BUSINESS' | 'ENTERPRISE'
+  categoria_evolvi?: 'CLIENTE_SPOT' | 'EVOLVI'
   scadenza_evolvi?: string
   citta_fatturazione?: string
   created_at: string
@@ -366,11 +366,17 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
 
   const getCategoriaColor = (categoria?: string) => {
     switch (categoria) {
-      case 'BASE': return 'bg-gray-100 text-gray-800'
-      case 'PREMIUM': return 'bg-blue-100 text-blue-800'
-      case 'BUSINESS': return 'bg-green-100 text-green-800'
-      case 'ENTERPRISE': return 'bg-purple-100 text-purple-800'
+      case 'CLIENTE_SPOT': return 'bg-yellow-100 text-yellow-800'
+      case 'EVOLVI': return 'bg-blue-100 text-blue-800'
       default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getCategoriaLabel = (categoria?: string) => {
+    switch (categoria) {
+      case 'CLIENTE_SPOT': return 'Spot'
+      case 'EVOLVI': return 'Evolvi'
+      default: return categoria || ''
     }
   }
 
@@ -674,7 +680,7 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
                       <div className="space-y-2">
                         {cliente.categoria_evolvi && (
                           <span className={`badge ${getCategoriaColor(cliente.categoria_evolvi)}`}>
-                            {cliente.categoria_evolvi}
+                            {getCategoriaLabel(cliente.categoria_evolvi)}
                           </span>
                         )}
                         {cliente.scadenza_evolvi && (

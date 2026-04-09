@@ -171,7 +171,8 @@ export async function POST(req: NextRequest) {
       const processResult = await processWordTemplate(
         googleAccessToken,
         wordTemplateResult.fileId!,
-        contractData
+        contractData,
+        wordTemplateResult.mimeType
       )
 
       if (!processResult.success) {

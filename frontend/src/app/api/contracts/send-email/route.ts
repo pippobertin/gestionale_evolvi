@@ -103,6 +103,24 @@ export async function POST(req: NextRequest) {
     // 6. Log invio email nel database (opzionale)
     await logEmailSent(progettoId, clientEmail, contractId)
 
+    // 7. Crea record di tracking contratto
+    try {
+      await supabase.from('scadenze_bandi_contract_tracking').upsert({
+        entity_type: 'PROGETTO',
+        entity_id: progettoId,
+        cliente_id: baseProgetto.cliente_id,
+        contract_document_url: contractUrl,
+        email_sent: true,
+        email_sent_at: new Date().toISOString(),
+        email_sent_to: clientEmail,
+        email_message_id: emailResult.emailId || null,
+        email_delivery_status: 'SENT',
+        overall_status: 'SENT'
+      }, { onConflict: 'entity_type,entity_id', ignoreDuplicates: false })
+    } catch (trackingError) {
+      console.warn('Warning: tracking record non creato:', trackingError)
+    }
+
     return Response.json({
       success: true,
       message: 'Email inviata con successo',
