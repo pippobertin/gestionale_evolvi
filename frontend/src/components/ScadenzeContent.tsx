@@ -1,12 +1,11 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Calendar, List, Clock, AlertTriangle, CheckCircle, Plus, Filter, CalendarDays, Trash2, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Calendar, List, Clock, AlertTriangle, CheckCircle, Plus, Filter, CalendarDays, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import CalendarioScadenze from './CalendarioScadenze'
 import CalendarioSettimana from './CalendarioSettimana'
 import ScadenzaForm from './ScadenzaForm'
-import ScadenzeContrattualiContent from './ScadenzeContrattualiContent'
 
 interface Scadenza {
   id: string
@@ -26,6 +25,7 @@ interface Scadenza {
   progetto_codice: string
   bando_nome: string
   bando_id: string
+  source: 'scadenze' | 'contrattuali'
 }
 
 type ViewMode = 'lista' | 'calendario' | 'settimana'
@@ -49,7 +49,6 @@ export default function ScadenzeContent() {
   const [showDayModal, setShowDayModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [scadenzaDaEliminare, setScadenzaDaEliminare] = useState<Scadenza | null>(null)
-  const [showContrattuali, setShowContrattuali] = useState(false)
 
   // Carica scadenze
   useEffect(() => {
@@ -59,7 +58,9 @@ export default function ScadenzeContent() {
   const fetchScadenze = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+
+      // 1. Fetch scadenze progetto
+      const { data: dataProgetto, error: errProgetto } = await supabase
         .from('scadenze_bandi_scadenze')
         .select(`
           id,
@@ -86,11 +87,20 @@ export default function ScadenzeContent() {
         `)
         .order('data_scadenza', { ascending: true })
 
-      if (error) throw error
+      if (errProgetto) throw errProgetto
 
-      // Processa i dati per calcolare urgenza e giorni rimanenti
-      const scadenzeProcessate = (data || []).map(item => {
-        const today = new Date()
+      // 2. Fetch scadenze contrattuali/generali
+      const { data: dataContr, error: errContr } = await supabase
+        .from('scadenze_bandi_scadenze_contrattuali')
+        .select('*')
+        .order('data_scadenza', { ascending: true })
+
+      if (errContr) console.error('Errore scadenze contrattuali:', errContr)
+
+      const today = new Date()
+
+      // Processa scadenze progetto
+      const scadenzeProgetto = (dataProgetto || []).map(item => {
         const dataScadenza = new Date(item.data_scadenza)
         const diffTime = dataScadenza.getTime() - today.getTime()
         const giorni_rimanenti = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
@@ -108,11 +118,60 @@ export default function ScadenzeContent() {
           progetto_titolo: item.scadenze_bandi_progetti?.titolo_progetto || 'N/D',
           progetto_codice: item.scadenze_bandi_progetti?.codice_progetto || 'N/D',
           bando_nome: item.scadenze_bandi_bandi?.nome || 'N/D',
-          tipo_scadenza_nome: item.titolo
+          tipo_scadenza_nome: item.titolo,
+          source: 'scadenze' as const
         }
       })
 
-      setScadenze(scadenzeProcessate)
+      // Processa scadenze contrattuali → normalizza allo stesso formato
+      const statoMap: Record<string, string> = { APERTA: 'non_iniziata', IN_CORSO: 'in_corso', COMPLETATA: 'completata', ANNULLATA: 'completata' }
+      const prioritaMap: Record<string, string> = { BASSA: 'bassa', MEDIA: 'media', ALTA: 'alta', CRITICA: 'alta' }
+
+      const scadenzeContrattuali = (dataContr || []).map(item => {
+        const dataScadenza = new Date(item.data_scadenza)
+        const diffTime = dataScadenza.getTime() - today.getTime()
+        const giorni_rimanenti = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+        let urgenza: 'NORMALE' | 'IMMINENTE' | 'URGENTE' = 'NORMALE'
+        if (giorni_rimanenti < 0) urgenza = 'URGENTE'
+        else if (giorni_rimanenti <= 7) urgenza = 'IMMINENTE'
+
+        // Estrai contesto dal titolo per cliente_nome
+        let clienteNome = '-'
+        if (item.categoria === 'riunione_prospect') {
+          clienteNome = item.titolo.replace('Riunione qualifica: ', '') + ' (prospect)'
+        } else if (item.categoria === 'CONTRATTI') {
+          const match = item.titolo.match(/- (.+)$/)
+          clienteNome = match ? match[1] : '-'
+        }
+
+        return {
+          id: item.id,
+          titolo: item.titolo,
+          data_scadenza: item.data_scadenza,
+          stato: (statoMap[item.stato] || 'non_iniziata') as 'non_iniziata' | 'in_corso' | 'completata',
+          priorita: (prioritaMap[item.priorita] || 'media') as 'bassa' | 'media' | 'alta',
+          responsabile_email: item.responsabile_email || '',
+          note: item.descrizione || '',
+          giorni_rimanenti,
+          urgenza,
+          cliente_nome: clienteNome,
+          cliente_email: '',
+          tipo_scadenza_nome: item.tipo_scadenza || item.categoria || '',
+          progetto_id: '',
+          progetto_titolo: '-',
+          progetto_codice: '-',
+          bando_nome: '-',
+          bando_id: '',
+          source: 'contrattuali' as const
+        }
+      })
+
+      // Unisci e ordina per data
+      const tutte = [...scadenzeProgetto, ...scadenzeContrattuali]
+        .sort((a, b) => new Date(a.data_scadenza).getTime() - new Date(b.data_scadenza).getTime())
+
+      setScadenze(tutte)
     } catch (err: any) {
       console.error('Errore nel caricamento scadenze:', err)
       setError('Errore nel caricamento delle scadenze')
@@ -200,49 +259,44 @@ export default function ScadenzeContent() {
     if (!scadenzaDaEliminare) return
 
     try {
-      // Elimina prima i responsabili associati
-      await supabase
-        .from('scadenze_bandi_responsabili_scadenze')
-        .delete()
-        .eq('scadenza_id', scadenzaDaEliminare.id)
+      if (scadenzaDaEliminare.source === 'contrattuali') {
+        // Elimina dalla tabella contrattuali
+        const { error } = await supabase
+          .from('scadenze_bandi_scadenze_contrattuali')
+          .delete()
+          .eq('id', scadenzaDaEliminare.id)
+        if (error) throw error
+      } else {
+        // Elimina prima i responsabili associati
+        await supabase
+          .from('scadenze_bandi_responsabili_scadenze')
+          .delete()
+          .eq('scadenza_id', scadenzaDaEliminare.id)
 
-      // Elimina la scadenza
-      const { error } = await supabase
-        .from('scadenze_bandi_scadenze')
-        .delete()
-        .eq('id', scadenzaDaEliminare.id)
+        // Elimina la scadenza
+        const { error } = await supabase
+          .from('scadenze_bandi_scadenze')
+          .delete()
+          .eq('id', scadenzaDaEliminare.id)
 
-      if (error) throw error
+        if (error) throw error
 
-      // Elimina evento dal calendario Google se esiste
-      try {
-        console.log('🔍 Tentativo eliminazione evento calendario per scadenza:', scadenzaDaEliminare.id)
-        const { CalendarService } = await import('@/lib/notifications/calendarService')
-
-        // Prima prova l'eliminazione normale
-        const success = await CalendarService.deleteEvent(scadenzaDaEliminare.id, 'scadenza')
-
-        if (success) {
-          console.log('✅ Evento calendario eliminato con successo')
-        } else {
-          console.warn('⚠️ Evento non trovato nel DB, provo eliminazione orfana...')
-          // Se non trovato nel database, prova la pulizia eventi orfani
-          const orphanSuccess = await CalendarService.deleteOrphanCalendarEvents(
-            scadenzaDaEliminare.id,
-            scadenzaDaEliminare.titolo
-          )
-          if (orphanSuccess) {
-            console.log('✅ Eventi orfani eliminati con successo')
+        // Elimina evento dal calendario Google se esiste
+        try {
+          const { CalendarService } = await import('@/lib/notifications/calendarService')
+          const success = await CalendarService.deleteEvent(scadenzaDaEliminare.id, 'scadenza')
+          if (!success) {
+            await CalendarService.deleteOrphanCalendarEvents(
+              scadenzaDaEliminare.id,
+              scadenzaDaEliminare.titolo
+            )
           }
+        } catch (calError) {
+          console.error('Errore eliminazione evento calendario:', calError)
         }
-      } catch (calError) {
-        console.error('❌ Errore eliminazione evento calendario:', calError)
       }
 
-      // Ricarica le scadenze
       fetchScadenze()
-
-      // Chiudi ENTRAMBI i modal dopo eliminazione
       setShowDeleteModal(false)
       setScadenzaDaEliminare(null)
       setShowDayModal(false)
@@ -262,21 +316,33 @@ export default function ScadenzeContent() {
   // Aggiorna stato scadenza con cascata
   const updateScadenzaStato = async (scadenzaId: string, nuovoStato: string, note?: string) => {
     try {
-      const updateData: any = {
-        stato: nuovoStato
+      const scadenza = scadenze.find(s => s.id === scadenzaId)
+
+      if (scadenza?.source === 'contrattuali') {
+        // Mappa stato indietro a formato contrattuali
+        const reverseStatoMap: Record<string, string> = { non_iniziata: 'APERTA', in_corso: 'IN_CORSO', completata: 'COMPLETATA' }
+        const updateData: any = { stato: reverseStatoMap[nuovoStato] || 'APERTA' }
+        if (nuovoStato === 'completata') {
+          updateData.data_completamento = new Date().toISOString()
+          if (note) updateData.note_completamento = note
+        }
+        const { error } = await supabase
+          .from('scadenze_bandi_scadenze_contrattuali')
+          .update(updateData)
+          .eq('id', scadenzaId)
+        if (error) throw error
+      } else {
+        const updateData: any = { stato: nuovoStato }
+        if (nuovoStato === 'completata') {
+          updateData.completata_il = new Date().toISOString()
+          if (note) updateData.note_completamento = note
+        }
+        const { error } = await supabase
+          .from('scadenze_bandi_scadenze')
+          .update(updateData)
+          .eq('id', scadenzaId)
+        if (error) throw error
       }
-
-      if (nuovoStato === 'completata') {
-        updateData.completata_il = new Date().toISOString()
-        if (note) updateData.note_completamento = note
-      }
-
-      const { error } = await supabase
-        .from('scadenze_bandi_scadenze')
-        .update(updateData)
-        .eq('id', scadenzaId)
-
-      if (error) throw error
 
       // Aggiorna le scadenze locali
       setScadenze(prev => prev.map(s =>
@@ -285,8 +351,10 @@ export default function ScadenzeContent() {
           : s
       ))
 
-      // Gestisci aggiornamenti a cascata
-      await handleCascadeUpdates(scadenzaId, nuovoStato)
+      // Gestisci aggiornamenti a cascata (solo per scadenze progetto)
+      if (scadenza?.source !== 'contrattuali') {
+        await handleCascadeUpdates(scadenzaId, nuovoStato)
+      }
 
     } catch (error) {
       console.error('Errore aggiornamento stato scadenza:', error)
@@ -373,38 +441,18 @@ export default function ScadenzeContent() {
     <div className="space-y-3">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <h1 className="text-sm font-semibold text-gray-900">Gestione Scadenze</h1>
-          <button
-            onClick={() => setShowContrattuali(!showContrattuali)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              showContrattuali
-                ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
-            }`}
-          >
-            {showContrattuali ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-            Scadenze Contrattuali
-          </button>
-        </div>
-        {!showContrattuali && (
-          <button
-            onClick={() => setShowNuovaScadenza(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Nuova Scadenza
-          </button>
-        )}
+        <h1 className="text-sm font-semibold text-gray-900">Agenda Scadenze</h1>
+        <button
+          onClick={() => setShowNuovaScadenza(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Nuova Scadenza
+        </button>
       </div>
 
-      {/* Vista Scadenze Contrattuali */}
-      {showContrattuali && (
-        <ScadenzeContrattualiContent />
-      )}
-
-      {/* Scadenze Progetto (vista default) */}
-      {!showContrattuali && <>
+      {/* Contenuto unificato */}
+      <>
 
       {/* Statistiche Rapide */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -918,7 +966,7 @@ export default function ScadenzeContent() {
         </div>
       )}
 
-      </>}
+      </>
     </div>
   )
 }

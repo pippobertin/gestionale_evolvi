@@ -91,6 +91,38 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 1b. Recupera scadenze contrattuali imminenti (prossimi 15 giorni)
+    const { data: scadenzeContrattuali, error: scContrError } = await supabase
+      .from('scadenze_bandi_scadenze_contrattuali')
+      .select('id, titolo, descrizione, data_scadenza, priorita, tipo_scadenza, responsabile_email, created_at')
+      .in('stato', ['APERTA', 'IN_CORSO'])
+      .gte('data_scadenza', today.toISOString().split('T')[0])
+      .lte('data_scadenza', in15Days.toISOString().split('T')[0])
+      .order('data_scadenza', { ascending: true })
+      .limit(15)
+
+    if (!scContrError && scadenzeContrattuali) {
+      for (const sc of scadenzeContrattuali) {
+        // If user is logged in, show their scadenze, unassigned ones, and group-assigned ones
+        // GRUPPO: prefix means assigned to a team (e.g. "GRUPPO:Team Amministrativo") → visible to all
+        if (userEmail && sc.responsabile_email && !sc.responsabile_email.startsWith('GRUPPO:') && sc.responsabile_email !== userEmail) {
+          continue
+        }
+
+        const giorniRimanenti = getGiorniRimanenti(sc.data_scadenza)
+
+        notifications.push({
+          id: `sc-contr-${sc.id}`,
+          title: giorniRimanenti <= 2 ? 'Scadenza imminente' : 'Prossima scadenza',
+          message: `${sc.titolo}${giorniRimanenti === 0 ? ' — oggi' : giorniRimanenti === 1 ? ' — domani' : ` — tra ${giorniRimanenti} giorni`}`,
+          time: getRelativeTime(new Date(sc.created_at)),
+          type: giorniRimanenti <= 2 ? 'warning' : 'info',
+          unread: giorniRimanenti <= 3,
+          link: '/scadenze-contrattuali'
+        })
+      }
+    }
+
     // 2. Recupera progetti recenti (ultimi 7 giorni)
     const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
 

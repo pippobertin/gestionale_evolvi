@@ -6,15 +6,18 @@ import {
   Search,
   Filter,
   Users,
-  UserPlus,
+  FileEdit,
   ClipboardCheck,
   ArrowRightCircle,
-  Star
+  Star,
+  UserPlus,
+  CheckCircle
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { Prospect, ProspectStato, PROSPECT_STATI, FONTI_ACQUISIZIONE } from '@/types/prospect'
+import { Prospect, ProspectStato, PROSPECT_STATI, FONTI_ACQUISIZIONE, AREE_INTERESSE } from '@/types/prospect'
 import ProspectForm from './ProspectForm'
 import ProspectDettaglio from './ProspectDettaglio'
+import PrequalificaForm from './PrequalificaForm'
 
 export default function ProspectContent({ onNavigate }: { onNavigate?: (page: string, params?: any) => void }) {
   const [prospects, setProspects] = useState<Prospect[]>([])
@@ -25,6 +28,7 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
 
   // Modal states
   const [showForm, setShowForm] = useState(false)
+  const [showPrequalificaForm, setShowPrequalificaForm] = useState(false)
   const [showDettaglio, setShowDettaglio] = useState(false)
   const [selectedProspect, setSelectedProspect] = useState<Prospect | undefined>(undefined)
   const [selectedProspectId, setSelectedProspectId] = useState<string>('')
@@ -54,7 +58,7 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
   // Handlers modali
   const handleNuovoProspect = () => {
     setSelectedProspect(undefined)
-    setShowForm(true)
+    setShowPrequalificaForm(true)
   }
 
   const handleDettaglioProspect = (prospectId: string) => {
@@ -64,6 +68,11 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
 
   const handleCloseForm = () => {
     setShowForm(false)
+    setSelectedProspect(undefined)
+  }
+
+  const handleClosePrequalificaForm = () => {
+    setShowPrequalificaForm(false)
     setSelectedProspect(undefined)
   }
 
@@ -95,12 +104,13 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
     return matchSearch && matchStato && matchFonte
   })
 
-  // Stats
+  // Stats with new states
   const stats = {
     totale: prospects.length,
-    nuovi: prospects.filter(p => p.stato === 'nuovo').length,
-    in_valutazione: prospects.filter(p => p.stato === 'in_valutazione').length,
-    approvati: prospects.filter(p => p.stato === 'approvato').length,
+    bozza: prospects.filter(p => p.stato === 'bozza').length,
+    qualificato: prospects.filter(p => p.stato === 'qualificato').length,
+    in_decisione: prospects.filter(p => p.stato === 'in_decisione').length,
+    preso_in_carico: prospects.filter(p => p.stato === 'preso_in_carico').length,
     convertiti: prospects.filter(p => p.stato === 'convertito').length
   }
 
@@ -115,13 +125,9 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
     return config?.label || stato
   }
 
-  const formatCurrency = (amount?: number) => {
-    if (!amount) return '-'
-    return new Intl.NumberFormat('it-IT', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0
-    }).format(amount)
+  const getAreaInteresseLabels = (value?: string) => {
+    if (!value) return null
+    return value.split(',').map(v => AREE_INTERESSE.find(a => a.value === v.trim())?.label || v.trim())
   }
 
   if (loading) {
@@ -149,7 +155,7 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
       </div>
 
       {/* Statistiche Rapide */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-4 rounded-xl border border-blue-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
@@ -160,23 +166,33 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-amber-500 to-yellow-500 p-4 rounded-xl border border-amber-400 shadow-lg">
+        <div className="bg-gradient-to-br from-gray-500 to-gray-600 p-4 rounded-xl border border-gray-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-white/90 drop-shadow-sm">Nuovi</p>
-              <p className="text-lg font-black text-white drop-shadow">{stats.nuovi}</p>
+              <p className="text-sm font-bold text-white/90 drop-shadow-sm">Bozza</p>
+              <p className="text-lg font-black text-white drop-shadow">{stats.bozza}</p>
             </div>
-            <UserPlus className="w-6 h-6 text-white drop-shadow" />
+            <FileEdit className="w-6 h-6 text-white drop-shadow" />
           </div>
         </div>
 
         <div className="bg-gradient-to-br from-cyan-500 to-teal-500 p-4 rounded-xl border border-cyan-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-white/90 drop-shadow-sm">In Valutazione</p>
-              <p className="text-lg font-black text-white drop-shadow">{stats.in_valutazione}</p>
+              <p className="text-sm font-bold text-white/90 drop-shadow-sm">Qualificati</p>
+              <p className="text-lg font-black text-white drop-shadow">{stats.qualificato}</p>
             </div>
             <ClipboardCheck className="w-6 h-6 text-white drop-shadow" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-green-500 to-green-600 p-4 rounded-xl border border-green-400 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-white/90 drop-shadow-sm">In Carico</p>
+              <p className="text-lg font-black text-white drop-shadow">{stats.preso_in_carico}</p>
+            </div>
+            <CheckCircle className="w-6 h-6 text-white drop-shadow" />
           </div>
         </div>
 
@@ -265,6 +281,9 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
                   Stato
                 </th>
                 <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Area Interesse
+                </th>
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Contatti
                 </th>
                 <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -302,6 +321,13 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatoBadge(prospect.stato)}`}>
                       {getStatoLabel(prospect.stato)}
                     </span>
+                  </td>
+                  <td className="px-1 py-2">
+                    <div className="flex flex-wrap gap-1">
+                      {getAreaInteresseLabels(prospect.area_interesse)?.map((label, i) => (
+                        <span key={i} className="inline-flex px-1.5 py-0.5 text-xs rounded bg-blue-50 text-blue-700">{label}</span>
+                      )) || <span className="text-sm text-gray-400">-</span>}
+                    </div>
                   </td>
                   <td className="px-1 py-2">
                     <div className="text-sm">
@@ -355,6 +381,13 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
         prospect={selectedProspect}
         isOpen={showForm}
         onClose={handleCloseForm}
+        onSave={handleSaveProspect}
+      />
+
+      <PrequalificaForm
+        prospect={selectedProspect}
+        isOpen={showPrequalificaForm}
+        onClose={handleClosePrequalificaForm}
         onSave={handleSaveProspect}
       />
 

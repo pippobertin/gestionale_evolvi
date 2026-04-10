@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   BarChart3,
   Download,
@@ -9,12 +9,14 @@ import {
   CheckCircle,
   Clock,
   AlertTriangle,
-  TrendingUp
+  TrendingUp,
+  ChevronRight,
+  ChevronDown
 } from 'lucide-react'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsivePie } from '@nivo/pie'
 import { ResponsiveLine } from '@nivo/line'
-import { TIPI_SCADENZA } from '@/types/evolvi-contract'
+import { TIPI_SCADENZA, PRIORITA_SCADENZA } from '@/types/evolvi-contract'
 
 interface AggregatedItem {
   gruppo: string
@@ -76,6 +78,7 @@ export default function ScadenzeContrattualiReports() {
   const [reportData, setReportData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null)
 
   // Filtri
   const [dataFrom, setDataFrom] = useState('')
@@ -85,6 +88,7 @@ export default function ScadenzeContrattualiReports() {
   const [groupBy, setGroupBy] = useState('tipo')
 
   useEffect(() => {
+    setExpandedGroup(null)
     loadReportData()
   }, [dataFrom, dataTo, tipoScadenza, stato, groupBy])
 
@@ -172,6 +176,35 @@ export default function ScadenzeContrattualiReports() {
 
   const getTipoLabel = (value: string) => {
     return TIPI_SCADENZA.find(t => t.value === value)?.label || value
+  }
+
+  const STATO_BADGE: Record<string, { label: string; color: string; bgColor: string }> = {
+    APERTA: { label: 'Aperta', color: 'text-blue-700', bgColor: 'bg-blue-100' },
+    IN_CORSO: { label: 'In Corso', color: 'text-yellow-700', bgColor: 'bg-yellow-100' },
+    COMPLETATA: { label: 'Completata', color: 'text-green-700', bgColor: 'bg-green-100' },
+    ANNULLATA: { label: 'Annullata', color: 'text-gray-500', bgColor: 'bg-gray-100' }
+  }
+
+  const getGroupItems = (gruppo: string) => {
+    if (!reportData) return []
+    return reportData.dettaglio.filter(item => {
+      switch (groupBy) {
+        case 'tipo':
+          return item.tipo_scadenza === gruppo
+        case 'responsabile':
+          return (item.responsabile_email || 'Non assegnato') === gruppo
+        case 'mese': {
+          if (!item.data_scadenza) return false
+          const d = new Date(item.data_scadenza)
+          const mese = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+          return mese === gruppo
+        }
+        case 'cliente':
+          return (item.cliente_denominazione || 'Senza cliente') === gruppo
+        default:
+          return false
+      }
+    })
   }
 
   // Export CSV
@@ -534,16 +567,17 @@ export default function ScadenzeContrattualiReports() {
             <div className="px-3 py-1.5 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                 <BarChart3 className="w-4 h-4" />
-                Dati Aggregati
+                Dettaglio per gruppo
               </h3>
               <span className="text-sm text-gray-500">
-                {reportData.aggregated.length} gruppi
+                {reportData.aggregated.length} gruppi — clicca per espandere
               </span>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-2 py-1.5 w-8"></th>
                     <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       {GROUP_BY_OPTIONS.find(o => o.value === groupBy)?.label || 'Gruppo'}
                     </th>
@@ -571,49 +605,118 @@ export default function ScadenzeContrattualiReports() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {reportData.aggregated.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-3 py-1.5 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {groupBy === 'tipo' ? getTipoLabel(item.gruppo) : item.gruppo}
-                        </div>
-                      </td>
-                      <td className="px-3 py-1.5 whitespace-nowrap text-sm font-semibold text-gray-900">
-                        {item.totale}
-                      </td>
-                      <td className="px-3 py-1.5 whitespace-nowrap text-sm text-blue-600">
-                        {item.aperte}
-                      </td>
-                      <td className="px-3 py-1.5 whitespace-nowrap text-sm text-yellow-600">
-                        {item.in_corso}
-                      </td>
-                      <td className="px-3 py-1.5 whitespace-nowrap text-sm text-green-600">
-                        {item.completate}
-                      </td>
-                      <td className="px-3 py-1.5 whitespace-nowrap text-sm text-red-600">
-                        {item.scadute}
-                      </td>
-                      <td className="px-3 py-1.5 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                            <div
-                              className={`h-2 rounded-full ${
-                                item.tasso_completamento >= 70 ? 'bg-green-500' :
-                                item.tasso_completamento >= 40 ? 'bg-yellow-500' : 'bg-red-500'
-                              }`}
-                              style={{ width: `${Math.min(item.tasso_completamento, 100)}%` }}
-                            />
-                          </div>
-                          <span className="text-sm text-gray-600">
-                            {item.tasso_completamento}%
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-600">
-                        {item.media_giorni_completamento > 0 ? `${item.media_giorni_completamento} gg` : '-'}
-                      </td>
-                    </tr>
-                  ))}
+                  {reportData.aggregated.map((item, idx) => {
+                    const isExpanded = expandedGroup === item.gruppo
+                    const groupItems = isExpanded ? getGroupItems(item.gruppo) : []
+                    return (
+                      <React.Fragment key={idx}>
+                        <tr
+                          className="hover:bg-teal-50 cursor-pointer transition-colors"
+                          onClick={() => setExpandedGroup(isExpanded ? null : item.gruppo)}
+                        >
+                          <td className="px-2 py-1.5 w-8 text-gray-400">
+                            {isExpanded
+                              ? <ChevronDown className="w-4 h-4" />
+                              : <ChevronRight className="w-4 h-4" />
+                            }
+                          </td>
+                          <td className="px-3 py-1.5 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {groupBy === 'tipo' ? getTipoLabel(item.gruppo) : item.gruppo}
+                            </div>
+                          </td>
+                          <td className="px-3 py-1.5 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            {item.totale}
+                          </td>
+                          <td className="px-3 py-1.5 whitespace-nowrap text-sm text-blue-600">
+                            {item.aperte}
+                          </td>
+                          <td className="px-3 py-1.5 whitespace-nowrap text-sm text-yellow-600">
+                            {item.in_corso}
+                          </td>
+                          <td className="px-3 py-1.5 whitespace-nowrap text-sm text-green-600">
+                            {item.completate}
+                          </td>
+                          <td className="px-3 py-1.5 whitespace-nowrap text-sm text-red-600">
+                            {item.scadute}
+                          </td>
+                          <td className="px-3 py-1.5 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                <div
+                                  className={`h-2 rounded-full ${
+                                    item.tasso_completamento >= 70 ? 'bg-green-500' :
+                                    item.tasso_completamento >= 40 ? 'bg-yellow-500' : 'bg-red-500'
+                                  }`}
+                                  style={{ width: `${Math.min(item.tasso_completamento, 100)}%` }}
+                                />
+                              </div>
+                              <span className="text-sm text-gray-600">
+                                {item.tasso_completamento}%
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-600">
+                            {item.media_giorni_completamento > 0 ? `${item.media_giorni_completamento} gg` : '-'}
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan={9} className="px-0 py-0">
+                              <div className="bg-gray-50 border-t border-b border-gray-200 px-6 py-3">
+                                <p className="text-xs text-gray-500 mb-2">
+                                  {groupItems.length} scadenz{groupItems.length === 1 ? 'a' : 'e'} in questo gruppo
+                                </p>
+                                <table className="min-w-full text-sm">
+                                  <thead>
+                                    <tr className="text-xs text-gray-500 uppercase">
+                                      <th className="text-left py-1 pr-4">Titolo</th>
+                                      <th className="text-left py-1 pr-4">Data Scadenza</th>
+                                      <th className="text-left py-1 pr-4">Stato</th>
+                                      <th className="text-left py-1 pr-4">Priorità</th>
+                                      <th className="text-left py-1">Responsabile</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-100">
+                                    {groupItems.map((det, dIdx) => {
+                                      const isScaduta = det.data_scadenza && new Date(det.data_scadenza) < new Date() && det.stato !== 'COMPLETATA' && det.stato !== 'ANNULLATA'
+                                      const statoBadge = STATO_BADGE[det.stato] || { label: det.stato, color: 'text-gray-600', bgColor: 'bg-gray-100' }
+                                      const prioBadge = PRIORITA_SCADENZA[det.priorita] || { label: det.priorita, color: 'text-gray-600', bgColor: 'bg-gray-100' }
+                                      return (
+                                        <tr key={det.id || dIdx} className="hover:bg-gray-100">
+                                          <td className="py-1.5 pr-4 max-w-xs truncate" title={det.descrizione || det.titolo}>
+                                            {det.titolo}
+                                          </td>
+                                          <td className={`py-1.5 pr-4 whitespace-nowrap ${isScaduta ? 'text-red-600 font-medium' : 'text-gray-700'}`}>
+                                            {det.data_scadenza
+                                              ? new Date(det.data_scadenza).toLocaleDateString('it-IT')
+                                              : '—'}
+                                          </td>
+                                          <td className="py-1.5 pr-4">
+                                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statoBadge.bgColor} ${statoBadge.color}`}>
+                                              {statoBadge.label}
+                                            </span>
+                                          </td>
+                                          <td className="py-1.5 pr-4">
+                                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${prioBadge.bgColor} ${prioBadge.color}`}>
+                                              {prioBadge.label}
+                                            </span>
+                                          </td>
+                                          <td className="py-1.5 text-gray-600">
+                                            {det.responsabile_email || '—'}
+                                          </td>
+                                        </tr>
+                                      )
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    )
+                  })}
                 </tbody>
               </table>
 

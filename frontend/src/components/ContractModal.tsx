@@ -1,14 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { AlertCircle, Mail, Send, FileText, Loader2, CheckCircle } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { FileText, Loader2, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react'
 
 interface ContractModalProps {
   isOpen: boolean
@@ -28,50 +21,51 @@ interface ContractModalProps {
   onSuccess?: () => void
 }
 
-interface ContractState {
-  step: 'form' | 'preview' | 'generated' | 'approving' | 'success' | 'error'
-  importoConsulenza: string
-  customMessage: string
-  emailTarget: string
-  error?: string
-  contractData?: any
-}
-
 export default function ContractModal({ isOpen, onClose, progettoData, onSuccess }: ContractModalProps) {
-  const [state, setState] = useState<ContractState>({
-    step: 'form',
-    importoConsulenza: '',
-    customMessage: '',
-    emailTarget: ''
-  })
+  const [step, setStep] = useState(1)
+  const [importoConsulenza, setImportoConsulenza] = useState('')
+  const [emailTarget, setEmailTarget] = useState('')
+  const [customMessage, setCustomMessage] = useState('')
+  const [error, setError] = useState('')
+  const [contractData, setContractData] = useState<any>(null)
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
+  const [emailResult, setEmailResult] = useState<any>(null)
 
-  // Determina email target al mount
+  // Init email target
   useEffect(() => {
     if (progettoData.cliente) {
-      const emailTarget = progettoData.cliente.email || progettoData.cliente.pec || ''
-      setState(prev => ({ ...prev, emailTarget }))
+      setEmailTarget(progettoData.cliente.email || progettoData.cliente.pec || '')
     }
   }, [progettoData])
 
-  // Reset state quando modal si chiude
+  // Reset on close
   useEffect(() => {
     if (!isOpen) {
-      setState({
-        step: 'form',
-        importoConsulenza: '',
-        customMessage: '',
-        emailTarget: progettoData.cliente?.email || progettoData.cliente?.pec || ''
-      })
+      setStep(1)
+      setImportoConsulenza('')
+      setCustomMessage('')
+      setEmailTarget(progettoData.cliente?.email || progettoData.cliente?.pec || '')
+      setError('')
+      setContractData(null)
+      setSendingEmail(false)
+      setEmailSent(false)
+      setEmailResult(null)
     }
   }, [isOpen, progettoData])
 
-  const handleGenerateContract = async () => {
-    if (!state.importoConsulenza.trim()) {
-      setState(prev => ({ ...prev, error: 'Inserire l\'importo della consulenza' }))
+  const handleGoToPreview = () => {
+    if (!importoConsulenza.trim()) {
+      setError('Inserire l\'importo della consulenza')
       return
     }
+    setError('')
+    setStep(2)
+  }
 
-    setState(prev => ({ ...prev, step: 'preview', error: undefined }))
+  const handleGenerateContract = async () => {
+    setStep(3)
+    setError('')
 
     try {
       const response = await fetch('/api/contracts/generate', {
@@ -79,7 +73,7 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           progettoId: progettoData.id,
-          importoConsulenza: state.importoConsulenza,
+          importoConsulenza,
           useWordTemplate: true
         })
       })
@@ -87,34 +81,22 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
       const result = await response.json()
 
       if (result.success) {
-        setState(prev => ({
-          ...prev,
-          step: 'generated',
-          contractData: result.data
-        }))
+        setContractData(result.data)
+        setStep(4)
       } else {
-        setState(prev => ({
-          ...prev,
-          step: 'error',
-          error: result.message || 'Errore generazione contratto'
-        }))
+        setError(result.message || 'Errore generazione contratto')
+        setStep(4)
       }
-    } catch (error: any) {
-      setState(prev => ({
-        ...prev,
-        step: 'error',
-        error: 'Errore durante generazione contratto'
-      }))
+    } catch {
+      setError('Errore durante generazione contratto')
+      setStep(4)
     }
   }
 
-  const handleApproveContract = async () => {
-    if (!state.contractData?.contractId) {
-      setState(prev => ({ ...prev, error: 'Nessun contratto da approvare' }))
-      return
-    }
-
-    setState(prev => ({ ...prev, step: 'approving' }))
+  const handleApproveAndSend = async () => {
+    if (!contractData?.contractId) return
+    setSendingEmail(true)
+    setError('')
 
     try {
       const response = await fetch('/api/contracts/approve', {
@@ -122,277 +104,317 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           progettoId: progettoData.id,
-          contractId: state.contractData.contractId,
-          contractUrl: state.contractData.contractUrl,
-          customMessage: state.customMessage || undefined
+          contractId: contractData.contractId,
+          contractUrl: contractData.contractUrl,
+          customMessage: customMessage || undefined
         })
       })
 
       const result = await response.json()
 
       if (result.success) {
-        setState(prev => ({
-          ...prev,
-          step: 'success',
-          contractData: { ...prev.contractData, ...result.data }
-        }))
-
-        // Callback di successo
+        setEmailSent(true)
+        setEmailResult(result.data)
         setTimeout(() => {
           onSuccess?.()
           onClose()
         }, 3000)
       } else {
-        setState(prev => ({
-          ...prev,
-          step: 'error',
-          error: result.message
-        }))
+        setError(result.message || 'Errore durante invio')
+        setSendingEmail(false)
       }
-    } catch (error: any) {
-      setState(prev => ({
-        ...prev,
-        step: 'error',
-        error: 'Errore durante approvazione contratto'
-      }))
+    } catch {
+      setError('Errore durante approvazione contratto')
+      setSendingEmail(false)
     }
   }
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Genera e Invia Contratto
-          </DialogTitle>
-          <DialogDescription>
-            Genera automaticamente il contratto per il progetto e invialo al cliente
-          </DialogDescription>
-        </DialogHeader>
+  if (!isOpen) return null
 
-        <div className="space-y-3">
-          {/* Info Progetto */}
-          <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-            <h3 className="font-medium text-sm text-gray-700">Dettagli Progetto</h3>
-            <div className="space-y-1 text-sm">
-              <div><strong>Cliente:</strong> {progettoData.cliente?.denominazione}</div>
-              <div><strong>Progetto:</strong> {progettoData.titolo_progetto}</div>
-              <div><strong>Bando:</strong> {progettoData.bando?.nome}</div>
+  const stepLabels = ['Dati', 'Riepilogo', 'Generazione', 'Contratto']
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+
+        {/* Header gradient con step dots */}
+        <div className="gradient-primary text-white p-4 flex items-center justify-between rounded-t-lg">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            <div>
+              <h2 className="font-semibold text-base">Genera e Invia Contratto</h2>
+              <p className="text-xs text-white/70">{stepLabels[step - 1]}</p>
             </div>
           </div>
+          <div className="flex items-center space-x-1">
+            {[1, 2, 3, 4].map((s) => (
+              <div
+                key={s}
+                className={`w-2 h-2 rounded-full ${
+                  s === step ? 'bg-white' : s < step ? 'bg-white/70' : 'bg-white/30'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
 
-          {/* Form Step */}
-          {state.step === 'form' && (
-            <div className="space-y-3">
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-6">
+
+          {/* Step 1: Form */}
+          {step === 1 && (
+            <div className="space-y-4">
               <div>
-                <Label htmlFor="importo">Importo Consulenza *</Label>
-                <div className="flex items-center space-x-2 mt-1">
-                  <span className="text-sm text-gray-500">€</span>
-                  <Input
-                    id="importo"
-                    value={state.importoConsulenza}
-                    onChange={(e) => setState(prev => ({ ...prev, importoConsulenza: e.target.value }))}
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Importo Consulenza *
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500 font-medium">&euro;</span>
+                  <input
+                    type="text"
+                    value={importoConsulenza}
+                    onChange={(e) => setImportoConsulenza(e.target.value)}
                     placeholder="5.000,00"
-                    className="flex-1"
+                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                   />
                   <span className="text-sm text-gray-500">+ IVA</span>
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="email">Email Destinatario</Label>
-                <div className="flex items-center space-x-2 mt-1">
-                  <Badge variant="default">
-                    EMAIL
-                  </Badge>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={state.emailTarget}
-                    onChange={(e) => setState(prev => ({ ...prev, emailTarget: e.target.value }))}
-                    placeholder="email@esempio.it"
-                    className="flex-1"
-                  />
-                  <Mail className="h-4 w-4 text-gray-400" />
-                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email Destinatario
+                </label>
+                <input
+                  type="email"
+                  value={emailTarget}
+                  onChange={(e) => setEmailTarget(e.target.value)}
+                  placeholder="email@esempio.it"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                />
                 {progettoData.cliente?.email && (
                   <p className="text-xs text-gray-500 mt-1">
-                    📧 Email da anagrafica cliente: {progettoData.cliente.email}
+                    Email da anagrafica: {progettoData.cliente.email}
                   </p>
                 )}
                 {!progettoData.cliente?.email && progettoData.cliente?.pec && (
                   <p className="text-xs text-gray-500 mt-1">
-                    📧 PEC da anagrafica cliente: {progettoData.cliente.pec}
+                    PEC da anagrafica: {progettoData.cliente.pec}
                   </p>
                 )}
               </div>
 
               <div>
-                <Label htmlFor="message">Messaggio Personalizzato (Opzionale)</Label>
-                <Textarea
-                  id="message"
-                  value={state.customMessage}
-                  onChange={(e) => setState(prev => ({ ...prev, customMessage: e.target.value }))}
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Messaggio Personalizzato (Opzionale)
+                </label>
+                <textarea
+                  value={customMessage}
+                  onChange={(e) => setCustomMessage(e.target.value)}
                   placeholder="Aggiungere un messaggio personalizzato all'email..."
-                  className="mt-1"
                   rows={3}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
                 />
               </div>
 
-              {state.error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{state.error}</AlertDescription>
-                </Alert>
+              {error && (
+                <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-md">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
               )}
+            </div>
+          )}
 
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={onClose}>
-                  Annulla
-                </Button>
-                <Button onClick={handleGenerateContract}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Genera Contratto Word
-                </Button>
+          {/* Step 2: Riepilogo */}
+          {step === 2 && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                <h3 className="font-medium text-sm text-gray-900">Riepilogo Contratto</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Cliente</span>
+                    <span className="font-medium">{progettoData.cliente?.denominazione}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Progetto</span>
+                    <span className="font-medium">{progettoData.titolo_progetto}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Bando</span>
+                    <span className="font-medium">{progettoData.bando?.nome || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Importo Consulenza</span>
+                    <span className="font-semibold text-teal-700">&euro; {importoConsulenza} + IVA</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Email Destinatario</span>
+                    <span className="font-medium">{emailTarget || 'Non specificata'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-r-md">
+                <p className="text-xs text-blue-700">
+                  Il contratto verrà generato da template Word e salvato su Google Drive.
+                  Potrai rivederlo prima dell&apos;invio al cliente.
+                </p>
               </div>
             </div>
           )}
 
-          {/* Preview Step - Generazione in corso */}
-          {state.step === 'preview' && (
-            <div className="text-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-4 text-blue-500" />
-              <h3 className="text-sm font-medium">Generazione contratto Word...</h3>
-              <p className="text-sm text-gray-600 mt-2">
+          {/* Step 3: Generazione (loader) */}
+          {step === 3 && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="relative">
+                <div className="w-16 h-16 border-4 border-teal-200 rounded-full" />
+                <div className="absolute inset-0 w-16 h-16 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+              <h3 className="text-sm font-medium mt-6 text-gray-900">Generazione contratto in corso...</h3>
+              <p className="text-sm text-gray-500 mt-2">
                 Creazione contratto formattato da template Word
               </p>
             </div>
           )}
 
-          {/* Generated Step - Contratto generato, richiede approvazione */}
-          {state.step === 'generated' && (
-            <div className="space-y-3">
-              <Alert>
-                <FileText className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Contratto Word generato con successo!</strong>
-                  <br />Verificare il contenuto prima dell'invio al cliente.
-                </AlertDescription>
-              </Alert>
-
-              <div className="bg-amber-50 p-4 rounded-lg space-y-3">
-                <h3 className="font-medium text-amber-900">📋 Necessaria Approvazione Contratto</h3>
-                <div className="text-sm text-amber-800 space-y-2">
-                  <div><strong>Cliente:</strong> {progettoData.cliente?.denominazione}</div>
-                  <div><strong>Importo:</strong> €{state.importoConsulenza} + IVA</div>
-                  <div><strong>Formato:</strong> {state.contractData?.isWordDocument ? 'Documento Word (.docx)' : 'Testo (.txt)'}</div>
-
-                  <div className="mt-3 p-3 bg-white rounded border">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">📄 Contratto generato:</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(state.contractData?.contractUrl, '_blank')}
-                      >
-                        Visualizza su Drive
-                      </Button>
-                    </div>
-                    <p className="text-xs text-gray-600 mt-1">
-                      {state.contractData?.contractFileName}
-                    </p>
-                  </div>
-
-                  <div className="bg-blue-50 p-3 rounded border-l-4 border-blue-400">
-                    <p className="text-xs text-blue-700">
-                      💡 <strong>Passo successivo:</strong> Verificare il contenuto del contratto su Google Drive.
-                      È possibile modificarlo direttamente. Una volta confermato, cliccare "Approvo Contratto"
-                      per convertirlo in PDF e inviarlo al cliente.
-                    </p>
-                  </div>
+          {/* Step 4: Successo / Risultato */}
+          {step === 4 && !emailSent && (
+            <div className="space-y-4">
+              {error ? (
+                <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-md">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>{error}</span>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 text-green-700 bg-green-50 p-4 rounded-lg">
+                    <CheckCircle className="h-6 w-6 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm">Contratto Word generato con successo!</p>
+                      <p className="text-xs text-green-600 mt-0.5">{contractData?.contractFileName}</p>
+                    </div>
+                  </div>
 
-              <div>
-                <Label htmlFor="approveMessage">Messaggio Personalizzato Email (Opzionale)</Label>
-                <Textarea
-                  id="approveMessage"
-                  value={state.customMessage}
-                  onChange={(e) => setState(prev => ({ ...prev, customMessage: e.target.value }))}
-                  placeholder="Messaggio personalizzato per l'email di invio del contratto PDF..."
-                  className="mt-1"
-                  rows={3}
-                />
-              </div>
+                  <button
+                    onClick={() => window.open(contractData?.contractUrl, '_blank')}
+                    className="flex items-center gap-2 text-sm text-teal-700 hover:text-teal-900 font-medium"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Apri su Google Docs
+                  </button>
 
-              <div className="flex justify-between">
-                <Button variant="outline" onClick={() => setState(prev => ({ ...prev, step: 'form' }))}>
-                  ← Modifica Importo
-                </Button>
-                <Button onClick={handleApproveContract} className="bg-green-600 hover:bg-green-700">
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Approvo Contratto
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Approving Step */}
-          {state.step === 'approving' && (
-            <div className="text-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-4 text-green-500" />
-              <h3 className="text-sm font-medium">Approvazione in corso...</h3>
-              <p className="text-sm text-gray-600 mt-2">
-                Conversione in PDF e invio email al cliente
-              </p>
-            </div>
-          )}
-
-          {/* Success Step */}
-          {state.step === 'success' && (
-            <div className="text-center py-8">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h3 className="text-sm font-medium text-green-900">Contratto approvato e inviato!</h3>
-              <div className="text-sm text-gray-600 mt-2 space-y-1">
-                <div>📄 PDF generato: {state.contractData?.pdfFileName}</div>
-                <div>📧 Email inviata a: {state.emailTarget}</div>
-                <div>📁 File salvati in Google Drive</div>
-              </div>
-
-              {state.contractData?.pdfUrl && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={() => window.open(state.contractData.pdfUrl, '_blank')}
-                >
-                  Visualizza PDF su Drive
-                </Button>
+                  <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded-r-md">
+                    <p className="text-xs text-amber-700">
+                      Rivedi e modifica il contratto su Google Docs se necessario, poi clicca
+                      &quot;Approva contratto e invialo al cliente&quot; per convertirlo in PDF e spedirlo.
+                    </p>
+                  </div>
+                </>
               )}
             </div>
           )}
 
-          {/* Error Step */}
-          {state.step === 'error' && (
-            <div className="space-y-3">
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{state.error}</AlertDescription>
-              </Alert>
-
-              <div className="flex justify-between">
-                <Button variant="outline" onClick={onClose}>
-                  Chiudi
-                </Button>
-                <Button onClick={() => setState(prev => ({ ...prev, step: 'form', error: undefined }))}>
-                  Riprova
-                </Button>
+          {/* Step 4 substato: email inviata */}
+          {step === 4 && emailSent && (
+            <div className="flex flex-col items-center justify-center py-8">
+              <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
+              <h3 className="text-base font-semibold text-green-900">Contratto approvato e inviato!</h3>
+              <div className="text-sm text-gray-600 mt-4 space-y-1 text-center">
+                <p>PDF generato: {emailResult?.pdfFileName}</p>
+                <p>Email inviata a: {emailResult?.emailTo}</p>
+                <p>File salvati in Google Drive</p>
               </div>
+              {emailResult?.pdfUrl && (
+                <button
+                  onClick={() => window.open(emailResult.pdfUrl, '_blank')}
+                  className="mt-4 flex items-center gap-2 text-sm text-teal-700 hover:text-teal-900 font-medium border border-teal-300 px-3 py-1.5 rounded-md hover:bg-teal-50"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Visualizza PDF su Drive
+                </button>
+              )}
             </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+
+        {/* Footer navigazione */}
+        {!emailSent && step !== 3 && (
+          <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex items-center justify-between rounded-b-lg">
+            {/* Pulsante sinistro */}
+            {step === 1 && (
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Annulla
+              </button>
+            )}
+            {step === 2 && (
+              <button
+                onClick={() => setStep(1)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                &larr; Indietro
+              </button>
+            )}
+            {step === 4 && (
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Chiudi
+              </button>
+            )}
+
+            {/* Pulsante destro */}
+            {step === 1 && (
+              <button
+                onClick={handleGoToPreview}
+                className="btn-primary px-4 py-2 text-sm font-medium rounded-md"
+              >
+                Anteprima &rarr;
+              </button>
+            )}
+            {step === 2 && (
+              <button
+                onClick={handleGenerateContract}
+                className="btn-primary px-4 py-2 text-sm font-medium rounded-md flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Genera Contratto
+              </button>
+            )}
+            {step === 4 && !error && contractData && (
+              <button
+                onClick={handleApproveAndSend}
+                disabled={sendingEmail}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md flex items-center gap-2 disabled:opacity-50"
+              >
+                {sendingEmail ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Invio in corso...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    Approva contratto e invialo al cliente
+                  </>
+                )}
+              </button>
+            )}
+            {step === 4 && error && (
+              <button
+                onClick={() => { setError(''); setStep(1) }}
+                className="btn-primary px-4 py-2 text-sm font-medium rounded-md"
+              >
+                Riprova
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

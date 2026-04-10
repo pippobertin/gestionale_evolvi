@@ -82,6 +82,78 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error
 
+    // Auto-creazione scadenze contrattuali se data_fine è presente
+    if (data && body.data_fine) {
+      try {
+        // Recupera denominazione cliente
+        const { data: cliente } = await supabase
+          .from('scadenze_bandi_clienti')
+          .select('denominazione')
+          .eq('id', body.cliente_id)
+          .single()
+
+        const denominazione = cliente?.denominazione || 'Cliente'
+        const dataFine = new Date(body.data_fine)
+
+        // 1. Scadenza contratto (data_fine, priorità ALTA)
+        const scadenzaContratto = {
+          entity_type: 'CONTRATTO_EVOLVI',
+          entity_id: data.id,
+          titolo: `Scadenza contratto Evolvi - ${denominazione}`,
+          descrizione: `Il contratto Evolvi ${data.numero_contratto || ''} con ${denominazione} scade in questa data.`,
+          tipo_scadenza: 'CONTRATTUALE',
+          categoria: 'CONTRATTI',
+          data_scadenza: body.data_fine,
+          data_promemoria: new Date(dataFine.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          stato: 'APERTA',
+          priorita: 'ALTA',
+          notifiche_attive: true,
+          notifica_giorni_prima: [30, 7, 1],
+          created_by: body.creato_da || 'system'
+        }
+
+        // 2. Reminder rinnovo (data_fine - 30 giorni, priorità MEDIA)
+        const dataRinnovo = new Date(dataFine.getTime() - 30 * 24 * 60 * 60 * 1000)
+        const scadenzaRinnovo = {
+          entity_type: 'CONTRATTO_EVOLVI',
+          entity_id: data.id,
+          titolo: `Rinnovo contratto Evolvi - ${denominazione}`,
+          descrizione: `Promemoria per il rinnovo del contratto Evolvi ${data.numero_contratto || ''} con ${denominazione}. Il contratto scade il ${dataFine.toLocaleDateString('it-IT')}.`,
+          tipo_scadenza: 'REVISIONE',
+          categoria: 'CONTRATTI',
+          data_scadenza: dataRinnovo.toISOString().split('T')[0],
+          data_promemoria: new Date(dataRinnovo.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          stato: 'APERTA',
+          priorita: 'MEDIA',
+          notifiche_attive: true,
+          notifica_giorni_prima: [7, 3, 1],
+          created_by: body.creato_da || 'system'
+        }
+
+        const { data: scadenzeCreate, error: scadenzeError } = await supabase
+          .from('scadenze_bandi_scadenze_contrattuali')
+          .insert([scadenzaContratto, scadenzaRinnovo])
+          .select()
+
+        if (scadenzeError) {
+          console.warn('Warning: scadenze contrattuali non create:', scadenzeError)
+        } else if (scadenzeCreate) {
+          // Log di creazione per ogni scadenza
+          const logs = scadenzeCreate.map((s: any) => ({
+            scadenza_id: s.id,
+            azione: 'creazione',
+            dettagli: { descrizione: `Scadenza "${s.titolo}" creata automaticamente da contratto Evolvi` },
+            utente: body.creato_da || 'system'
+          }))
+          await supabase
+            .from('scadenze_bandi_scadenze_contrattuali_log')
+            .insert(logs)
+        }
+      } catch (scadenzeError) {
+        console.warn('Warning: errore nella creazione scadenze contrattuali:', scadenzeError)
+      }
+    }
+
     return Response.json({
       success: true,
       data,

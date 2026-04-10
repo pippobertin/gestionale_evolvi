@@ -131,7 +131,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       {/* Main Content - with dynamic left margin based on sidebar state */}
       <div
         className={`flex flex-col h-screen overflow-hidden transition-all duration-300 ease-in-out ${
-          sidebarExpanded ? 'ml-72' : 'ml-16'
+          sidebarExpanded ? 'ml-56' : 'ml-16'
         }`}
       >
         {/* Top Bar */}

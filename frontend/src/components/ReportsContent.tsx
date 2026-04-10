@@ -114,7 +114,7 @@ export default function ReportsContent() {
   const [dataFine, setDataFine] = useState<string>('')
 
   useEffect(() => {
-    if (activeTab !== 'benchmarking') {
+    if (activeTab !== 'benchmarking' && activeTab !== 'scadenze_contrattuali') {
       loadReports()
     }
   }, [statiFiltro, periodoFiltro, dataInizio, dataFine, activeTab])
@@ -636,7 +636,7 @@ export default function ReportsContent() {
       </div>
 
       {/* Filtri (solo per tabs non-benchmarking) */}
-      {activeTab !== 'benchmarking' && (
+      {activeTab !== 'benchmarking' && activeTab !== 'scadenze_contrattuali' && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="flex items-center gap-3 flex-wrap">
             <Filter className="w-4 h-4 text-gray-400" />
@@ -809,7 +809,7 @@ export default function ReportsContent() {
       </div>
 
       {/* Content */}
-      {loading && activeTab !== 'benchmarking' ? (
+      {loading && activeTab !== 'benchmarking' && activeTab !== 'scadenze_contrattuali' ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
           <p className="text-gray-600 mt-4">Caricamento dati...</p>

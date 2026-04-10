@@ -69,7 +69,7 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
     try {
       setLoading(true)
 
-      // Fetch scadenze con tutte le relazioni
+      // Fetch scadenze progetto
       const { data: scadenzeData, error: scadenzeError } = await supabase
         .from('scadenze_bandi_scadenze')
         .select(`
@@ -99,15 +99,20 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
 
       if (scadenzeError) throw scadenzeError
 
-      // Processa i dati per calcolare urgenza e giorni rimanenti
-      const scadenzeProcessate = (scadenzeData || []).map(item => {
-        // Normalizza le date per evitare problemi di fuso orario
-        const today = new Date()
-        today.setHours(0, 0, 0, 0) // Imposta a mezzanotte locale
+      // Fetch scadenze contrattuali/generali
+      const { data: dataContr } = await supabase
+        .from('scadenze_bandi_scadenze_contrattuali')
+        .select('*')
+        .in('stato', ['APERTA', 'IN_CORSO'])
+        .order('data_scadenza', { ascending: true })
 
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      // Processa scadenze progetto
+      const scadenzeProgetto = (scadenzeData || []).map(item => {
         const dataScadenza = new Date(item.data_scadenza)
-        dataScadenza.setHours(0, 0, 0, 0) // Imposta a mezzanotte locale
-
+        dataScadenza.setHours(0, 0, 0, 0)
         const diffTime = dataScadenza.getTime() - today.getTime()
         const giorni_rimanenti = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
@@ -126,6 +131,51 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
           bando_nome: item.scadenze_bandi_bandi?.nome || 'N/D'
         }
       })
+
+      // Processa scadenze contrattuali
+      const statoMap: Record<string, string> = { APERTA: 'non_iniziata', IN_CORSO: 'in_corso', COMPLETATA: 'completata' }
+      const prioritaMap: Record<string, string> = { BASSA: 'bassa', MEDIA: 'media', ALTA: 'alta', CRITICA: 'alta' }
+
+      const scadenzeContr = (dataContr || []).map(item => {
+        const dataScadenza = new Date(item.data_scadenza)
+        dataScadenza.setHours(0, 0, 0, 0)
+        const diffTime = dataScadenza.getTime() - today.getTime()
+        const giorni_rimanenti = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+        let urgenza: 'NORMALE' | 'IMMINENTE' | 'URGENTE' = 'NORMALE'
+        if (giorni_rimanenti < 0) urgenza = 'URGENTE'
+        else if (giorni_rimanenti <= 7) urgenza = 'IMMINENTE'
+
+        let clienteNome = '-'
+        if (item.categoria === 'riunione_prospect') {
+          clienteNome = item.titolo.replace('Riunione qualifica: ', '') + ' (prospect)'
+        } else if (item.categoria === 'CONTRATTI') {
+          const match = item.titolo.match(/- (.+)$/)
+          clienteNome = match ? match[1] : '-'
+        }
+
+        return {
+          id: item.id,
+          titolo: item.titolo,
+          data_scadenza: item.data_scadenza,
+          stato: (statoMap[item.stato] || 'non_iniziata') as 'non_iniziata' | 'in_corso' | 'completata',
+          priorita: (prioritaMap[item.priorita] || 'media') as 'bassa' | 'media' | 'alta',
+          responsabile_email: item.responsabile_email || '',
+          note: item.descrizione || '',
+          giorni_rimanenti,
+          urgenza,
+          cliente_nome: clienteNome,
+          cliente_email: '',
+          progetto_id: '',
+          progetto_titolo: '-',
+          progetto_codice: '-',
+          bando_nome: '-',
+          bando_id: ''
+        }
+      })
+
+      const scadenzeProcessate = [...scadenzeProgetto, ...scadenzeContr]
+        .sort((a, b) => new Date(a.data_scadenza).getTime() - new Date(b.data_scadenza).getTime())
 
       setScadenze(scadenzeProcessate)
 

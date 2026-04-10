@@ -50,3 +50,4 @@ _dev_archive/
 # Temporary files
 *.tmp
 *.temp
+.gstack/

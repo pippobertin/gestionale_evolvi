@@ -18,7 +18,10 @@ import {
   ArrowRight,
   ExternalLink,
   ClipboardList,
-  Trash2
+  ClipboardCheck,
+  Trash2,
+  BarChart3,
+  Target
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import {
@@ -26,9 +29,17 @@ import {
   ProspectHistory,
   ProspectStato,
   PROSPECT_STATI,
-  FONTI_ACQUISIZIONE
+  FONTI_ACQUISIZIONE,
+  TIPOLOGIE_SOGGETTO,
+  AREE_INTERESSE,
+  NATURE_INTERESSE,
+  AFFIDABILITA_OPTIONS,
+  POTENZIALI_ECONOMICI,
+  TEMPI_DECISIONE_OPTIONS,
+  RACCOMANDAZIONI
 } from '@/types/prospect'
 import ProspectConversionModal from './ProspectConversionModal'
+import PrequalificaForm from './PrequalificaForm'
 
 interface ProspectDettaglioProps {
   prospectId: string
@@ -36,6 +47,11 @@ interface ProspectDettaglioProps {
   onClose: () => void
   onEdit: (prospect: Prospect) => void
   onRefresh: () => void
+}
+
+const getLabelFromOptions = (options: { value: string; label: string }[], value?: string) => {
+  if (!value) return null
+  return options.find(o => o.value === value)?.label || value
 }
 
 export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit, onRefresh }: ProspectDettaglioProps) {
@@ -46,12 +62,12 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
   const [actionLoading, setActionLoading] = useState(false)
 
   // Modal states for actions
-  const [showDecisioneModal, setShowDecisioneModal] = useState(false)
-  const [showRifiutoModal, setShowRifiutoModal] = useState(false)
+  const [showScartaModal, setShowScartaModal] = useState(false)
   const [showConversionModal, setShowConversionModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [motivoRifiuto, setMotivoRifiuto] = useState('')
-  const [noteDecisione, setNoteDecisione] = useState('')
+  const [showPrequalificaForm, setShowPrequalificaForm] = useState(false)
+  const [prequalificaScrollTo, setPrequalificaScrollTo] = useState<number | undefined>(undefined)
+  const [motivoScarto, setMotivoScarto] = useState('')
 
   useEffect(() => {
     if (isOpen && prospectId) {
@@ -111,7 +127,6 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
 
       if (error) throw error
 
-      // Add history entry
       const { error: historyError } = await supabase
         .from('scadenze_bandi_prospect_history')
         .insert([{
@@ -134,35 +149,21 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
     }
   }
 
-  const handleAvviaValutazione = () => {
-    updateStato('in_valutazione', 'Avviata la valutazione del prospect')
+  const handlePrendiInCarico = () => {
+    updateStato('preso_in_carico', 'Prospect preso in carico — decisione positiva')
   }
 
-  const handleCompletaValutazione = () => {
-    updateStato('valutato', 'Valutazione completata')
-  }
-
-  const handleApprova = () => {
-    updateStato('approvato', noteDecisione || 'Prospect approvato', {
-      decisione: 'EVOLVI',
-      data_decisione: new Date().toISOString()
-    })
-    setShowDecisioneModal(false)
-    setNoteDecisione('')
-  }
-
-  const handleRifiuta = () => {
-    if (!motivoRifiuto.trim()) {
-      alert('Inserire il motivo del rifiuto')
+  const handleScarta = () => {
+    if (!motivoScarto.trim()) {
+      alert('Inserire il motivo dello scarto')
       return
     }
-    updateStato('rifiutato', motivoRifiuto, {
-      decisione: 'RIFIUTATO',
-      motivo_rifiuto: motivoRifiuto,
+    updateStato('scartato', motivoScarto, {
+      motivo_rifiuto: motivoScarto,
       data_decisione: new Date().toISOString()
     })
-    setShowRifiutoModal(false)
-    setMotivoRifiuto('')
+    setShowScartaModal(false)
+    setMotivoScarto('')
   }
 
   const handleConversionComplete = () => {
@@ -172,15 +173,20 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
     setShowConversionModal(false)
   }
 
+  const handlePrequalificaSave = () => {
+    fetchProspect()
+    fetchHistory()
+    onRefresh()
+    setShowPrequalificaForm(false)
+  }
+
   const handleDelete = async () => {
     try {
       setActionLoading(true)
-      // Elimina history
       await supabase
         .from('scadenze_bandi_prospect_history')
         .delete()
         .eq('prospect_id', prospectId)
-      // Elimina prospect
       const { error } = await supabase
         .from('scadenze_bandi_prospect')
         .delete()
@@ -219,6 +225,15 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
     })
   }
 
+  const formatDateShort = (dateString?: string) => {
+    if (!dateString) return '-'
+    return new Date(dateString).toLocaleDateString('it-IT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  }
+
   const formatCurrency = (amount?: number) => {
     if (!amount) return '-'
     return new Intl.NumberFormat('it-IT', {
@@ -226,6 +241,28 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
       currency: 'EUR',
       minimumFractionDigits: 0
     }).format(amount)
+  }
+
+  const ReadOnlyField = ({ label, value, placeholder }: { label: string; value?: string | null; placeholder?: string }) => (
+    <div>
+      <label className="block text-xs font-medium text-gray-500 mb-0.5">{label}</label>
+      <div className="text-sm text-gray-900">
+        {value || <span className="text-gray-400 italic">{placeholder || 'Da compilare'}</span>}
+      </div>
+    </div>
+  )
+
+  const EnumBadge = ({ value, options }: { value?: string; options: { value: string; label: string; color?: string; bgColor?: string }[] }) => {
+    if (!value) return <span className="text-gray-400 italic text-sm">Da compilare</span>
+    const opt = options.find(o => o.value === value)
+    if (!opt) return <span className="text-sm text-gray-700">{value}</span>
+    const color = (opt as any).color || 'text-gray-700'
+    const bg = (opt as any).bgColor || 'bg-gray-100'
+    return (
+      <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${bg} ${color}`}>
+        {opt.label}
+      </span>
+    )
   }
 
   if (!isOpen) return null
@@ -256,6 +293,7 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
 
   const tabs = [
     { id: 'anagrafica', label: 'Anagrafica', icon: Building2 },
+    { id: 'prequalifica', label: 'Prequalifica', icon: ClipboardCheck },
     { id: 'profilazione', label: 'Profilazione', icon: ClipboardList },
     { id: 'timeline', label: 'Timeline', icon: Clock },
     { id: 'azioni', label: 'Azioni', icon: Zap }
@@ -446,9 +484,6 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
                   <label className="block text-sm font-medium text-gray-700 mb-1">Fonte Acquisizione</label>
                   <div className="input bg-gray-50 cursor-not-allowed">
                     {FONTI_ACQUISIZIONE.find(f => f.value === prospect.fonte_acquisizione)?.label || prospect.fonte_acquisizione || '-'}
-                    {prospect.fonte_dettaglio && (
-                      <span className="text-gray-500 ml-1">({prospect.fonte_dettaglio})</span>
-                    )}
                   </div>
                 </div>
                 <div>
@@ -471,6 +506,107 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'prequalifica':
+        return (
+          <div className="space-y-5">
+            {/* Gruppo 1 — Primo Contatto */}
+            <div>
+              <div className="flex items-center space-x-2 mb-3">
+                <Phone className="w-4 h-4 text-blue-600" />
+                <h3 className="text-sm font-semibold text-gray-900">Primo Contatto</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2">
+                <ReadOnlyField label="Data contatto" value={formatDateShort(prospect.data_contatto)} />
+                <ReadOnlyField label="Ricevuto da" value={prospect.ricevuto_da} />
+                <ReadOnlyField label="Canale" value={getLabelFromOptions(FONTI_ACQUISIZIONE, prospect.fonte_acquisizione)} />
+                <ReadOnlyField label="Referente" value={prospect.referente_nome} />
+              </div>
+            </div>
+
+            {/* Gruppo 2 — Qualificazione */}
+            <div className="border-t pt-4">
+              <div className="flex items-center space-x-2 mb-3">
+                <ClipboardCheck className="w-4 h-4 text-orange-600" />
+                <h3 className="text-sm font-semibold text-gray-900">Qualificazione</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-0.5">Tipologia soggetto</label>
+                  <EnumBadge value={prospect.tipologia_soggetto} options={TIPOLOGIE_SOGGETTO} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-0.5">Area di interesse</label>
+                  {prospect.area_interesse ? (
+                    <div className="flex flex-wrap gap-1">
+                      {prospect.area_interesse.split(',').map((v) => {
+                        const opt = AREE_INTERESSE.find(a => a.value === v.trim())
+                        return (
+                          <span key={v} className="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
+                            {opt?.label || v.trim()}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 italic text-sm">Da compilare</span>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-0.5">Natura interesse</label>
+                  <EnumBadge value={prospect.natura_interesse} options={NATURE_INTERESSE} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 mt-3">
+                <ReadOnlyField label="Bisogno dichiarato" value={prospect.bisogno_dichiarato} />
+                <ReadOnlyField label="Bisogno interpretato" value={prospect.bisogno_interpretato} />
+              </div>
+            </div>
+
+            {/* Gruppo 3 — Valutazione */}
+            <div className="border-t pt-4">
+              <div className="flex items-center space-x-2 mb-3">
+                <BarChart3 className="w-4 h-4 text-cyan-600" />
+                <h3 className="text-sm font-semibold text-gray-900">Valutazione</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-0.5">Affidabilita percepita</label>
+                  <EnumBadge value={prospect.affidabilita_percepita} options={AFFIDABILITA_OPTIONS} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-0.5">Potenziale economico</label>
+                  <EnumBadge value={prospect.potenziale_economico} options={POTENZIALI_ECONOMICI} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-0.5">Tempi decisione</label>
+                  <EnumBadge value={prospect.tempi_decisione} options={TEMPI_DECISIONE_OPTIONS} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 mt-3">
+                <ReadOnlyField label="Budget dichiarato" value={prospect.budget_dichiarato ? 'Si' : 'No'} />
+                <ReadOnlyField label="Note qualitative" value={prospect.note_qualitative} />
+              </div>
+            </div>
+
+            {/* Gruppo 4 — Esito */}
+            <div className="border-t pt-4">
+              <div className="flex items-center space-x-2 mb-3">
+                <Target className="w-4 h-4 text-violet-600" />
+                <h3 className="text-sm font-semibold text-gray-900">Esito</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-0.5">Raccomandazione</label>
+                  <EnumBadge value={prospect.raccomandazione} options={RACCOMANDAZIONI} />
+                </div>
+                <ReadOnlyField label="Responsabile qualificazione" value={prospect.responsabile_qualificazione} />
+                <ReadOnlyField label="Motivazione" value={prospect.motivazione_raccomandazione} />
+                <ReadOnlyField label="Data riunione prevista" value={formatDateShort(prospect.data_riunione_prevista)} />
               </div>
             </div>
           </div>
@@ -537,13 +673,11 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
               </div>
             ) : (
               <div className="relative">
-                {/* Vertical line */}
                 <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-200"></div>
 
                 <div className="space-y-3">
                   {history.map((entry, index) => (
                     <div key={entry.id} className="relative flex items-start space-x-4">
-                      {/* Dot */}
                       <div className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
                         index === 0 ? 'bg-primary-100' : 'bg-gray-100'
                       }`}>
@@ -552,7 +686,6 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
                         }`} />
                       </div>
 
-                      {/* Content */}
                       <div className="flex-1 bg-white border rounded-lg p-3">
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center space-x-2">
@@ -599,90 +732,93 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
               <div className="flex items-center space-x-3">
                 <span className="text-sm text-gray-600">Stato corrente:</span>
-                <span className={`badge ${getStatoBadge(prospect.stato)}`}>
+                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatoBadge(prospect.stato)}`}>
                   {getStatoLabel(prospect.stato)}
                 </span>
               </div>
             </div>
 
-            {/* Azioni condizionali per stato */}
-            {prospect.stato === 'nuovo' && (
+            {/* bozza → Compila prequalifica */}
+            {prospect.stato === 'bozza' && (
               <div className="border rounded-lg p-3">
-                <h4 className="font-medium text-gray-900 mb-1">Avvia Valutazione</h4>
+                <h4 className="font-medium text-gray-900 mb-1">Compila la prequalifica</h4>
                 <p className="text-sm text-gray-600 mb-4">
-                  Avvia il processo di valutazione per questo prospect. Verra spostato nello stato "In Valutazione".
+                  Completa la sezione di qualificazione per far avanzare il prospect nella pipeline.
                 </p>
                 <button
-                  onClick={handleAvviaValutazione}
-                  disabled={actionLoading}
+                  onClick={() => {
+                    setPrequalificaScrollTo(undefined)
+                    setShowPrequalificaForm(true)
+                  }}
                   className="btn-primary flex items-center space-x-2"
                 >
-                  {actionLoading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <ClipboardList className="w-4 h-4" />
-                  )}
-                  <span>Avvia Valutazione</span>
+                  <ClipboardCheck className="w-4 h-4" />
+                  <span>Compila Prequalifica</span>
                 </button>
               </div>
             )}
 
-            {prospect.stato === 'in_valutazione' && (
+            {/* qualificato → Completa valutazione ed esito */}
+            {prospect.stato === 'qualificato' && (
               <div className="border rounded-lg p-3">
-                <h4 className="font-medium text-gray-900 mb-1">Completa Valutazione</h4>
+                <h4 className="font-medium text-gray-900 mb-1">Completa valutazione ed esito</h4>
                 <p className="text-sm text-gray-600 mb-4">
-                  Segna la valutazione come completata. Il prospect passera allo stato "Valutato" e sara pronto per l'approvazione.
+                  La qualificazione e completa. Compila la valutazione e l'esito per portare il prospect in decisione.
                 </p>
                 <button
-                  onClick={handleCompletaValutazione}
-                  disabled={actionLoading}
+                  onClick={() => {
+                    setPrequalificaScrollTo(3)
+                    setShowPrequalificaForm(true)
+                  }}
                   className="btn-primary flex items-center space-x-2"
                 >
-                  {actionLoading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <CheckCircle className="w-4 h-4" />
-                  )}
+                  <BarChart3 className="w-4 h-4" />
                   <span>Completa Valutazione</span>
                 </button>
               </div>
             )}
 
-            {prospect.stato === 'valutato' && (
+            {/* in_decisione → Prendi in carico / Scarta */}
+            {prospect.stato === 'in_decisione' && (
               <div className="space-y-4">
                 <div className="border border-green-200 rounded-lg p-3 bg-green-50">
-                  <h4 className="font-medium text-green-900 mb-1">Approva Prospect</h4>
+                  <h4 className="font-medium text-green-900 mb-1">Prendi in carico</h4>
                   <p className="text-sm text-green-700 mb-4">
-                    Approva il prospect. Sara possibile poi convertirlo in cliente.
+                    Decisione positiva: il prospect viene preso in carico e sara poi convertibile in cliente.
                   </p>
                   <button
-                    onClick={() => setShowDecisioneModal(true)}
+                    onClick={handlePrendiInCarico}
                     disabled={actionLoading}
                     className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg flex items-center space-x-2"
                   >
-                    <CheckCircle className="w-4 h-4" />
-                    <span>Approva</span>
+                    {actionLoading ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    ) : (
+                      <CheckCircle className="w-4 h-4" />
+                    )}
+                    <span>Prendi in Carico</span>
                   </button>
                 </div>
 
                 <div className="border border-red-200 rounded-lg p-3 bg-red-50">
-                  <h4 className="font-medium text-red-900 mb-1">Rifiuta Prospect</h4>
+                  <h4 className="font-medium text-red-900 mb-1">Scarta prospect</h4>
                   <p className="text-sm text-red-700 mb-4">
-                    Rifiuta il prospect con una motivazione.
+                    Decisione negativa: il prospect non verra preso in carico.
                   </p>
                   <button
-                    onClick={() => setShowRifiutoModal(true)}
+                    onClick={() => setShowScartaModal(true)}
                     disabled={actionLoading}
                     className="bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg flex items-center space-x-2"
                   >
                     <XCircle className="w-4 h-4" />
-                    <span>Rifiuta</span>
+                    <span>Scarta</span>
                   </button>
                 </div>
               </div>
             )}
 
-            {prospect.stato === 'approvato' && (
+            {/* preso_in_carico → Converti a Cliente */}
+            {prospect.stato === 'preso_in_carico' && (
               <div className="border border-emerald-200 rounded-lg p-3 bg-emerald-50">
                 <h4 className="font-medium text-emerald-900 mb-1">Converti a Cliente</h4>
                 <p className="text-sm text-emerald-700 mb-4">
@@ -699,6 +835,7 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
               </div>
             )}
 
+            {/* convertito → info */}
             {prospect.stato === 'convertito' && (
               <div className="border border-emerald-200 rounded-lg p-3 bg-emerald-50">
                 <div className="flex items-center space-x-2 mb-1">
@@ -711,10 +848,7 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
                 </p>
                 {prospect.cliente_id && (
                   <button
-                    onClick={() => {
-                      // Navigate to cliente (parent handles navigation)
-                      onClose()
-                    }}
+                    onClick={() => onClose()}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-lg flex items-center space-x-2"
                   >
                     <ExternalLink className="w-4 h-4" />
@@ -724,11 +858,12 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
               </div>
             )}
 
-            {prospect.stato === 'rifiutato' && (
+            {/* scartato → info riepilogativa */}
+            {prospect.stato === 'scartato' && (
               <div className="border border-red-200 rounded-lg p-3 bg-red-50">
                 <div className="flex items-center space-x-2 mb-1">
                   <XCircle className="w-4 h-4 text-red-600" />
-                  <h4 className="font-medium text-red-900">Prospect Rifiutato</h4>
+                  <h4 className="font-medium text-red-900">Prospect Scartato</h4>
                 </div>
                 {prospect.motivo_rifiuto && (
                   <p className="text-sm text-red-700">
@@ -858,60 +993,8 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
         </div>
       </div>
 
-      {/* Modal Decisione (Approva) */}
-      {showDecisioneModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="p-4">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">Approva Prospect</h3>
-                  <p className="text-sm text-gray-500">Conferma l'approvazione del prospect</p>
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Note (opzionale)</label>
-                <textarea
-                  value={noteDecisione}
-                  onChange={(e) => setNoteDecisione(e.target.value)}
-                  className="input min-h-[80px]"
-                  rows={3}
-                  placeholder="Note sulla decisione di approvazione..."
-                />
-              </div>
-
-              <div className="flex items-center justify-end space-x-3">
-                <button
-                  onClick={() => { setShowDecisioneModal(false); setNoteDecisione('') }}
-                  className="btn-secondary"
-                  disabled={actionLoading}
-                >
-                  Annulla
-                </button>
-                <button
-                  onClick={handleApprova}
-                  className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg flex items-center space-x-2"
-                  disabled={actionLoading}
-                >
-                  {actionLoading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <CheckCircle className="w-4 h-4" />
-                  )}
-                  <span>Conferma Approvazione</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Rifiuto */}
-      {showRifiutoModal && (
+      {/* Modal Scarto */}
+      {showScartaModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="p-4">
@@ -920,42 +1003,42 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
                   <XCircle className="w-4 h-4 text-red-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">Rifiuta Prospect</h3>
-                  <p className="text-sm text-gray-500">Inserisci il motivo del rifiuto</p>
+                  <h3 className="text-lg font-medium text-gray-900">Scarta Prospect</h3>
+                  <p className="text-sm text-gray-500">Inserisci il motivo dello scarto</p>
                 </div>
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Motivo del rifiuto *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Motivazione *</label>
                 <textarea
-                  value={motivoRifiuto}
-                  onChange={(e) => setMotivoRifiuto(e.target.value)}
+                  value={motivoScarto}
+                  onChange={(e) => setMotivoScarto(e.target.value)}
                   className="input min-h-[100px]"
                   rows={4}
-                  placeholder="Descrivi il motivo del rifiuto..."
+                  placeholder="Descrivi il motivo dello scarto..."
                   required
                 />
               </div>
 
               <div className="flex items-center justify-end space-x-3">
                 <button
-                  onClick={() => { setShowRifiutoModal(false); setMotivoRifiuto('') }}
+                  onClick={() => { setShowScartaModal(false); setMotivoScarto('') }}
                   className="btn-secondary"
                   disabled={actionLoading}
                 >
                   Annulla
                 </button>
                 <button
-                  onClick={handleRifiuta}
+                  onClick={handleScarta}
                   className="bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg flex items-center space-x-2"
-                  disabled={actionLoading || !motivoRifiuto.trim()}
+                  disabled={actionLoading || !motivoScarto.trim()}
                 >
                   {actionLoading ? (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   ) : (
                     <XCircle className="w-4 h-4" />
                   )}
-                  <span>Conferma Rifiuto</span>
+                  <span>Conferma Scarto</span>
                 </button>
               </div>
             </div>
@@ -970,6 +1053,17 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
           isOpen={showConversionModal}
           onClose={() => setShowConversionModal(false)}
           onConvert={handleConversionComplete}
+        />
+      )}
+
+      {/* Prequalifica Form Modal */}
+      {showPrequalificaForm && prospect && (
+        <PrequalificaForm
+          prospect={prospect}
+          isOpen={showPrequalificaForm}
+          onClose={() => setShowPrequalificaForm(false)}
+          onSave={handlePrequalificaSave}
+          scrollToSection={prequalificaScrollTo}
         />
       )}
     </>

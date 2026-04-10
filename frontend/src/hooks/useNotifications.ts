@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 
 export interface Notification {
   id: string
@@ -12,11 +12,40 @@ export interface Notification {
   link?: string
 }
 
+const STORAGE_KEY = 'evolvi_read_notifications'
+
+function getReadIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return new Set()
+    const parsed = JSON.parse(raw) as { ids: string[]; ts: number }
+    // Expire after 30 days
+    if (Date.now() - parsed.ts > 30 * 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(STORAGE_KEY)
+      return new Set()
+    }
+    return new Set(parsed.ids)
+  } catch {
+    return new Set()
+  }
+}
+
+function saveReadIds(ids: Set<string>) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ids: [...ids], ts: Date.now() }))
+  } catch { /* quota exceeded, ignore */ }
+}
+
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const applyReadState = useCallback((notifs: Notification[]): Notification[] => {
+    const readIds = getReadIds()
+    return notifs.map(n => readIds.has(n.id) ? { ...n, unread: false } : n)
+  }, [])
 
   const fetchNotifications = async () => {
     try {
@@ -25,8 +54,9 @@ export function useNotifications() {
       const data = await response.json()
 
       if (data.success) {
-        setNotifications(data.notifications)
-        setUnreadCount(data.unreadCount)
+        const withReadState = applyReadState(data.notifications)
+        setNotifications(withReadState)
+        setUnreadCount(withReadState.filter(n => n.unread).length)
         setError(null)
       } else {
         setError(data.error || 'Errore durante il caricamento')
@@ -44,23 +74,23 @@ export function useNotifications() {
   }
 
   const markAsRead = async (notificationId: string) => {
-    // Update local state immediately for better UX
     setNotifications(prev =>
       prev.map(n => n.id === notificationId ? { ...n, unread: false } : n)
     )
     setUnreadCount(prev => Math.max(0, prev - 1))
 
-    // TODO: Call API to mark as read in database when implemented
-    // await fetch(`/api/notifications/${notificationId}/read`, { method: 'POST' })
+    const readIds = getReadIds()
+    readIds.add(notificationId)
+    saveReadIds(readIds)
   }
 
   const markAllAsRead = async () => {
-    // Update local state immediately for better UX
+    const readIds = getReadIds()
+    notifications.forEach(n => readIds.add(n.id))
+    saveReadIds(readIds)
+
     setNotifications(prev => prev.map(n => ({ ...n, unread: false })))
     setUnreadCount(0)
-
-    // TODO: Call API to mark all as read in database when implemented
-    // await fetch('/api/notifications/mark-all-read', { method: 'POST' })
   }
 
   useEffect(() => {

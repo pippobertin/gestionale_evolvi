@@ -1,51 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { google } from 'googleapis'
-import path from 'path'
-import fs from 'fs'
-
-function getServiceAccountKey(): any | null {
-  try {
-    if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
-      const decoded = Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_KEY, 'base64').toString('utf8')
-      return JSON.parse(decoded)
-    }
-    const serviceAccountPath = path.join(process.cwd(), 'service-account-key.json')
-    if (fs.existsSync(serviceAccountPath)) {
-      return JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'))
-    }
-    return null
-  } catch {
-    return null
-  }
-}
+import { verifyJWT } from '@/lib/jwtAuth'
+import { createGoogleAuthClient } from '@/lib/gmail'
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET(request: NextRequest) {
   try {
-    const serviceAccountKey = getServiceAccountKey()
+    // 1. Verifica JWT per identificare l'utente
+    const decoded = await verifyJWT(request)
+    const userId = decoded?.userId
 
-    if (!serviceAccountKey) {
+    if (!userId) {
       return NextResponse.json({
         success: false,
-        error: 'Service account key non disponibile'
+        error: 'Non autenticato'
       }, { status: 401 })
     }
 
-    // Genera access token con scope Calendar usando il Service Account
-    const auth = new google.auth.GoogleAuth({
-      credentials: serviceAccountKey,
-      scopes: [
-        'https://www.googleapis.com/auth/calendar',
-        'https://www.googleapis.com/auth/calendar.events'
-      ]
+    // 2. Recupera token OAuth utente dal database
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const { data: userData, error: userError } = await supabase
+      .from('scadenze_bandi_utenti')
+      .select('gmail_refresh_token, gmail_access_token, gmail_email')
+      .eq('id', userId)
+      .single()
+
+    if (userError || !userData?.gmail_refresh_token) {
+      return NextResponse.json({
+        success: false,
+        error: 'Gmail/Calendar non connesso. Vai in Impostazioni → Il Mio Gmail per collegare il tuo account.'
+      }, { status: 401 })
+    }
+
+    // 3. Crea OAuth2 client con i token dell'utente
+    const oauth2Client = createGoogleAuthClient(
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/user/gmail/callback`
+    )
+    oauth2Client.setCredentials({
+      refresh_token: userData.gmail_refresh_token,
+      access_token: userData.gmail_access_token || undefined
     })
 
-    const client = await auth.getClient()
-    const tokenResponse = await client.getAccessToken()
+    // 4. Ottieni access token valido (refresh automatico se scaduto)
+    const tokenResponse = await oauth2Client.getAccessToken()
 
     if (!tokenResponse.token) {
       return NextResponse.json({
         success: false,
-        error: 'Impossibile ottenere access token dal Service Account'
+        error: 'Impossibile ottenere access token. Prova a ricollegare Gmail nelle Impostazioni.'
       }, { status: 500 })
     }
 
@@ -55,7 +60,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('❌ Errore recupero token Calendar (Service Account):', error)
+    console.error('❌ Errore recupero token Calendar:', error)
     return NextResponse.json({
       success: false,
       error: 'Errore interno del server'

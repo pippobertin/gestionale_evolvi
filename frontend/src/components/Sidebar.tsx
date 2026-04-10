@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import Image from 'next/image'
 import {
   Home,
   Calendar,
@@ -9,7 +10,6 @@ import {
   FileText,
   Settings,
   BarChart3,
-  Clock,
   Building,
   Target,
   ChevronLeft,
@@ -48,7 +48,7 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
   const menuItems = allMenuItems.filter(item => !item.adminOnly || isAdmin())
 
   const shouldShowExpanded = isPinned || isHovered
-  const effectiveWidth = shouldShowExpanded ? 'w-72' : 'w-16'
+  const effectiveWidth = shouldShowExpanded ? 'w-56' : 'w-16'
 
   // Notifica il parent quando lo stato cambia
   React.useEffect(() => {
@@ -65,14 +65,11 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
       <div className="p-3 border-b border-gray-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-primary rounded-xl flex items-center justify-center shadow-medium">
-              <Clock className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center overflow-hidden">
+              <Image src="/logo blm blu 2.png" alt="Evolvi" width={32} height={32} className="w-8 h-8 object-contain brightness-0 invert" />
             </div>
             {shouldShowExpanded && (
-              <div>
-                <h1 className="text-sm font-bold text-white">Gestionale Evolvi</h1>
-                <p className="text-xs text-gray-400">Business Management</p>
-              </div>
+              <h1 className="text-sm font-bold text-white">Gestionale Evolvi</h1>
             )}
           </div>
 
@@ -105,8 +102,8 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-6 overflow-y-auto">
-        <div className="px-3">
+      <nav className="flex-1 py-4 overflow-y-auto">
+        <div className="px-2">
           {shouldShowExpanded && (
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">
               Menu Principale

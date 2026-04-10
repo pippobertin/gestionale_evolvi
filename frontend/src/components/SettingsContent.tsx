@@ -8,6 +8,7 @@ import NotificationSettings from './NotificationSettings'
 import SchedulerManager from './SchedulerManager'
 import GmailSetupNew from './GmailSetupNew'
 import UserGmailConnection from './UserGmailConnection'
+import EmailSignatureEditor from './EmailSignatureEditor'
 import {
   Settings,
   Users,
@@ -229,6 +230,7 @@ export default function SettingsContent() {
             </div>
 
             <UserGmailConnection />
+            <EmailSignatureEditor />
           </div>
         )
 
