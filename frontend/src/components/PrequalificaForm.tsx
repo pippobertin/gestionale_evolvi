@@ -9,21 +9,26 @@ import {
   BarChart3,
   Target,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Star
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import {
   Prospect,
+  ProfilingTemplate,
   FONTI_ACQUISIZIONE,
-  TIPOLOGIE_SOGGETTO,
   AREE_INTERESSE,
   NATURE_INTERESSE,
   AFFIDABILITA_OPTIONS,
   POTENZIALI_ECONOMICI,
   TEMPI_DECISIONE_OPTIONS,
-  RACCOMANDAZIONI
+  RACCOMANDAZIONI,
+  TIPOLOGIE_SOGGETTO,
+  PROSPECT_STATI
 } from '@/types/prospect'
+import { isGruppo2Complete, isGruppo3Complete, isGruppo4Complete } from '@/lib/prospectValidation'
 import UnifiedResponsableSelector from './UnifiedResponsableSelector'
+import ProfilingCard from './ProfilingCard'
 
 interface PrequalificaFormProps {
   prospect?: Prospect
@@ -46,7 +51,7 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
     telefono: '',
     // Gruppo 2 — Qualificazione
     tipologia_soggetto: '',
-    area_interesse: '',
+    area_interesse: [],
     natura_interesse: '',
     bisogno_dichiarato: '',
     bisogno_interpretato: '',
@@ -60,13 +65,18 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
     raccomandazione: '',
     motivazione_raccomandazione: '',
     responsabile_qualificazione: '',
-    data_riunione_prevista: ''
+    data_riunione_prevista: '',
+    // Profilazione
+    profiling_data: {},
   })
 
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [showValutazione, setShowValutazione] = useState(false)
   const [showEsito, setShowEsito] = useState(false)
+  const [showProfilazione, setShowProfilazione] = useState(false)
+  const [profilingTemplates, setProfilingTemplates] = useState<ProfilingTemplate[]>([])
+  const [loadingTemplates, setLoadingTemplates] = useState(false)
 
   const valutazioneRef = useRef<HTMLDivElement>(null)
   const esitoRef = useRef<HTMLDivElement>(null)
@@ -96,13 +106,16 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
         raccomandazione: prospect.raccomandazione || '',
         motivazione_raccomandazione: prospect.motivazione_raccomandazione || '',
         responsabile_qualificazione: prospect.responsabile_qualificazione || '',
-        data_riunione_prevista: prospect.data_riunione_prevista || ''
+        data_riunione_prevista: prospect.data_riunione_prevista || '',
+        profiling_data: prospect.profiling_data || {},
       })
       // Expand sections if they have data
       const hasValutazione = prospect.affidabilita_percepita || prospect.potenziale_economico || prospect.tempi_decisione
       const hasEsito = prospect.raccomandazione || prospect.responsabile_qualificazione
+      const hasProfiling = prospect.profiling_data && Object.keys(prospect.profiling_data).length > 0
       if (hasValutazione) setShowValutazione(true)
       if (hasEsito) setShowEsito(true)
+      if (hasProfiling) setShowProfilazione(true)
     } else {
       setFormData({
         data_contatto: new Date().toISOString().split('T')[0],
@@ -126,13 +139,39 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
         raccomandazione: '',
         motivazione_raccomandazione: '',
         responsabile_qualificazione: '',
-        data_riunione_prevista: ''
+        data_riunione_prevista: '',
+        profiling_data: {},
       })
       setShowValutazione(false)
       setShowEsito(false)
+      setShowProfilazione(false)
     }
     setErrors({})
   }, [prospect, isOpen])
+
+  // Load profiling templates
+  useEffect(() => {
+    if (isOpen) {
+      loadProfilingTemplates()
+    }
+  }, [isOpen])
+
+  const loadProfilingTemplates = async () => {
+    setLoadingTemplates(true)
+    try {
+      const { data, error } = await supabase
+        .from('scadenze_bandi_profiling_template')
+        .select('*')
+        .eq('attivo', true)
+        .order('ordine')
+      if (error) throw error
+      setProfilingTemplates(data || [])
+    } catch (error) {
+      console.error('Errore caricamento template profilazione:', error)
+    } finally {
+      setLoadingTemplates(false)
+    }
+  }
 
   // Scroll to section 3 if requested
   useEffect(() => {
@@ -156,39 +195,60 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
     }
   }
 
-  const isGruppo2Complete = () => {
-    return !!(
-      formData.tipologia_soggetto &&
-      formData.area_interesse?.length > 0 &&
-      formData.natura_interesse &&
-      formData.bisogno_dichiarato?.trim() &&
-      formData.bisogno_interpretato?.trim()
-    )
+  const handleProfilingChange = (values: Record<string, any>) => {
+    setFormData(prev => ({ ...prev, profiling_data: values }))
   }
 
-  const isGruppo3Complete = () => {
-    return !!(
-      formData.affidabilita_percepita &&
-      formData.potenziale_economico &&
-      formData.tempi_decisione
-    )
-  }
+  // Calculate profiling score as percentage 0-100
+  // Uses same normalization logic as ProfilingCard, keyed by template.id
+  const calculateProfilingScore = (): number => {
+    if (!profilingTemplates.length || !formData.profiling_data) return 0
+    let score = 0
+    let maxScore = 0
 
-  const isGruppo4Complete = () => {
-    return !!(
-      formData.raccomandazione &&
-      formData.responsabile_qualificazione
-    )
-  }
+    for (const template of profilingTemplates) {
+      if (template.peso <= 0) continue
+      maxScore += template.peso
 
-  const computeStato = (): string => {
-    if (isGruppo2Complete() && isGruppo3Complete() && isGruppo4Complete()) {
-      return 'in_decisione'
+      const value = formData.profiling_data[template.id]
+      if (value === undefined || value === null || value === '') continue
+
+      let normalizedValue = 0
+      switch (template.tipo) {
+        case 'rating':
+          normalizedValue = (typeof value === 'number' ? value : parseInt(value) || 0) / 5
+          break
+        case 'boolean':
+          normalizedValue = value === true || value === 'true' ? 1 : 0
+          break
+        case 'number':
+          normalizedValue = Math.min((typeof value === 'number' ? value : parseFloat(value) || 0) / 100, 1)
+          break
+        case 'select':
+          if (template.opzioni && template.opzioni.length > 0) {
+            const idx = template.opzioni.indexOf(value)
+            if (idx >= 0) {
+              normalizedValue = template.punteggi?.length > idx
+                ? template.punteggi[idx]
+                : (idx + 1) / template.opzioni.length
+            }
+          }
+          break
+        case 'multiselect':
+          if (Array.isArray(value) && template.opzioni && template.opzioni.length > 0) {
+            normalizedValue = value.length / template.opzioni.length
+          }
+          break
+        case 'text':
+        case 'textarea':
+          normalizedValue = value && String(value).trim().length > 0 ? 1 : 0
+          break
+      }
+
+      score += template.peso * normalizedValue
     }
-    if (isGruppo2Complete()) {
-      return 'qualificato'
-    }
-    return 'bozza'
+
+    return maxScore > 0 ? Math.round((score / maxScore) * 100) : 0
   }
 
   const validate = (): boolean => {
@@ -202,7 +262,6 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
     const g2Fields = [formData.tipologia_soggetto, formData.area_interesse?.length > 0, formData.natura_interesse, formData.bisogno_dichiarato?.trim(), formData.bisogno_interpretato?.trim()]
     const g2Filled = g2Fields.filter(Boolean).length
     if (g2Filled > 0 && g2Filled < 5) {
-      // Some but not all filled — mark the missing ones
       if (!formData.tipologia_soggetto) newErrors.tipologia_soggetto = 'Completa la qualificazione'
       if (!formData.area_interesse || formData.area_interesse.length === 0) newErrors.area_interesse = 'Completa la qualificazione'
       if (!formData.natura_interesse) newErrors.natura_interesse = 'Completa la qualificazione'
@@ -219,7 +278,8 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
 
     setSaving(true)
     try {
-      const nuovoStato = computeStato()
+      // Save ONLY data, never touch stato
+      const profilingScore = calculateProfilingScore()
       const dataToSave: Record<string, any> = {
         denominazione: formData.denominazione.trim(),
         email: formData.email || null,
@@ -243,39 +303,21 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
         motivazione_raccomandazione: formData.motivazione_raccomandazione || null,
         responsabile_qualificazione: formData.responsabile_qualificazione || null,
         data_riunione_prevista: formData.data_riunione_prevista || null,
-        stato: nuovoStato
+        profiling_data: formData.profiling_data || {},
+        profiling_score: profilingScore,
       }
 
       if (prospect?.id) {
-        // Only auto-advance stato if currently in earlier stage
-        const statoOrder = ['bozza', 'qualificato', 'in_decisione', 'preso_in_carico', 'scartato', 'convertito']
-        const currentIdx = statoOrder.indexOf(prospect.stato)
-        const newIdx = statoOrder.indexOf(nuovoStato)
-        if (newIdx <= currentIdx) {
-          delete dataToSave.stato // Don't regress state
-        }
-
         const { error } = await supabase
           .from('scadenze_bandi_prospect')
           .update(dataToSave)
           .eq('id', prospect.id)
 
         if (error) throw error
-
-        // History entry for state change
-        if (dataToSave.stato && dataToSave.stato !== prospect.stato) {
-          await supabase
-            .from('scadenze_bandi_prospect_history')
-            .insert([{
-              prospect_id: prospect.id,
-              stato_precedente: prospect.stato,
-              stato_nuovo: dataToSave.stato,
-              note: 'Prequalifica aggiornata'
-            }])
-        }
       } else {
-        dataToSave.profiling_data = {}
-        dataToSave.profiling_score = 0
+        dataToSave.stato = 'bozza'
+        dataToSave.profiling_data = formData.profiling_data || {}
+        dataToSave.profiling_score = profilingScore
         const { error } = await supabase
           .from('scadenze_bandi_prospect')
           .insert([dataToSave])
@@ -287,7 +329,6 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
       if (formData.data_riunione_prevista && formData.responsabile_qualificazione) {
         const isNewRiunione = !prospect?.data_riunione_prevista || prospect.data_riunione_prevista !== formData.data_riunione_prevista
         if (isNewRiunione) {
-          // Remove any previous scadenza for this prospect's riunione
           if (prospect?.id) {
             await supabase
               .from('scadenze_bandi_scadenze_contrattuali')
@@ -298,10 +339,8 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
               .in('stato', ['APERTA', 'IN_CORSO'])
           }
 
-          // Determine the prospect ID for new records
           let prospectId = prospect?.id
           if (!prospectId) {
-            // Fetch the just-created prospect by denominazione + data
             const { data: newProspect } = await supabase
               .from('scadenze_bandi_prospect')
               .select('id')
@@ -313,28 +352,25 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
           }
 
           const scadenzaPayload = {
-              entity_type: 'GENERALE',
-              entity_id: prospectId || null,
-              titolo: `Riunione qualifica: ${formData.denominazione.trim()}`,
-              descrizione: `Riunione decisionale per il prospect ${formData.denominazione.trim()}${formData.raccomandazione ? ' - Raccomandazione: ' + formData.raccomandazione : ''}`,
-              tipo_scadenza: 'AMMINISTRATIVA',
-              categoria: 'riunione_prospect',
-              data_scadenza: formData.data_riunione_prevista,
-              priorita: 'ALTA',
-              responsabile_email: formData.responsabile_qualificazione,
-              notifiche_attive: true,
-              notifica_giorni_prima: [7, 3, 1],
-              tags: ['prospect', 'riunione'],
-              created_by: formData.ricevuto_da || 'system'
-            }
-          console.log('Inserting scadenza:', JSON.stringify(scadenzaPayload))
+            entity_type: 'GENERALE',
+            entity_id: prospectId || null,
+            titolo: `Riunione qualifica: ${formData.denominazione.trim()}`,
+            descrizione: `Riunione decisionale per il prospect ${formData.denominazione.trim()}${formData.raccomandazione ? ' - Raccomandazione: ' + formData.raccomandazione : ''}`,
+            tipo_scadenza: 'AMMINISTRATIVA',
+            categoria: 'riunione_prospect',
+            data_scadenza: formData.data_riunione_prevista,
+            priorita: 'ALTA',
+            responsabile_email: formData.responsabile_qualificazione,
+            notifiche_attive: true,
+            notifica_giorni_prima: [7, 3, 1],
+            tags: ['prospect', 'riunione'],
+            created_by: formData.ricevuto_da || 'system'
+          }
           const { error: scadenzaError } = await supabase
             .from('scadenze_bandi_scadenze_contrattuali')
             .insert([scadenzaPayload])
           if (scadenzaError) {
             console.error('Errore creazione scadenza riunione:', scadenzaError)
-          } else {
-            console.log('Scadenza riunione creata con successo')
           }
         }
       }
@@ -352,6 +388,10 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
 
   if (!isOpen) return null
 
+  const g2Complete = isGruppo2Complete(formData)
+  const g3Complete = isGruppo3Complete(formData)
+  const g4Complete = isGruppo4Complete(formData)
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-hard max-w-4xl w-full max-h-[95vh] overflow-hidden flex flex-col">
@@ -364,7 +404,7 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
                 {prospect ? 'Modifica Prequalifica' : 'Nuova Prequalifica Prospect'}
               </h2>
               <p className="text-xs text-white/70 mt-0.5">
-                Compila i campi di qualificazione per avviare la pipeline
+                Compila i campi di qualificazione. Il salvataggio non modifica lo stato.
               </p>
             </div>
           </div>
@@ -495,6 +535,9 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
               <ClipboardCheck className="w-4 h-4 text-orange-600" />
               <h3 className="text-sm font-semibold text-gray-900">2. Qualificazione</h3>
               <span className="text-xs text-red-600 font-medium">* obbligatoria</span>
+              {g2Complete && (
+                <span className="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-700">Completo</span>
+              )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
@@ -595,6 +638,9 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
               <BarChart3 className="w-4 h-4 text-cyan-600" />
               <h3 className="text-sm font-semibold text-gray-900">3. Valutazione</h3>
               <span className="text-xs text-gray-500">(opzionale)</span>
+              {g3Complete && (
+                <span className="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-700">Completo</span>
+              )}
               <div className="flex-1" />
               {showValutazione ? (
                 <ChevronUp className="w-4 h-4 text-gray-400" />
@@ -684,6 +730,9 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
               <Target className="w-4 h-4 text-violet-600" />
               <h3 className="text-sm font-semibold text-gray-900">4. Esito</h3>
               <span className="text-xs text-gray-500">(opzionale)</span>
+              {g4Complete && (
+                <span className="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-700">Completo</span>
+              )}
               <div className="flex-1" />
               {showEsito ? (
                 <ChevronUp className="w-4 h-4 text-gray-400" />
@@ -744,19 +793,66 @@ export default function PrequalificaForm({ prospect, isOpen, onClose, onSave, sc
               </div>
             )}
           </div>
+
+          {/* SEZIONE 5 — Profilazione (collapsible) */}
+          <div className="border-t pt-4">
+            <button
+              onClick={() => setShowProfilazione(!showProfilazione)}
+              className="flex items-center space-x-2 w-full text-left"
+            >
+              <Star className="w-4 h-4 text-yellow-500" />
+              <h3 className="text-sm font-semibold text-gray-900">5. Profilazione</h3>
+              <span className="text-xs text-gray-500">(opzionale)</span>
+              {formData.profiling_data && Object.keys(formData.profiling_data).length > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-700">
+                  Score: {calculateProfilingScore()}%
+                </span>
+              )}
+              <div className="flex-1" />
+              {showProfilazione ? (
+                <ChevronUp className="w-4 h-4 text-gray-400" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              )}
+            </button>
+
+            {showProfilazione && (
+              <div className="mt-3">
+                {loadingTemplates ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500"></div>
+                  </div>
+                ) : profilingTemplates.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Star className="w-6 h-6 mx-auto mb-1 opacity-50" />
+                    <p className="text-sm">Nessun template di profilazione configurato</p>
+                  </div>
+                ) : (
+                  <ProfilingCard
+                    templates={profilingTemplates}
+                    values={formData.profiling_data}
+                    onChange={handleProfilingChange}
+                    readOnly={false}
+                  />
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer */}
         <div className="border-t border-gray-200 px-4 py-2.5 bg-gray-50 flex items-center justify-between flex-shrink-0">
           <div className="text-xs text-gray-500">
-            {isGruppo2Complete() ? (
-              isGruppo3Complete() && isGruppo4Complete() ? (
-                <span className="text-purple-600 font-medium">Stato: In Decisione</span>
-              ) : (
-                <span className="text-blue-600 font-medium">Stato: Qualificato</span>
-              )
+            {prospect ? (
+              <span>
+                Stato corrente:{' '}
+                <span className={`font-medium ${PROSPECT_STATI[prospect.stato]?.color || 'text-gray-600'}`}>
+                  {PROSPECT_STATI[prospect.stato]?.label || prospect.stato}
+                </span>
+                <span className="text-gray-400 ml-2">(il salvataggio non modifica lo stato)</span>
+              </span>
             ) : (
-              <span className="text-gray-500">Stato: Bozza (compila sezione 2 per qualificare)</span>
+              <span className="text-gray-400">Nuovo prospect — stato iniziale: Bozza</span>
             )}
           </div>
           <div className="flex items-center space-x-3">

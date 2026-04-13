@@ -1,6 +1,16 @@
 import { NextRequest } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
+const VALID_TRANSITIONS: Record<string, string[]> = {
+  bozza: ['qualificato', 'congelato', 'archiviato'],
+  qualificato: ['in_decisione', 'congelato', 'archiviato'],
+  in_decisione: ['preso_in_carico', 'congelato', 'archiviato'],
+  preso_in_carico: ['convertito', 'congelato', 'archiviato'],
+  congelato: ['archiviato'], // + stato_pre_congelamento via scongela
+  convertito: [],
+  archiviato: []
+}
+
 // GET - Recupera singolo prospect con history
 export async function GET(
   request: NextRequest,
@@ -66,7 +76,7 @@ export async function PUT(
     // Recupera lo stato corrente prima dell'aggiornamento
     const { data: currentProspect, error: fetchError } = await supabase
       .from('scadenze_bandi_prospect')
-      .select('stato')
+      .select('*')
       .eq('id', id)
       .single()
 
@@ -81,6 +91,19 @@ export async function PUT(
     }
 
     const statoPrecedente = currentProspect.stato
+
+    // Validate state transition if stato is changing
+    if (body.stato && body.stato !== statoPrecedente) {
+      // Special case: scongela (congelato -> stato_pre_congelamento)
+      const isScongela = statoPrecedente === 'congelato' && body.stato === currentProspect.stato_pre_congelamento
+      const allowed = VALID_TRANSITIONS[statoPrecedente] || []
+      if (!isScongela && !allowed.includes(body.stato)) {
+        return Response.json({
+          success: false,
+          error: `Transizione di stato non valida: ${statoPrecedente} -> ${body.stato}`
+        }, { status: 400 })
+      }
+    }
 
     // Prepara i dati di aggiornamento (escludi campi non aggiornabili)
     const { id: _id, created_at: _ca, numero_prospect: _np, history: _h, ...updateData } = body
@@ -122,7 +145,7 @@ export async function PUT(
   }
 }
 
-// DELETE - Elimina prospect (solo se stato è 'nuovo' o 'rifiutato')
+// DELETE - Archivia prospect (non cancella più il record)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -130,7 +153,7 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    // Verifica lo stato corrente
+    // Recupera lo stato corrente
     const { data: prospect, error: fetchError } = await supabase
       .from('scadenze_bandi_prospect')
       .select('stato, denominazione')
@@ -147,30 +170,50 @@ export async function DELETE(
       throw fetchError
     }
 
-    if (!['nuovo', 'rifiutato'].includes(prospect.stato)) {
+    if (['convertito', 'archiviato'].includes(prospect.stato)) {
       return Response.json({
         success: false,
-        error: `Impossibile eliminare un prospect con stato "${prospect.stato}". È possibile eliminare solo prospect con stato "nuovo" o "rifiutato".`
+        error: `Impossibile archiviare un prospect con stato "${prospect.stato}".`
       }, { status: 400 })
     }
 
+    // Archivia invece di cancellare
     const { error } = await supabase
       .from('scadenze_bandi_prospect')
-      .delete()
+      .update({
+        stato: 'archiviato',
+        archiviato_il: new Date().toISOString(),
+        motivo_archiviazione: 'Archiviato via eliminazione',
+        // Pulisci campi freeze se era congelato
+        congelato_il: null,
+        scongela_il: null,
+        stato_pre_congelamento: null,
+        motivo_congelamento: null
+      })
       .eq('id', id)
 
     if (error) throw error
 
+    // History
+    await supabase
+      .from('scadenze_bandi_prospect_history')
+      .insert([{
+        prospect_id: id,
+        stato_precedente: prospect.stato,
+        stato_nuovo: 'archiviato',
+        note: 'Prospect archiviato'
+      }])
+
     return Response.json({
       success: true,
-      message: `Prospect "${prospect.denominazione}" eliminato con successo`
+      message: `Prospect "${prospect.denominazione}" archiviato con successo`
     })
 
   } catch (error: any) {
-    console.error('Errore nell\'eliminazione prospect:', error)
+    console.error('Errore nell\'archiviazione prospect:', error)
     return Response.json({
       success: false,
-      error: error.message || 'Errore nell\'eliminazione del prospect'
+      error: error.message || 'Errore nell\'archiviazione del prospect'
     }, { status: 500 })
   }
 }

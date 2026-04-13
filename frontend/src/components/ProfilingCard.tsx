@@ -25,10 +25,15 @@ export default function ProfilingCard({ templates, values, onChange, readOnly }:
     return groups
   }, [templates])
 
-  // Calculate total score
-  const totalScore = useMemo(() => {
+  // Calculate total score as percentage 0-100
+  const scorePercent = useMemo(() => {
     let score = 0
+    let maxScore = 0
+
     templates.forEach(template => {
+      if (template.peso <= 0) return
+      maxScore += template.peso
+
       const value = values[template.id]
       if (value === undefined || value === null || value === '') return
 
@@ -42,14 +47,17 @@ export default function ProfilingCard({ templates, values, onChange, readOnly }:
           normalizedValue = value === true || value === 'true' ? 1 : 0
           break
         case 'number':
-          // Normalize number: assume 0-100 range
           const numVal = typeof value === 'number' ? value : parseFloat(value) || 0
           normalizedValue = Math.min(numVal / 100, 1)
           break
         case 'select':
           if (template.opzioni && template.opzioni.length > 0) {
             const idx = template.opzioni.indexOf(value)
-            normalizedValue = idx >= 0 ? (idx + 1) / template.opzioni.length : 0
+            if (idx >= 0) {
+              normalizedValue = template.punteggi?.length > idx
+                ? template.punteggi[idx]
+                : (idx + 1) / template.opzioni.length
+            }
           }
           break
         case 'multiselect':
@@ -65,7 +73,8 @@ export default function ProfilingCard({ templates, values, onChange, readOnly }:
 
       score += template.peso * normalizedValue
     })
-    return Math.round(score * 100) / 100
+
+    return maxScore > 0 ? Math.round((score / maxScore) * 100) : 0
   }, [templates, values])
 
   const handleValueChange = (templateId: string, value: any) => {
@@ -307,14 +316,17 @@ export default function ProfilingCard({ templates, values, onChange, readOnly }:
             <Star className="w-4 h-4 text-primary-600" />
             <h4 className="font-medium text-primary-900">Punteggio Complessivo</h4>
           </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-2xl font-bold text-primary-700">{totalScore}</span>
-            <span className="text-sm text-primary-600">punti</span>
+          <div className="flex items-center space-x-1">
+            <span className="text-2xl font-bold text-primary-700">{scorePercent}</span>
+            <span className="text-sm text-primary-600">%</span>
           </div>
         </div>
-        <p className="text-xs text-primary-600 mt-1">
-          Calcolato come somma di (peso x valore normalizzato) per ciascuna domanda
-        </p>
+        <div className="w-full bg-primary-200 rounded-full h-2 mt-2">
+          <div
+            className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${scorePercent}%` }}
+          />
+        </div>
       </div>
     </div>
   )

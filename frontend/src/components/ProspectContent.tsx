@@ -11,7 +11,9 @@ import {
   ArrowRightCircle,
   Star,
   UserPlus,
-  CheckCircle
+  CheckCircle,
+  Snowflake,
+  Archive
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Prospect, ProspectStato, PROSPECT_STATI, FONTI_ACQUISIZIONE, AREE_INTERESSE } from '@/types/prospect'
@@ -34,8 +36,18 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
   const [selectedProspectId, setSelectedProspectId] = useState<string>('')
 
   useEffect(() => {
-    fetchProspects()
+    initLoad()
   }, [])
+
+  const initLoad = async () => {
+    // Auto-thaw before loading prospects
+    try {
+      await fetch('/api/prospect/thaw-check', { method: 'POST' })
+    } catch (e) {
+      console.error('Auto-thaw check failed:', e)
+    }
+    await fetchProspects()
+  }
 
   const fetchProspects = async () => {
     try {
@@ -101,17 +113,23 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
     const matchStato = filtroStato === 'tutti' || prospect.stato === filtroStato
     const matchFonte = filtroFonte === 'all' || prospect.fonte_acquisizione === filtroFonte
 
+    // Default: hide archived unless explicitly filtering for them
+    if (filtroStato === 'tutti' && prospect.stato === 'archiviato') return false
+
     return matchSearch && matchStato && matchFonte
   })
 
-  // Stats with new states
+  // Stats — totale esclude archiviati
+  const nonArchived = prospects.filter(p => p.stato !== 'archiviato')
   const stats = {
-    totale: prospects.length,
+    totale: nonArchived.length,
     bozza: prospects.filter(p => p.stato === 'bozza').length,
     qualificato: prospects.filter(p => p.stato === 'qualificato').length,
     in_decisione: prospects.filter(p => p.stato === 'in_decisione').length,
     preso_in_carico: prospects.filter(p => p.stato === 'preso_in_carico').length,
-    convertiti: prospects.filter(p => p.stato === 'convertito').length
+    convertiti: prospects.filter(p => p.stato === 'convertito').length,
+    congelati: prospects.filter(p => p.stato === 'congelato').length,
+    archiviati: prospects.filter(p => p.stato === 'archiviato').length
   }
 
   const getStatoBadge = (stato: ProspectStato) => {
@@ -130,6 +148,15 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
     return value.split(',').map(v => AREE_INTERESSE.find(a => a.value === v.trim())?.label || v.trim())
   }
 
+  const formatDateShort = (dateString?: string) => {
+    if (!dateString) return ''
+    return new Date(dateString).toLocaleDateString('it-IT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -137,6 +164,9 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
       </div>
     )
   }
+
+  // Pill filter states — show main states + congelato + archiviato
+  const pillStates: ProspectStato[] = ['bozza', 'qualificato', 'in_decisione', 'preso_in_carico', 'convertito', 'congelato', 'archiviato']
 
   return (
     <div className="space-y-3">
@@ -155,11 +185,11 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
       </div>
 
       {/* Statistiche Rapide */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-4 rounded-xl border border-blue-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-white/90 drop-shadow-sm">Totale</p>
+              <p className="text-sm font-bold text-white/90 drop-shadow-sm">Attivi</p>
               <p className="text-lg font-black text-white drop-shadow">{stats.totale}</p>
             </div>
             <Users className="w-6 h-6 text-white drop-shadow" />
@@ -205,6 +235,26 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
             <ArrowRightCircle className="w-6 h-6 text-white drop-shadow" />
           </div>
         </div>
+
+        <div className="bg-gradient-to-br from-cyan-600 to-cyan-700 p-4 rounded-xl border border-cyan-500 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-white/90 drop-shadow-sm">Congelati</p>
+              <p className="text-lg font-black text-white drop-shadow">{stats.congelati}</p>
+            </div>
+            <Snowflake className="w-6 h-6 text-white drop-shadow" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-gray-400 to-gray-500 p-4 rounded-xl border border-gray-300 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-white/90 drop-shadow-sm">Archiviati</p>
+              <p className="text-lg font-black text-white drop-shadow">{stats.archiviati}</p>
+            </div>
+            <Archive className="w-6 h-6 text-white drop-shadow" />
+          </div>
+        </div>
       </div>
 
       {/* Filtri e Ricerca */}
@@ -247,9 +297,9 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
         >
-          Tutti ({prospects.length})
+          Tutti ({nonArchived.length})
         </button>
-        {(Object.keys(PROSPECT_STATI) as ProspectStato[]).map((stato) => {
+        {pillStates.map((stato) => {
           const count = prospects.filter(p => p.stato === stato).length
           const config = PROSPECT_STATI[stato]
           return (
@@ -318,9 +368,16 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
                     </div>
                   </td>
                   <td className="px-1 py-2">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatoBadge(prospect.stato)}`}>
-                      {getStatoLabel(prospect.stato)}
-                    </span>
+                    <div>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatoBadge(prospect.stato)}`}>
+                        {getStatoLabel(prospect.stato)}
+                      </span>
+                      {prospect.stato === 'congelato' && prospect.scongela_il && (
+                        <div className="text-xs text-cyan-600 mt-0.5">
+                          fino al {formatDateShort(prospect.scongela_il)}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-1 py-2">
                     <div className="flex flex-wrap gap-1">
@@ -348,7 +405,7 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
                     <div className="flex items-center space-x-1">
                       <Star className="w-4 h-4 text-yellow-400" />
                       <span className="text-sm font-medium text-gray-700">
-                        {prospect.profiling_score ?? '-'}
+                        {prospect.profiling_score != null ? `${prospect.profiling_score}%` : '-'}
                       </span>
                     </div>
                   </td>

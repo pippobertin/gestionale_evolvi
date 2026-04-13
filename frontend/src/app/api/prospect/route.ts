@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       .insert([{
         prospect_id: data.id,
         stato_precedente: null,
-        stato_nuovo: 'nuovo',
+        stato_nuovo: 'bozza',
         note: 'Prospect creato',
         utente: body.creato_da || 'system'
       }])

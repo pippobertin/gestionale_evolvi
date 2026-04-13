@@ -14,14 +14,14 @@ import {
   Zap,
   Star,
   CheckCircle,
-  XCircle,
   ArrowRight,
   ExternalLink,
-  ClipboardList,
   ClipboardCheck,
-  Trash2,
   BarChart3,
-  Target
+  Target,
+  Snowflake,
+  Archive,
+  Play
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import {
@@ -29,6 +29,8 @@ import {
   ProspectHistory,
   ProspectStato,
   PROSPECT_STATI,
+  TERMINAL_STATES,
+  CONGELAMENTO_DURATE,
   FONTI_ACQUISIZIONE,
   TIPOLOGIE_SOGGETTO,
   AREE_INTERESSE,
@@ -38,6 +40,7 @@ import {
   TEMPI_DECISIONE_OPTIONS,
   RACCOMANDAZIONI
 } from '@/types/prospect'
+import { isGruppo2Complete, isGruppo3Complete, isGruppo4Complete } from '@/lib/prospectValidation'
 import ProspectConversionModal from './ProspectConversionModal'
 import PrequalificaForm from './PrequalificaForm'
 
@@ -61,18 +64,29 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
   const [currentTab, setCurrentTab] = useState('anagrafica')
   const [actionLoading, setActionLoading] = useState(false)
 
-  // Modal states for actions
-  const [showScartaModal, setShowScartaModal] = useState(false)
+  // Modal states
   const [showConversionModal, setShowConversionModal] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showPrequalificaForm, setShowPrequalificaForm] = useState(false)
   const [prequalificaScrollTo, setPrequalificaScrollTo] = useState<number | undefined>(undefined)
-  const [motivoScarto, setMotivoScarto] = useState('')
+  const [showCongelaModal, setShowCongelaModal] = useState(false)
+  const [showArchiviaModal, setShowArchiviaModal] = useState(false)
+
+  // Profiling templates for label resolution
+  const [profilingTemplateMap, setProfilingTemplateMap] = useState<Record<string, string>>({})
+
+  // Congela form
+  const [congelaDurata, setCongelaDurata] = useState<number>(30)
+  const [congelaDataCustom, setCongelaDataCustom] = useState('')
+  const [congelaMotivo, setCongelaMotivo] = useState('')
+
+  // Archivia form
+  const [archiviaMotivo, setArchiviaMotivo] = useState('')
 
   useEffect(() => {
     if (isOpen && prospectId) {
       fetchProspect()
       fetchHistory()
+      fetchProfilingTemplates()
       setCurrentTab('anagrafica')
     }
   }, [isOpen, prospectId])
@@ -110,6 +124,21 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
     }
   }
 
+  const fetchProfilingTemplates = async () => {
+    try {
+      const { data } = await supabase
+        .from('scadenze_bandi_profiling_template')
+        .select('id, domanda')
+      if (data) {
+        const map: Record<string, string> = {}
+        data.forEach((t: { id: string; domanda: string }) => { map[t.id] = t.domanda })
+        setProfilingTemplateMap(map)
+      }
+    } catch (error) {
+      console.error('Errore caricamento profiling templates:', error)
+    }
+  }
+
   const updateStato = async (nuovoStato: ProspectStato, note?: string, extraData?: Record<string, any>) => {
     if (!prospect) return
 
@@ -127,7 +156,7 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
 
       if (error) throw error
 
-      const { error: historyError } = await supabase
+      await supabase
         .from('scadenze_bandi_prospect_history')
         .insert([{
           prospect_id: prospect.id,
@@ -135,8 +164,6 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
           stato_nuovo: nuovoStato,
           note: note || null
         }])
-
-      if (historyError) console.error('Errore inserimento storico:', historyError)
 
       await fetchProspect()
       await fetchHistory()
@@ -149,21 +176,77 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
     }
   }
 
+  // --- Action handlers ---
+
+  const handleQualifica = () => {
+    updateStato('qualificato', 'Prospect qualificato — Gruppo 2 completo')
+  }
+
+  const handlePortaInDecisione = () => {
+    updateStato('in_decisione', 'Prospect portato in decisione — Valutazione ed Esito completi')
+  }
+
   const handlePrendiInCarico = () => {
     updateStato('preso_in_carico', 'Prospect preso in carico — decisione positiva')
   }
 
-  const handleScarta = () => {
-    if (!motivoScarto.trim()) {
-      alert('Inserire il motivo dello scarto')
+  const handleCongela = () => {
+    if (!congelaMotivo.trim()) {
+      alert('Inserire il motivo del congelamento')
       return
     }
-    updateStato('scartato', motivoScarto, {
-      motivo_rifiuto: motivoScarto,
-      data_decisione: new Date().toISOString()
+    let scongelaDate: string
+    if (congelaDurata === 0) {
+      if (!congelaDataCustom) {
+        alert('Inserire la data di scongelamento')
+        return
+      }
+      scongelaDate = congelaDataCustom
+    } else {
+      const d = new Date()
+      d.setDate(d.getDate() + congelaDurata)
+      scongelaDate = d.toISOString().split('T')[0]
+    }
+
+    updateStato('congelato', `Congelato: ${congelaMotivo}`, {
+      congelato_il: new Date().toISOString(),
+      scongela_il: scongelaDate,
+      stato_pre_congelamento: prospect!.stato,
+      motivo_congelamento: congelaMotivo
     })
-    setShowScartaModal(false)
-    setMotivoScarto('')
+    setShowCongelaModal(false)
+    setCongelaMotivo('')
+    setCongelaDurata(30)
+    setCongelaDataCustom('')
+  }
+
+  const handleScongela = () => {
+    if (!prospect) return
+    const statoRipristino = prospect.stato_pre_congelamento || 'bozza'
+    updateStato(statoRipristino as ProspectStato, 'Scongelamento manuale', {
+      congelato_il: null,
+      scongela_il: null,
+      stato_pre_congelamento: null,
+      motivo_congelamento: null
+    })
+  }
+
+  const handleArchivia = () => {
+    if (!archiviaMotivo.trim()) {
+      alert('Inserire il motivo dell\'archiviazione')
+      return
+    }
+    updateStato('archiviato', `Archiviato: ${archiviaMotivo}`, {
+      archiviato_il: new Date().toISOString(),
+      motivo_archiviazione: archiviaMotivo,
+      // Pulisci campi freeze se era congelato
+      congelato_il: null,
+      scongela_il: null,
+      stato_pre_congelamento: null,
+      motivo_congelamento: null
+    })
+    setShowArchiviaModal(false)
+    setArchiviaMotivo('')
   }
 
   const handleConversionComplete = () => {
@@ -180,28 +263,11 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
     setShowPrequalificaForm(false)
   }
 
-  const handleDelete = async () => {
-    try {
-      setActionLoading(true)
-      await supabase
-        .from('scadenze_bandi_prospect_history')
-        .delete()
-        .eq('prospect_id', prospectId)
-      const { error } = await supabase
-        .from('scadenze_bandi_prospect')
-        .delete()
-        .eq('id', prospectId)
-      if (error) throw error
-      onRefresh()
-      onClose()
-    } catch (error) {
-      console.error('Errore eliminazione:', error)
-      alert('Errore durante l\'eliminazione del prospect')
-    } finally {
-      setActionLoading(false)
-      setShowDeleteConfirm(false)
-    }
-  }
+  // --- Helpers ---
+
+  const isNonTerminal = prospect ? !TERMINAL_STATES.includes(prospect.stato) : false
+  const isCongelato = prospect?.stato === 'congelato'
+  const canOpenPrequalifica = isNonTerminal && !isCongelato
 
   const getStatoBadge = (stato: ProspectStato) => {
     const config = PROSPECT_STATI[stato]
@@ -294,7 +360,6 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
   const tabs = [
     { id: 'anagrafica', label: 'Anagrafica', icon: Building2 },
     { id: 'prequalifica', label: 'Prequalifica', icon: ClipboardCheck },
-    { id: 'profilazione', label: 'Profilazione', icon: ClipboardList },
     { id: 'timeline', label: 'Timeline', icon: Clock },
     { id: 'azioni', label: 'Azioni', icon: Zap }
   ]
@@ -498,14 +563,6 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
                     {prospect.note || '-'}
                   </div>
                 </div>
-                {prospect.note_valutazione && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Note Valutazione</label>
-                    <div className="input bg-gray-50 cursor-not-allowed min-h-[80px]">
-                      {prospect.note_valutazione || '-'}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -609,52 +666,42 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
                 <ReadOnlyField label="Data riunione prevista" value={formatDateShort(prospect.data_riunione_prevista)} />
               </div>
             </div>
-          </div>
-        )
 
-      case 'profilazione':
-        return (
-          <div className="space-y-3">
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <ClipboardList className="w-4 h-4 text-purple-600 mr-2" />
-                  <h3 className="text-sm font-semibold text-purple-900">Risultati Profilazione</h3>
-                </div>
+            {/* Profiling Score */}
+            <div className="border-t pt-4">
+              <div className="flex items-center space-x-2 mb-2">
+                <Star className="w-4 h-4 text-yellow-500" />
+                <h3 className="text-sm font-semibold text-gray-900">Profilazione</h3>
+              </div>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
                 <div className="flex items-center space-x-2">
                   <Star className="w-4 h-4 text-yellow-400" />
                   <span className="text-lg font-bold text-purple-900">
-                    {prospect.profiling_score ?? 0}
+                    {prospect.profiling_score ?? 0}%
                   </span>
-                  <span className="text-sm text-purple-700">punti</span>
                 </div>
-              </div>
-            </div>
-
-            {prospect.profiling_data && Object.keys(prospect.profiling_data).length > 0 ? (
-              <div className="space-y-4">
-                {Object.entries(prospect.profiling_data).map(([key, value]) => (
-                  <div key={key} className="border rounded-lg p-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">{key}</label>
-                        <div className="mt-1 text-gray-900">
+                <div className="w-full bg-purple-200 rounded-full h-2 mt-2">
+                  <div
+                    className="bg-purple-600 h-2 rounded-full transition-all"
+                    style={{ width: `${prospect.profiling_score ?? 0}%` }}
+                  />
+                </div>
+                {prospect.profiling_data && Object.keys(prospect.profiling_data).length > 0 && (
+                  <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {Object.entries(prospect.profiling_data).map(([key, value]) => (
+                      <div key={key} className="text-sm">
+                        <span className="text-gray-600">{profilingTemplateMap[key] || key}:</span>{' '}
+                        <span className="text-gray-900 font-medium">
                           {typeof value === 'boolean' ? (value ? 'Si' : 'No') :
                            Array.isArray(value) ? value.join(', ') :
                            String(value || '-')}
-                        </div>
+                        </span>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            ) : (
-              <div className="text-center py-12 text-gray-500">
-                <ClipboardList className="w-8 h-8 mx-auto mb-1 opacity-50" />
-                <p className="text-sm">Nessun dato di profilazione disponibile</p>
-                <p className="text-xs mt-1">Modifica il prospect per compilare la scheda di profilazione</p>
-              </div>
-            )}
+            </div>
           </div>
         )
 
@@ -738,53 +785,91 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
               </div>
             </div>
 
-            {/* bozza → Compila prequalifica */}
+            {/* === BOZZA === */}
             {prospect.stato === 'bozza' && (
-              <div className="border rounded-lg p-3">
-                <h4 className="font-medium text-gray-900 mb-1">Compila la prequalifica</h4>
-                <p className="text-sm text-gray-600 mb-4">
-                  Completa la sezione di qualificazione per far avanzare il prospect nella pipeline.
-                </p>
-                <button
-                  onClick={() => {
-                    setPrequalificaScrollTo(undefined)
-                    setShowPrequalificaForm(true)
-                  }}
-                  className="btn-primary flex items-center space-x-2"
-                >
-                  <ClipboardCheck className="w-4 h-4" />
-                  <span>Compila Prequalifica</span>
-                </button>
+              <div className="space-y-4">
+                <div className="border rounded-lg p-3">
+                  <h4 className="font-medium text-gray-900 mb-1">Prequalifica</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Compila o modifica la prequalifica del prospect.
+                  </p>
+                  <button
+                    onClick={() => { setPrequalificaScrollTo(undefined); setShowPrequalificaForm(true) }}
+                    className="btn-primary flex items-center space-x-2"
+                  >
+                    <ClipboardCheck className="w-4 h-4" />
+                    <span>Apri Prequalifica</span>
+                  </button>
+                </div>
+
+                <div className="border border-blue-200 rounded-lg p-3 bg-blue-50">
+                  <h4 className="font-medium text-blue-900 mb-1">Qualifica</h4>
+                  <p className="text-sm text-blue-700 mb-4">
+                    {isGruppo2Complete(prospect)
+                      ? 'Il Gruppo 2 (Qualificazione) e completo. Puoi qualificare il prospect.'
+                      : 'Completa il Gruppo 2 (Qualificazione) nella prequalifica per abilitare questa azione.'}
+                  </p>
+                  <button
+                    onClick={handleQualifica}
+                    disabled={actionLoading || !isGruppo2Complete(prospect)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Qualifica</span>
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* qualificato → Completa valutazione ed esito */}
+            {/* === QUALIFICATO === */}
             {prospect.stato === 'qualificato' && (
-              <div className="border rounded-lg p-3">
-                <h4 className="font-medium text-gray-900 mb-1">Completa valutazione ed esito</h4>
-                <p className="text-sm text-gray-600 mb-4">
-                  La qualificazione e completa. Compila la valutazione e l'esito per portare il prospect in decisione.
-                </p>
-                <button
-                  onClick={() => {
-                    setPrequalificaScrollTo(3)
-                    setShowPrequalificaForm(true)
-                  }}
-                  className="btn-primary flex items-center space-x-2"
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  <span>Completa Valutazione</span>
-                </button>
+              <div className="space-y-4">
+                <div className="border rounded-lg p-3">
+                  <button
+                    onClick={() => { setPrequalificaScrollTo(3); setShowPrequalificaForm(true) }}
+                    className="btn-primary flex items-center space-x-2"
+                  >
+                    <ClipboardCheck className="w-4 h-4" />
+                    <span>Apri Prequalifica</span>
+                  </button>
+                </div>
+
+                <div className="border border-purple-200 rounded-lg p-3 bg-purple-50">
+                  <h4 className="font-medium text-purple-900 mb-1">Porta in Decisione</h4>
+                  <p className="text-sm text-purple-700 mb-4">
+                    {isGruppo3Complete(prospect) && isGruppo4Complete(prospect)
+                      ? 'Valutazione ed Esito completi. Puoi portare il prospect in decisione.'
+                      : 'Completa Valutazione (Gruppo 3) ed Esito (Gruppo 4) nella prequalifica.'}
+                  </p>
+                  <button
+                    onClick={handlePortaInDecisione}
+                    disabled={actionLoading || !isGruppo3Complete(prospect) || !isGruppo4Complete(prospect)}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-medium px-4 py-2 rounded-lg flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                    <span>Porta in Decisione</span>
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* in_decisione → Prendi in carico / Scarta */}
+            {/* === IN_DECISIONE === */}
             {prospect.stato === 'in_decisione' && (
               <div className="space-y-4">
+                <div className="border rounded-lg p-3">
+                  <button
+                    onClick={() => { setPrequalificaScrollTo(undefined); setShowPrequalificaForm(true) }}
+                    className="btn-primary flex items-center space-x-2"
+                  >
+                    <ClipboardCheck className="w-4 h-4" />
+                    <span>Apri Prequalifica</span>
+                  </button>
+                </div>
+
                 <div className="border border-green-200 rounded-lg p-3 bg-green-50">
-                  <h4 className="font-medium text-green-900 mb-1">Prendi in carico</h4>
+                  <h4 className="font-medium text-green-900 mb-1">Prendi in Carico</h4>
                   <p className="text-sm text-green-700 mb-4">
-                    Decisione positiva: il prospect viene preso in carico e sara poi convertibile in cliente.
+                    Decisione positiva: il prospect viene preso in carico.
                   </p>
                   <button
                     onClick={handlePrendiInCarico}
@@ -799,43 +884,69 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
                     <span>Prendi in Carico</span>
                   </button>
                 </div>
+              </div>
+            )}
 
-                <div className="border border-red-200 rounded-lg p-3 bg-red-50">
-                  <h4 className="font-medium text-red-900 mb-1">Scarta prospect</h4>
-                  <p className="text-sm text-red-700 mb-4">
-                    Decisione negativa: il prospect non verra preso in carico.
+            {/* === PRESO_IN_CARICO === */}
+            {prospect.stato === 'preso_in_carico' && (
+              <div className="space-y-4">
+                <div className="border rounded-lg p-3">
+                  <button
+                    onClick={() => { setPrequalificaScrollTo(undefined); setShowPrequalificaForm(true) }}
+                    className="btn-primary flex items-center space-x-2"
+                  >
+                    <ClipboardCheck className="w-4 h-4" />
+                    <span>Apri Prequalifica</span>
+                  </button>
+                </div>
+
+                <div className="border border-emerald-200 rounded-lg p-3 bg-emerald-50">
+                  <h4 className="font-medium text-emerald-900 mb-1">Converti a Cliente</h4>
+                  <p className="text-sm text-emerald-700 mb-4">
+                    Avvia il processo di conversione del prospect in cliente.
                   </p>
                   <button
-                    onClick={() => setShowScartaModal(true)}
+                    onClick={() => setShowConversionModal(true)}
                     disabled={actionLoading}
-                    className="bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg flex items-center space-x-2"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-lg flex items-center space-x-2"
                   >
-                    <XCircle className="w-4 h-4" />
-                    <span>Scarta</span>
+                    <ArrowRight className="w-4 h-4" />
+                    <span>Converti a Cliente</span>
                   </button>
                 </div>
               </div>
             )}
 
-            {/* preso_in_carico → Converti a Cliente */}
-            {prospect.stato === 'preso_in_carico' && (
-              <div className="border border-emerald-200 rounded-lg p-3 bg-emerald-50">
-                <h4 className="font-medium text-emerald-900 mb-1">Converti a Cliente</h4>
-                <p className="text-sm text-emerald-700 mb-4">
-                  Avvia il processo di conversione del prospect in cliente. I dati verranno mappati automaticamente.
-                </p>
-                <button
-                  onClick={() => setShowConversionModal(true)}
-                  disabled={actionLoading}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-lg flex items-center space-x-2"
-                >
-                  <ArrowRight className="w-4 h-4" />
-                  <span>Converti a Cliente</span>
-                </button>
+            {/* === CONGELATO === */}
+            {prospect.stato === 'congelato' && (
+              <div className="space-y-4">
+                <div className="border border-cyan-200 rounded-lg p-3 bg-cyan-50">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Snowflake className="w-4 h-4 text-cyan-600" />
+                    <h4 className="font-medium text-cyan-900">Prospect Congelato</h4>
+                  </div>
+                  <div className="text-sm text-cyan-700 space-y-1">
+                    <p><strong>Congelato il:</strong> {formatDate(prospect.congelato_il)}</p>
+                    <p><strong>Scongela il:</strong> {formatDateShort(prospect.scongela_il)}</p>
+                    <p><strong>Motivo:</strong> {prospect.motivo_congelamento || '-'}</p>
+                    <p><strong>Stato precedente:</strong> {getStatoLabel(prospect.stato_pre_congelamento || 'bozza')}</p>
+                  </div>
+                </div>
+
+                <div className="flex space-x-3">
+                  <button
+                    onClick={handleScongela}
+                    disabled={actionLoading}
+                    className="bg-cyan-600 hover:bg-cyan-700 text-white font-medium px-4 py-2 rounded-lg flex items-center space-x-2"
+                  >
+                    <Play className="w-4 h-4" />
+                    <span>Scongela</span>
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* convertito → info */}
+            {/* === CONVERTITO === */}
             {prospect.stato === 'convertito' && (
               <div className="border border-emerald-200 rounded-lg p-3 bg-emerald-50">
                 <div className="flex items-center space-x-2 mb-1">
@@ -858,64 +969,53 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
               </div>
             )}
 
-            {/* scartato → info riepilogativa */}
-            {prospect.stato === 'scartato' && (
+            {/* === ARCHIVIATO === */}
+            {prospect.stato === 'archiviato' && (
               <div className="border border-red-200 rounded-lg p-3 bg-red-50">
                 <div className="flex items-center space-x-2 mb-1">
-                  <XCircle className="w-4 h-4 text-red-600" />
-                  <h4 className="font-medium text-red-900">Prospect Scartato</h4>
+                  <Archive className="w-4 h-4 text-red-600" />
+                  <h4 className="font-medium text-red-900">Prospect Archiviato</h4>
                 </div>
-                {prospect.motivo_rifiuto && (
-                  <p className="text-sm text-red-700">
-                    <strong>Motivo:</strong> {prospect.motivo_rifiuto}
-                  </p>
-                )}
-                {prospect.data_decisione && (
-                  <p className="text-xs text-red-500 mt-2">
-                    Decisione presa il {formatDate(prospect.data_decisione)}
-                  </p>
-                )}
+                <div className="text-sm text-red-700 space-y-1">
+                  <p><strong>Archiviato il:</strong> {formatDate(prospect.archiviato_il)}</p>
+                  <p><strong>Motivo:</strong> {prospect.motivo_archiviazione || '-'}</p>
+                </div>
               </div>
             )}
 
-            {/* Elimina Prospect - sempre visibile (tranne se convertito) */}
-            {prospect.stato !== 'convertito' && (
+            {/* --- Congela / Archivia buttons (non-terminal, non-congelato) --- */}
+            {isNonTerminal && !isCongelato && (
+              <div className="border-t border-gray-200 pt-3 mt-6 flex space-x-3">
+                <button
+                  onClick={() => setShowCongelaModal(true)}
+                  disabled={actionLoading}
+                  className="text-cyan-600 hover:text-cyan-800 text-sm flex items-center space-x-2 border border-cyan-300 px-3 py-2 rounded-lg hover:bg-cyan-50"
+                >
+                  <Snowflake className="w-4 h-4" />
+                  <span>Congela</span>
+                </button>
+                <button
+                  onClick={() => setShowArchiviaModal(true)}
+                  disabled={actionLoading}
+                  className="text-red-600 hover:text-red-800 text-sm flex items-center space-x-2 border border-red-300 px-3 py-2 rounded-lg hover:bg-red-50"
+                >
+                  <Archive className="w-4 h-4" />
+                  <span>Archivia</span>
+                </button>
+              </div>
+            )}
+
+            {/* Archivia from congelato */}
+            {isCongelato && (
               <div className="border-t border-gray-200 pt-3 mt-6">
-                {!showDeleteConfirm ? (
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="text-red-600 hover:text-red-800 text-sm flex items-center space-x-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span>Elimina prospect</span>
-                  </button>
-                ) : (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                    <p className="text-sm text-red-800 font-medium mb-3">
-                      Eliminare definitivamente questo prospect?
-                    </p>
-                    <div className="flex space-x-3">
-                      <button
-                        onClick={handleDelete}
-                        disabled={actionLoading}
-                        className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center space-x-2"
-                      >
-                        {actionLoading ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        ) : (
-                          <Trash2 className="w-4 h-4" />
-                        )}
-                        <span>Conferma eliminazione</span>
-                      </button>
-                      <button
-                        onClick={() => setShowDeleteConfirm(false)}
-                        className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg"
-                      >
-                        Annulla
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <button
+                  onClick={() => setShowArchiviaModal(true)}
+                  disabled={actionLoading}
+                  className="text-red-600 hover:text-red-800 text-sm flex items-center space-x-2 border border-red-300 px-3 py-2 rounded-lg hover:bg-red-50"
+                >
+                  <Archive className="w-4 h-4" />
+                  <span>Archivia</span>
+                </button>
               </div>
             )}
           </div>
@@ -947,13 +1047,15 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <button
-                onClick={() => onEdit(prospect)}
-                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                title="Modifica prospect"
-              >
-                <Edit className="w-4 h-4" />
-              </button>
+              {isNonTerminal && !isCongelato && (
+                <button
+                  onClick={() => onEdit(prospect)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                  title="Modifica prospect"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+              )}
               <button
                 onClick={onClose}
                 className="p-2 hover:bg-white/20 rounded-lg transition-colors"
@@ -993,52 +1095,133 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
         </div>
       </div>
 
-      {/* Modal Scarto */}
-      {showScartaModal && (
+      {/* Congela Modal */}
+      {showCongelaModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="p-4">
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
-                  <XCircle className="w-4 h-4 text-red-600" />
+                <div className="w-12 h-12 bg-cyan-100 rounded-full flex items-center justify-center mr-4">
+                  <Snowflake className="w-5 h-5 text-cyan-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">Scarta Prospect</h3>
-                  <p className="text-sm text-gray-500">Inserisci il motivo dello scarto</p>
+                  <h3 className="text-lg font-medium text-gray-900">Congela Prospect</h3>
+                  <p className="text-sm text-gray-500">Metti in pausa questo prospect</p>
                 </div>
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Motivazione *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Durata *</label>
+                <select
+                  value={congelaDurata}
+                  onChange={(e) => setCongelaDurata(parseInt(e.target.value))}
+                  className="input"
+                >
+                  {CONGELAMENTO_DURATE.map((d) => (
+                    <option key={d.value} value={d.value}>{d.label}</option>
+                  ))}
+                </select>
+                {congelaDurata === 0 && (
+                  <input
+                    type="date"
+                    value={congelaDataCustom}
+                    onChange={(e) => setCongelaDataCustom(e.target.value)}
+                    className="input mt-2"
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                )}
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Motivo *</label>
                 <textarea
-                  value={motivoScarto}
-                  onChange={(e) => setMotivoScarto(e.target.value)}
+                  value={congelaMotivo}
+                  onChange={(e) => setCongelaMotivo(e.target.value)}
                   className="input min-h-[100px]"
                   rows={4}
-                  placeholder="Descrivi il motivo dello scarto..."
+                  placeholder="Motivo del congelamento..."
                   required
                 />
               </div>
 
               <div className="flex items-center justify-end space-x-3">
                 <button
-                  onClick={() => { setShowScartaModal(false); setMotivoScarto('') }}
+                  onClick={() => { setShowCongelaModal(false); setCongelaMotivo(''); setCongelaDurata(30); setCongelaDataCustom('') }}
                   className="btn-secondary"
                   disabled={actionLoading}
                 >
                   Annulla
                 </button>
                 <button
-                  onClick={handleScarta}
-                  className="bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg flex items-center space-x-2"
-                  disabled={actionLoading || !motivoScarto.trim()}
+                  onClick={handleCongela}
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white font-medium px-4 py-2 rounded-lg flex items-center space-x-2"
+                  disabled={actionLoading || !congelaMotivo.trim()}
                 >
                   {actionLoading ? (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   ) : (
-                    <XCircle className="w-4 h-4" />
+                    <Snowflake className="w-4 h-4" />
                   )}
-                  <span>Conferma Scarto</span>
+                  <span>Conferma Congelamento</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Archivia Modal */}
+      {showArchiviaModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-4">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                  <Archive className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">Archivia Prospect</h3>
+                  <p className="text-sm text-gray-500">Questa azione e irreversibile</p>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-yellow-800 font-medium">
+                  Attenzione: l'archiviazione e permanente. Il prospect non potra piu essere riattivato.
+                </p>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Motivo *</label>
+                <textarea
+                  value={archiviaMotivo}
+                  onChange={(e) => setArchiviaMotivo(e.target.value)}
+                  className="input min-h-[100px]"
+                  rows={4}
+                  placeholder="Motivo dell'archiviazione..."
+                  required
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-3">
+                <button
+                  onClick={() => { setShowArchiviaModal(false); setArchiviaMotivo('') }}
+                  className="btn-secondary"
+                  disabled={actionLoading}
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleArchivia}
+                  className="bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg flex items-center space-x-2"
+                  disabled={actionLoading || !archiviaMotivo.trim()}
+                >
+                  {actionLoading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Archive className="w-4 h-4" />
+                  )}
+                  <span>Conferma Archiviazione</span>
                 </button>
               </div>
             </div>

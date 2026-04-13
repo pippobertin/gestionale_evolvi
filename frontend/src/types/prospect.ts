@@ -35,8 +35,15 @@ export interface Prospect {
   data_conversione?: string
   convertito_da?: string
   note?: string
-  note_valutazione?: string
   creato_da?: string
+  // Congelamento
+  congelato_il?: string
+  scongela_il?: string
+  stato_pre_congelamento?: string
+  motivo_congelamento?: string
+  // Archiviazione
+  archiviato_il?: string
+  motivo_archiviazione?: string
   created_at: string
   updated_at: string
   // Prequalifica fields
@@ -59,7 +66,7 @@ export interface Prospect {
   data_riunione_prevista?: string
 }
 
-export type ProspectStato = 'bozza' | 'qualificato' | 'in_decisione' | 'preso_in_carico' | 'scartato' | 'convertito'
+export type ProspectStato = 'bozza' | 'qualificato' | 'in_decisione' | 'preso_in_carico' | 'convertito' | 'congelato' | 'archiviato'
 
 export type TipologiaSoggetto = 'PROFIT' | 'NON_PROFIT' | 'ENTE_PUBBLICO' | 'SCUOLA'
 export type AreaInteresse = 'EVOLVI_PROGETTAZIONE' | 'SEEDMIND_FORMAZIONE' | 'HUMETRICS_ESG' | 'NON_CHIARO'
@@ -84,6 +91,7 @@ export interface ProfilingTemplate {
   domanda: string
   tipo: 'text' | 'number' | 'select' | 'multiselect' | 'boolean' | 'textarea' | 'rating'
   opzioni: string[]
+  punteggi: number[] // array parallelo a opzioni con valori 0-1 (se vuoto, fallback posizionale)
   peso: number
   categoria: string
   ordine: number
@@ -116,7 +124,7 @@ export interface ProspectFormData {
   fonte_acquisizione?: string
   assegnato_a?: string
   note?: string
-  // Prequalifica fields
+  // Prequalifica fields (in ProspectFormData)
   data_contatto?: string
   ricevuto_da?: string
   referente_nome?: string
@@ -141,9 +149,34 @@ export const PROSPECT_STATI: Record<ProspectStato, { label: string; color: strin
   qualificato: { label: 'Qualificato', color: 'text-blue-700', bgColor: 'bg-blue-100' },
   in_decisione: { label: 'In Decisione', color: 'text-purple-700', bgColor: 'bg-purple-100' },
   preso_in_carico: { label: 'Preso in Carico', color: 'text-green-700', bgColor: 'bg-green-100' },
-  scartato: { label: 'Scartato', color: 'text-red-700', bgColor: 'bg-red-100' },
-  convertito: { label: 'Convertito', color: 'text-emerald-700', bgColor: 'bg-emerald-100' }
+  convertito: { label: 'Convertito', color: 'text-emerald-700', bgColor: 'bg-emerald-100' },
+  congelato: { label: 'Congelato', color: 'text-cyan-700', bgColor: 'bg-cyan-100' },
+  archiviato: { label: 'Archiviato', color: 'text-red-700', bgColor: 'bg-red-100' }
 }
+
+export const TERMINAL_STATES: ProspectStato[] = ['convertito', 'archiviato']
+
+export const VALID_TRANSITIONS: Record<ProspectStato, ProspectStato[]> = {
+  bozza: ['qualificato', 'congelato', 'archiviato'],
+  qualificato: ['in_decisione', 'congelato', 'archiviato'],
+  in_decisione: ['preso_in_carico', 'congelato', 'archiviato'],
+  preso_in_carico: ['convertito', 'congelato', 'archiviato'],
+  congelato: ['archiviato'], // + stato_pre_congelamento via scongela
+  convertito: [],
+  archiviato: []
+}
+
+export function isTransitionValid(from: ProspectStato, to: ProspectStato): boolean {
+  return VALID_TRANSITIONS[from]?.includes(to) ?? false
+}
+
+export const CONGELAMENTO_DURATE = [
+  { value: 15, label: '15 giorni' },
+  { value: 30, label: '30 giorni' },
+  { value: 60, label: '60 giorni' },
+  { value: 90, label: '90 giorni' },
+  { value: 0, label: 'Data personalizzata' }
+]
 
 export const FONTI_ACQUISIZIONE = [
   { value: 'telefonata', label: 'Telefonata' },

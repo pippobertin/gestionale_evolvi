@@ -5,29 +5,16 @@ import {
   X,
   Save,
   Building2,
-  Mail,
-  Phone,
   MapPin,
   User,
-  FileText,
-  ClipboardList,
   StickyNote
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import {
   Prospect,
-  ProfilingTemplate,
   FONTI_ACQUISIZIONE,
-  DIMENSIONI,
-  TIPOLOGIE_SOGGETTO,
-  AREE_INTERESSE,
-  NATURE_INTERESSE,
-  AFFIDABILITA_OPTIONS,
-  POTENZIALI_ECONOMICI,
-  TEMPI_DECISIONE_OPTIONS,
-  RACCOMANDAZIONI
+  DIMENSIONI
 } from '@/types/prospect'
-import ProfilingCard from './ProfilingCard'
 
 interface ProspectFormProps {
   prospect?: Prospect
@@ -61,14 +48,10 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
     fonte_acquisizione: '',
     fonte_dettaglio: '',
     assegnato_a: '',
-    note: '',
-    note_valutazione: '',
-    profiling_data: {}
+    note: ''
   })
   const [loading, setSaving] = useState(false)
   const [currentTab, setCurrentTab] = useState('anagrafica')
-  const [profilingTemplates, setProfilingTemplates] = useState<ProfilingTemplate[]>([])
-  const [loadingTemplates, setLoadingTemplates] = useState(false)
 
   useEffect(() => {
     if (prospect) {
@@ -96,27 +79,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
         fonte_acquisizione: prospect.fonte_acquisizione || '',
         fonte_dettaglio: prospect.fonte_dettaglio || '',
         assegnato_a: prospect.assegnato_a || '',
-        note: prospect.note || '',
-        note_valutazione: prospect.note_valutazione || '',
-        profiling_data: prospect.profiling_data || {},
-        // Prequalifica
-        data_contatto: prospect.data_contatto || '',
-        ricevuto_da: prospect.ricevuto_da || '',
-        referente_nome: prospect.referente_nome || '',
-        tipologia_soggetto: prospect.tipologia_soggetto || '',
-        area_interesse: prospect.area_interesse ? prospect.area_interesse.split(',') : [],
-        natura_interesse: prospect.natura_interesse || '',
-        bisogno_dichiarato: prospect.bisogno_dichiarato || '',
-        bisogno_interpretato: prospect.bisogno_interpretato || '',
-        affidabilita_percepita: prospect.affidabilita_percepita || '',
-        potenziale_economico: prospect.potenziale_economico || '',
-        budget_dichiarato: prospect.budget_dichiarato || false,
-        tempi_decisione: prospect.tempi_decisione || '',
-        note_qualitative: prospect.note_qualitative || '',
-        raccomandazione: prospect.raccomandazione || '',
-        motivazione_raccomandazione: prospect.motivazione_raccomandazione || '',
-        responsabile_qualificazione: prospect.responsabile_qualificazione || '',
-        data_riunione_prevista: prospect.data_riunione_prevista || ''
+        note: prospect.note || ''
       })
     } else {
       setFormData({
@@ -143,66 +106,15 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
         fonte_acquisizione: '',
         fonte_dettaglio: '',
         assegnato_a: '',
-        note: '',
-        note_valutazione: '',
-        profiling_data: {},
-        // Prequalifica
-        data_contatto: '',
-        ricevuto_da: '',
-        referente_nome: '',
-        tipologia_soggetto: '',
-        area_interesse: [],
-        natura_interesse: '',
-        bisogno_dichiarato: '',
-        bisogno_interpretato: '',
-        affidabilita_percepita: '',
-        potenziale_economico: '',
-        budget_dichiarato: false,
-        tempi_decisione: '',
-        note_qualitative: '',
-        raccomandazione: '',
-        motivazione_raccomandazione: '',
-        responsabile_qualificazione: '',
-        data_riunione_prevista: ''
+        note: ''
       })
     }
   }, [prospect])
-
-  useEffect(() => {
-    if (isOpen) {
-      loadProfilingTemplates()
-    }
-  }, [isOpen])
-
-  const loadProfilingTemplates = async () => {
-    setLoadingTemplates(true)
-    try {
-      const { data, error } = await supabase
-        .from('scadenze_bandi_profiling_template')
-        .select('*')
-        .eq('attivo', true)
-        .order('ordine')
-
-      if (error) throw error
-      setProfilingTemplates(data || [])
-    } catch (error) {
-      console.error('Errore caricamento template profilazione:', error)
-    } finally {
-      setLoadingTemplates(false)
-    }
-  }
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
-    }))
-  }
-
-  const handleProfilingChange = (values: Record<string, any>) => {
-    setFormData(prev => ({
-      ...prev,
-      profiling_data: values
     }))
   }
 
@@ -238,27 +150,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
         fonte_acquisizione: formData.fonte_acquisizione || null,
         fonte_dettaglio: formData.fonte_dettaglio || null,
         assegnato_a: formData.assegnato_a || null,
-        note: formData.note || null,
-        note_valutazione: formData.note_valutazione || null,
-        profiling_data: formData.profiling_data || {},
-        // Prequalifica
-        data_contatto: formData.data_contatto || null,
-        ricevuto_da: formData.ricevuto_da || null,
-        referente_nome: formData.referente_nome || null,
-        tipologia_soggetto: formData.tipologia_soggetto || null,
-        area_interesse: formData.area_interesse?.length > 0 ? formData.area_interesse.join(',') : null,
-        natura_interesse: formData.natura_interesse || null,
-        bisogno_dichiarato: formData.bisogno_dichiarato || null,
-        bisogno_interpretato: formData.bisogno_interpretato || null,
-        affidabilita_percepita: formData.affidabilita_percepita || null,
-        potenziale_economico: formData.potenziale_economico || null,
-        budget_dichiarato: formData.budget_dichiarato || false,
-        tempi_decisione: formData.tempi_decisione || null,
-        note_qualitative: formData.note_qualitative || null,
-        raccomandazione: formData.raccomandazione || null,
-        motivazione_raccomandazione: formData.motivazione_raccomandazione || null,
-        responsabile_qualificazione: formData.responsabile_qualificazione || null,
-        data_riunione_prevista: formData.data_riunione_prevista || null
+        note: formData.note || null
       }
 
       if (prospect?.id) {
@@ -270,6 +162,8 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
         if (error) throw error
       } else {
         dataToSave.stato = 'bozza'
+        dataToSave.profiling_data = {}
+        dataToSave.profiling_score = 0
         const { error } = await supabase
           .from('scadenze_bandi_prospect')
           .insert([dataToSave])
@@ -292,9 +186,7 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
   const tabs = [
     { id: 'anagrafica', label: 'Anagrafica', icon: Building2 },
     { id: 'dettagli', label: 'Dettagli', icon: MapPin },
-    { id: 'prequalifica', label: 'Prequalifica', icon: ClipboardList },
     { id: 'legale', label: 'Legale Rappresentante', icon: User },
-    { id: 'profilazione', label: 'Profilazione', icon: ClipboardList },
     { id: 'note', label: 'Note', icon: StickyNote }
   ]
 
@@ -549,234 +441,6 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
           </div>
         )
 
-      case 'prequalifica':
-        return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Data contatto</label>
-                <input
-                  type="date"
-                  value={formData.data_contatto}
-                  onChange={(e) => handleInputChange('data_contatto', e.target.value)}
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ricevuto da</label>
-                <input
-                  type="text"
-                  value={formData.ricevuto_da}
-                  onChange={(e) => handleInputChange('ricevuto_da', e.target.value)}
-                  className="input"
-                  placeholder="Email utente"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Referente</label>
-                <input
-                  type="text"
-                  value={formData.referente_nome}
-                  onChange={(e) => handleInputChange('referente_nome', e.target.value)}
-                  className="input"
-                  placeholder="Nome persona di contatto"
-                />
-              </div>
-            </div>
-
-            <div className="border-t pt-3">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">Qualificazione</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipologia soggetto</label>
-                  <select
-                    value={formData.tipologia_soggetto}
-                    onChange={(e) => handleInputChange('tipologia_soggetto', e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Seleziona...</option>
-                    {TIPOLOGIE_SOGGETTO.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Area di interesse</label>
-                  <div className="space-y-1.5 p-2 border rounded-md border-gray-300">
-                    {AREE_INTERESSE.map((a) => (
-                      <label key={a.value} className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={(formData.area_interesse || []).includes(a.value)}
-                          onChange={(e) => {
-                            const current: string[] = formData.area_interesse || []
-                            const next = e.target.checked
-                              ? [...current, a.value]
-                              : current.filter((v: string) => v !== a.value)
-                            handleInputChange('area_interesse', next)
-                          }}
-                          className="h-3.5 w-3.5 text-blue-600 rounded border-gray-300"
-                        />
-                        <span className="text-sm text-gray-700">{a.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Natura interesse</label>
-                  <select
-                    value={formData.natura_interesse}
-                    onChange={(e) => handleInputChange('natura_interesse', e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Seleziona...</option>
-                    {NATURE_INTERESSE.map((n) => (
-                      <option key={n.value} value={n.value}>{n.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Bisogno dichiarato</label>
-                  <textarea
-                    value={formData.bisogno_dichiarato}
-                    onChange={(e) => handleInputChange('bisogno_dichiarato', e.target.value)}
-                    className="input min-h-[80px]"
-                    rows={3}
-                    placeholder="Cosa dice il prospect"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Bisogno interpretato</label>
-                  <textarea
-                    value={formData.bisogno_interpretato}
-                    onChange={(e) => handleInputChange('bisogno_interpretato', e.target.value)}
-                    className="input min-h-[80px]"
-                    rows={3}
-                    placeholder="Cosa interpretiamo noi"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t pt-3">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">Valutazione</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Affidabilita</label>
-                  <select
-                    value={formData.affidabilita_percepita}
-                    onChange={(e) => handleInputChange('affidabilita_percepita', e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Seleziona...</option>
-                    {AFFIDABILITA_OPTIONS.map((a) => (
-                      <option key={a.value} value={a.value}>{a.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Potenziale economico</label>
-                  <select
-                    value={formData.potenziale_economico}
-                    onChange={(e) => handleInputChange('potenziale_economico', e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Seleziona...</option>
-                    {POTENZIALI_ECONOMICI.map((p) => (
-                      <option key={p.value} value={p.value}>{p.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tempi decisione</label>
-                  <select
-                    value={formData.tempi_decisione}
-                    onChange={(e) => handleInputChange('tempi_decisione', e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Seleziona...</option>
-                    {TEMPI_DECISIONE_OPTIONS.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                <div className="flex items-center space-x-3 py-2">
-                  <input
-                    type="checkbox"
-                    id="budget_dichiarato_form"
-                    checked={formData.budget_dichiarato}
-                    onChange={(e) => handleInputChange('budget_dichiarato', e.target.checked)}
-                    className="h-4 w-4 text-blue-600 rounded border-gray-300"
-                  />
-                  <label htmlFor="budget_dichiarato_form" className="text-sm text-gray-700">
-                    Budget dichiarato
-                  </label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Note qualitative</label>
-                  <textarea
-                    value={formData.note_qualitative}
-                    onChange={(e) => handleInputChange('note_qualitative', e.target.value)}
-                    className="input min-h-[60px]"
-                    rows={2}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t pt-3">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">Esito</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Raccomandazione</label>
-                  <select
-                    value={formData.raccomandazione}
-                    onChange={(e) => handleInputChange('raccomandazione', e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Seleziona...</option>
-                    {RACCOMANDAZIONI.map((r) => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Responsabile qualificazione</label>
-                  <input
-                    type="text"
-                    value={formData.responsabile_qualificazione}
-                    onChange={(e) => handleInputChange('responsabile_qualificazione', e.target.value)}
-                    className="input"
-                    placeholder="Email responsabile"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Motivazione</label>
-                  <textarea
-                    value={formData.motivazione_raccomandazione}
-                    onChange={(e) => handleInputChange('motivazione_raccomandazione', e.target.value)}
-                    className="input min-h-[60px]"
-                    rows={2}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Data riunione prevista</label>
-                  <input
-                    type="date"
-                    value={formData.data_riunione_prevista}
-                    onChange={(e) => handleInputChange('data_riunione_prevista', e.target.value)}
-                    className="input"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-
       case 'legale':
         return (
           <div className="space-y-3">
@@ -835,39 +499,6 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
           </div>
         )
 
-      case 'profilazione':
-        return (
-          <div className="space-y-3">
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-6">
-              <div className="flex items-center">
-                <ClipboardList className="w-4 h-4 text-purple-600 mr-2" />
-                <h3 className="text-sm font-semibold text-purple-900">Scheda di Profilazione</h3>
-              </div>
-              <p className="text-purple-700 mt-2 text-sm">
-                Compila la scheda di profilazione per calcolare il punteggio del prospect
-              </p>
-            </div>
-
-            {loadingTemplates ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-              </div>
-            ) : profilingTemplates.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <ClipboardList className="w-8 h-8 mx-auto mb-1 opacity-50" />
-                <p className="text-sm">Nessun template di profilazione configurato</p>
-              </div>
-            ) : (
-              <ProfilingCard
-                templates={profilingTemplates}
-                values={formData.profiling_data}
-                onChange={handleProfilingChange}
-                readOnly={false}
-              />
-            )}
-          </div>
-        )
-
       case 'note':
         return (
           <div className="space-y-3">
@@ -881,19 +512,6 @@ export default function ProspectForm({ prospect, isOpen, onClose, onSave }: Pros
                 placeholder="Note interne sul prospect..."
               />
             </div>
-
-            {prospect && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Note Valutazione</label>
-                <textarea
-                  value={formData.note_valutazione}
-                  onChange={(e) => handleInputChange('note_valutazione', e.target.value)}
-                  className="input min-h-[120px]"
-                  rows={5}
-                  placeholder="Note sulla valutazione del prospect..."
-                />
-              </div>
-            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Assegnato a</label>
