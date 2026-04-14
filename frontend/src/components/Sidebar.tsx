@@ -16,7 +16,8 @@ import {
   ChevronRight,
   Pin,
   PinOff,
-  Mail
+  Mail,
+  HelpCircle
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -42,7 +43,8 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
     { id: 'email', label: 'Email', icon: Mail, adminOnly: false },
     { id: 'consulenti', label: 'Consulenti', icon: Building, adminOnly: false },
     { id: 'reports', label: 'Reports', icon: BarChart3, adminOnly: false },
-    { id: 'settings', label: 'Impostazioni', icon: Settings, adminOnly: false }
+    { id: 'settings', label: 'Impostazioni', icon: Settings, adminOnly: false },
+    { id: 'faq', label: 'FAQ', icon: HelpCircle, adminOnly: false }
   ]
 
   const menuItems = allMenuItems.filter(item => !item.adminOnly || isAdmin())

@@ -14,6 +14,8 @@ import SettingsContent from '@/components/SettingsContent'
 import GmailClient from '@/components/GmailClient'
 import ReportsContent from '@/components/ReportsContent'
 import ProspectContent from '@/components/ProspectContent'
+import FaqContent from '@/components/FaqContent'
+import ChatbotWidget from '@/components/ChatbotWidget'
 import { LoadingSpinner } from '@/components/shared'
 
 function AppContent() {
@@ -63,6 +65,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'consulenti': return 'Consulenti'
       case 'reports': return 'Reports'
       case 'settings': return 'Impostazioni'
+      case 'faq': return 'FAQ'
       default: return 'Dashboard'
     }
   }
@@ -79,6 +82,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'consulenti': return ['Home', 'Gestione', 'Consulenti']
       case 'reports': return ['Home', 'Analytics', 'Reports']
       case 'settings': return ['Home', 'Sistema', 'Impostazioni']
+      case 'faq': return ['Home', 'Aiuto', 'FAQ']
       default: return ['Home', 'Dashboard']
     }
   }
@@ -114,6 +118,8 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
         return <ReportsContent />
       case 'settings':
         return <SettingsContent />
+      case 'faq':
+        return <FaqContent />
       default:
         return <DashboardContent onNavigate={setActiveItem} />
     }
@@ -142,6 +148,8 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
           {renderContent()}
         </main>
       </div>
+
+      <ChatbotWidget />
     </div>
   )
 }
