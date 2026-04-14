@@ -99,7 +99,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
         return <ProgettiContent initialFilter={navigationParams?.clienteFilter} onNavigate={onNavigate} />
       case 'email':
         return (
-          <div className="h-[calc(100vh-200px)] bg-white rounded-lg card-shadow overflow-hidden">
+          <div className="overflow-hidden -m-4 h-[calc(100%+2rem)] w-[calc(100%+2rem)]">
             <GmailClient isOpen={true} onClose={() => setActiveItem('dashboard')} />
           </div>
         )

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     // Transform labels to include unread counts
     const labelsWithCounts = await Promise.all(labels.map(async (label) => {
       try {
-        if (label.id && ['INBOX', 'SENT', 'DRAFTS', 'SPAM', 'TRASH', 'STARRED'].includes(label.id)) {
+        if (label.id && ['INBOX', 'SENT', 'SPAM', 'TRASH', 'STARRED'].includes(label.id)) {
           console.log(`Processing label: ${label.id}`)
 
           // Get counts for inbox
