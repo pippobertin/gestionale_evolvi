@@ -576,7 +576,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
       }}
     >
       {/* Header - Evolvi Native */}
-      <div className="h-14 flex items-center px-5 gap-5 relative z-50" style={{ background: 'linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%)', boxShadow: '0 2px 8px rgba(13, 148, 136, 0.3)' }}>
+      <div className="h-14 flex items-center px-5 gap-5 relative z-10" style={{ background: 'linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%)', boxShadow: '0 2px 8px rgba(13, 148, 136, 0.3)' }}>
         <div className="flex items-center gap-2.5 min-w-[180px]">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(4px)' }}>
             <Mail className="w-4 h-4 text-white" />
@@ -602,7 +602,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                 setSearchQuery('')
               }
             }}
-            className="w-full h-9 pl-10 pr-4 border-none rounded-full text-sm outline-none transition-all"
+            className="w-full h-9 pl-10 pr-4 border-none rounded-full text-sm outline-none transition-all placeholder:text-white/60"
             style={{ background: 'rgba(255,255,255,0.18)', color: 'white', backdropFilter: 'blur(4px)' }}
             onFocus={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.95)'; e.currentTarget.style.color = '#1f2937'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(94, 234, 212, 0.4)' }}
             onBlur={(e) => { if (!e.currentTarget.value) { e.currentTarget.style.background = 'rgba(255,255,255,0.18)'; e.currentTarget.style.color = 'white'; e.currentTarget.style.boxShadow = 'none' } }}

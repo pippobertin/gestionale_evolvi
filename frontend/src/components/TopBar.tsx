@@ -29,9 +29,10 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
   const { user, logout, isAdmin } = useAuth()
   const { isConnected: isGoogleDriveConnected, loading: googleDriveLoading } = useGoogleDriveStatus()
   const { count: unreadEmailCount, loading: emailLoading } = useUnreadEmailCount()
-  const { notifications, unreadCount, loading: notificationsLoading, markAsRead } = useNotifications()
+  const { notifications, unreadCount, loading: notificationsLoading, markAsRead, markAllAsRead } = useNotifications()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+  const [showAllNotifications, setShowAllNotifications] = useState(false)
 
 
   const handleLogout = async () => {
@@ -133,7 +134,10 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
             {/* Notifications */}
             <div className="relative">
               <button
-                onClick={() => setShowNotifications(!showNotifications)}
+                onClick={() => {
+                  setShowNotifications(!showNotifications)
+                  if (showNotifications) setShowAllNotifications(false)
+                }}
                 className="p-2.5 hover:bg-white/20 rounded-lg transition-colors duration-200 group relative"
               >
                 <Bell className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
@@ -146,11 +150,20 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
 
               {/* Notifications Dropdown */}
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-hard border border-gray-200 overflow-hidden">
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-hard border border-gray-200 overflow-hidden z-[100]">
                   <div className="p-3 border-b border-gray-100 bg-gray-50">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-gray-900 font-semibold">Notifiche</h3>
-                      <span className="text-xs text-gray-500">{unreadCount} non lette</span>
+                      <h3 className="text-gray-900 font-semibold">
+                        {showAllNotifications ? 'Tutte le notifiche' : 'Notifiche'}
+                      </h3>
+                      {!showAllNotifications && unreadCount > 0 && (
+                        <button
+                          onClick={() => markAllAsRead()}
+                          className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                        >
+                          Segna tutte come lette
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="max-h-80 overflow-y-auto">
@@ -159,47 +172,56 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
                         <p className="text-gray-500 text-sm mt-2">Caricamento...</p>
                       </div>
-                    ) : notifications.length === 0 ? (
-                      <div className="p-8 text-center">
-                        <Bell className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                        <p className="text-gray-500 text-sm">Nessuna notifica</p>
-                      </div>
-                    ) : (
-                      notifications.map((notification) => (
-                        <div
-                          key={notification.id}
-                          className={`p-4 border-b border-gray-50 hover:bg-gray-25 transition-colors cursor-pointer ${notification.unread ? 'bg-blue-25' : ''}`}
-                          onClick={() => {
-                            if (notification.unread) {
-                              markAsRead(notification.id)
-                            }
-                            if (notification.link) {
-                              // TODO: Handle navigation to notification.link
-                              console.log('Navigate to:', notification.link)
-                            }
-                          }}
-                        >
-                          <div className="flex items-start space-x-3">
-                            <div className={`w-2 h-2 rounded-full mt-2 ${
-                              notification.type === 'warning' ? 'bg-yellow-400' :
-                              notification.type === 'success' ? 'bg-green-400' : 'bg-blue-400'
-                            }`} />
-                            <div className="flex-1">
-                              <h4 className="text-gray-900 font-medium text-sm">{notification.title}</h4>
-                              <p className="text-gray-600 text-sm mt-1">{notification.message}</p>
-                              <p className="text-gray-400 text-xs mt-2">{notification.time}</p>
-                            </div>
-                            {notification.unread && (
-                              <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
-                            )}
-                          </div>
+                    ) : (() => {
+                      const visibleNotifications = showAllNotifications
+                        ? notifications
+                        : notifications.filter(n => n.unread)
+                      return visibleNotifications.length === 0 ? (
+                        <div className="p-8 text-center">
+                          <Bell className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                          <p className="text-gray-500 text-sm">
+                            {showAllNotifications ? 'Nessuna notifica' : 'Nessuna notifica non letta'}
+                          </p>
                         </div>
-                      ))
-                    )}
+                      ) : (
+                        visibleNotifications.map((notification) => (
+                          <div
+                            key={notification.id}
+                            className={`p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer ${notification.unread ? 'bg-blue-50/50' : ''}`}
+                            onClick={() => {
+                              if (notification.unread) {
+                                markAsRead(notification.id)
+                              }
+                              if (notification.link) {
+                                console.log('Navigate to:', notification.link)
+                              }
+                            }}
+                          >
+                            <div className="flex items-start space-x-3">
+                              <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                                notification.type === 'warning' ? 'bg-yellow-400' :
+                                notification.type === 'success' ? 'bg-green-400' : 'bg-blue-400'
+                              }`} />
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-gray-900 font-medium text-sm">{notification.title}</h4>
+                                <p className="text-gray-600 text-sm mt-1">{notification.message}</p>
+                                <p className="text-gray-400 text-xs mt-2">{notification.time}</p>
+                              </div>
+                              {notification.unread && (
+                                <div className="w-2 h-2 bg-primary-500 rounded-full flex-shrink-0"></div>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )
+                    })()}
                   </div>
                   <div className="p-3 bg-gray-50 border-t border-gray-100">
-                    <button className="text-primary-600 text-sm font-medium hover:text-primary-700 transition-colors">
-                      Vedi tutte le notifiche
+                    <button
+                      onClick={() => setShowAllNotifications(!showAllNotifications)}
+                      className="text-primary-600 text-sm font-medium hover:text-primary-700 transition-colors"
+                    >
+                      {showAllNotifications ? 'Mostra solo non lette' : 'Vedi tutte le notifiche'}
                     </button>
                   </div>
                 </div>

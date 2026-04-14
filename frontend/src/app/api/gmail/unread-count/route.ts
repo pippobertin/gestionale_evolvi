@@ -11,14 +11,13 @@ export async function GET(request: NextRequest) {
     // Get Gmail client with user's tokens
     const gmail = await getGmailClient(userId)
 
-    // Count unread messages in INBOX
-    const response = await gmail.users.messages.list({
+    // Get exact unread count from INBOX label metadata
+    const response = await gmail.users.labels.get({
       userId: 'me',
-      labelIds: ['INBOX', 'UNREAD'],
-      maxResults: 1 // We only need the count, not the actual messages
+      id: 'INBOX'
     })
 
-    const unreadCount = response.data.resultSizeEstimate || 0
+    const unreadCount = response.data.messagesUnread || 0
 
     return NextResponse.json({
       success: true,

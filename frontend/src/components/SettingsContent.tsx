@@ -64,9 +64,9 @@ export default function SettingsContent() {
     },
     {
       id: 'my-gmail',
-      label: 'Il Mio Gmail',
+      label: 'Le Mie API Google',
       icon: Mail,
-      description: 'Collega il tuo account Gmail personale'
+      description: 'Gmail, Calendar e integrazioni Google'
     },
     {
       id: 'scheduler',
@@ -224,8 +224,8 @@ export default function SettingsContent() {
                 <Mail className="w-4 h-4 text-red-600" />
               </div>
               <div>
-                <h1 className="text-sm font-semibold text-gray-900">Il Mio Gmail</h1>
-                <p className="text-gray-600">Collega il tuo account Gmail aziendale</p>
+                <h1 className="text-sm font-semibold text-gray-900">Le Mie API Google</h1>
+                <p className="text-gray-600">Gmail, Calendar e integrazioni Google personali</p>
               </div>
             </div>
 
