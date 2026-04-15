@@ -1,8 +1,13 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, User, Mail, Phone, FileText, Save, X } from 'lucide-react'
+import { Plus, Edit, Trash2, User, Mail, Phone, FileText, Save, X, Building2, Briefcase } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+
+interface Ufficio {
+  id: string
+  nome: string
+}
 
 interface Referente {
   id?: string
@@ -11,7 +16,10 @@ interface Referente {
   nome: string
   email?: string
   telefono?: string
+  ufficio_id?: string
+  ruolo?: string
   note?: string
+  ufficio?: Ufficio | null
 }
 
 interface ReferentiManagerProps {
@@ -21,6 +29,7 @@ interface ReferentiManagerProps {
 
 export default function ReferentiManager({ clienteId, isNewClient = false }: ReferentiManagerProps) {
   const [referenti, setReferenti] = useState<Referente[]>([])
+  const [uffici, setUffici] = useState<Ufficio[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingReferente, setEditingReferente] = useState<Referente | null>(null)
   const [loading, setLoading] = useState(false)
@@ -29,8 +38,23 @@ export default function ReferentiManager({ clienteId, isNewClient = false }: Ref
     nome: '',
     email: '',
     telefono: '',
+    ufficio_id: '',
+    ruolo: '',
     note: ''
   })
+
+  // Carica uffici disponibili
+  useEffect(() => {
+    const loadUffici = async () => {
+      const { data } = await supabase
+        .from('scadenze_bandi_uffici_dipartimenti')
+        .select('id, nome')
+        .eq('attivo', true)
+        .order('ordine')
+      if (data) setUffici(data)
+    }
+    loadUffici()
+  }, [])
 
   // Carica referenti esistenti se il cliente esiste già
   useEffect(() => {
@@ -46,7 +70,7 @@ export default function ReferentiManager({ clienteId, isNewClient = false }: Ref
       setLoading(true)
       const { data, error } = await supabase
         .from('scadenze_bandi_clienti_referenti')
-        .select('*')
+        .select('*, ufficio:scadenze_bandi_uffici_dipartimenti(id, nome)')
         .eq('cliente_id', clienteId)
         .order('cognome', { ascending: true })
 
@@ -70,6 +94,8 @@ export default function ReferentiManager({ clienteId, isNewClient = false }: Ref
         nome: '',
         email: '',
         telefono: '',
+        ufficio_id: '',
+        ruolo: '',
         note: ''
       })
     }
@@ -84,6 +110,8 @@ export default function ReferentiManager({ clienteId, isNewClient = false }: Ref
       nome: '',
       email: '',
       telefono: '',
+      ufficio_id: '',
+      ruolo: '',
       note: ''
     })
   }
@@ -114,6 +142,8 @@ export default function ReferentiManager({ clienteId, isNewClient = false }: Ref
         nome: formData.nome!.trim(),
         email: formData.email?.trim() || null,
         telefono: formData.telefono?.trim() || null,
+        ufficio_id: formData.ufficio_id || null,
+        ruolo: formData.ruolo?.trim() || null,
         note: formData.note?.trim() || null
       }
 
@@ -222,7 +252,17 @@ export default function ReferentiManager({ clienteId, isNewClient = false }: Ref
                     <h5 className="font-medium text-gray-900">
                       {referente.cognome} {referente.nome}
                     </h5>
+                    {referente.ruolo && (
+                      <span className="text-xs text-gray-500">— {referente.ruolo}</span>
+                    )}
                   </div>
+
+                  {referente.ufficio?.nome && (
+                    <div className="flex items-center text-xs text-teal-700 mb-1.5">
+                      <Building2 className="w-3.5 h-3.5 mr-1" />
+                      {referente.ufficio.nome}
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     {referente.email && (
@@ -329,30 +369,61 @@ export default function ReferentiManager({ clienteId, isNewClient = false }: Ref
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={formData.email || ''}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="input"
-                  placeholder="mario.rossi@example.com"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ufficio / Dipartimento
+                  </label>
+                  <select
+                    value={formData.ufficio_id || ''}
+                    onChange={(e) => handleInputChange('ufficio_id', e.target.value)}
+                    className="input"
+                  >
+                    <option value="">Seleziona...</option>
+                    {uffici.map(u => (
+                      <option key={u.id} value={u.id}>{u.nome}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ruolo / Qualifica
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.ruolo || ''}
+                    onChange={(e) => handleInputChange('ruolo', e.target.value)}
+                    className="input"
+                    placeholder="es. Responsabile, Addetto..."
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Telefono
-                </label>
-                <input
-                  type="tel"
-                  value={formData.telefono || ''}
-                  onChange={(e) => handleInputChange('telefono', e.target.value)}
-                  className="input"
-                  placeholder="+39 333 1234567"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email || ''}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className="input"
+                    placeholder="mario.rossi@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Telefono
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.telefono || ''}
+                    onChange={(e) => handleInputChange('telefono', e.target.value)}
+                    className="input"
+                    placeholder="+39 333 1234567"
+                  />
+                </div>
               </div>
 
               <div>

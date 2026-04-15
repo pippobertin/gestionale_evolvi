@@ -13,7 +13,6 @@ import {
   FileText,
   Euro,
   Users,
-  Hash,
   Plus,
   Edit,
   Trash2,
@@ -406,7 +405,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
       formData.attivo_bilancio
     )
     setDimensioneCalcolataCorrente(nuovaDimensione)
-  }, [formData.ula, formData.ultimo_fatturato, formData.attivo_bilancio, formData.tipo_collegamento, formData.percentuale_partecipazione, datiAziendaCollegata])
+  }, [formData.ula, formData.ultimo_fatturato, formData.attivo_bilancio, formData.tipo_collegamento, formData.percentuale_partecipazione, datiAziendaCollegata, collegamenti])
 
   // Calcola dimensione considerando aziende collegate secondo UE 2003/361/CE
   const calcolaDimensioneAggregata = (ula?: number, fatturato?: number, attivo?: number): string => {
@@ -729,7 +728,6 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
     { id: 'contatti', label: 'Contatti', icon: Mail },
     { id: 'legale', label: 'Legale Rappresentante', icon: User },
     { id: 'dimensionamento', label: 'Dimensionamento', icon: Users },
-    { id: 'collegamenti', label: 'Rapporti di Collegamento', icon: Hash },
     { id: 'gestione', label: 'Gestione', icon: FileText },
     { id: 'documenti', label: 'Documenti', icon: FolderOpen }
   ]
@@ -1355,10 +1353,9 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   </span>
                   {dimensioneCalcolata && (
                     <p className="text-xs text-blue-600 mt-1">
-                      {formData.tipo_collegamento !== 'AUTONOMA' && datiAziendaCollegata ? (
+                      {collegamenti.length > 0 ? (
                         <>
-                          📊 <strong>Calcolo aggregato</strong> secondo UE 2003/361/CE<br/>
-                          Include dati dell'azienda {formData.tipo_collegamento?.toLowerCase()}
+                          <strong>Calcolo aggregato</strong> secondo UE 2003/361/CE — include {collegamenti.length} collegamento{collegamenti.length > 1 ? 'i' : ''} aziendale{collegamenti.length > 1 ? 'i' : ''}
                         </>
                       ) : (
                         'Basata su ULA, fatturato e attivo di bilancio inseriti'
@@ -1451,152 +1448,158 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 />
               </div>
             </div>
-          </div>
-        )
 
-      case 'collegamenti':
-        return (
-          <div className="space-y-3">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <h4 className="text-sm font-medium text-yellow-800 mb-2">
-                ⚖️ Rapporti di Collegamento/Controllo (UE 2003/361/CE)
-              </h4>
-              <p className="text-xs text-yellow-700">
-                Questi rapporti sono fondamentali per determinare la dimensione aziendale ai fini dei bandi europei.
-                Un'azienda può avere più rapporti di collegamento con aziende diverse.
-              </p>
-            </div>
-
-            {/* Lista collegamenti esistenti */}
-            <div className="border rounded-lg">
-              <div className="px-4 py-3 border-b flex items-center justify-between bg-gray-50">
-                <h4 className="font-medium text-gray-900">Rapporti di Collegamento Attivi</h4>
-                <button
-                  type="button"
-                  onClick={() => setShowNuovoCollegamentoModal(true)}
-                  className="btn-primary text-sm py-2 px-3"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Aggiungi Collegamento
-                </button>
+            {/* Rapporti di Collegamento */}
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                <h4 className="text-sm font-medium text-yellow-800 mb-2">
+                  Rapporti di Collegamento/Controllo (UE 2003/361/CE)
+                </h4>
+                <p className="text-xs text-yellow-700">
+                  Questi rapporti influiscono direttamente sulla dimensione aziendale ai fini dei bandi europei.
+                </p>
               </div>
 
-              <div className="p-4">
-                {collegamenti.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <Building2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Nessun collegamento aziendale configurato</p>
-                    <p className="text-xs mt-1">Aggiungi collegamenti per calcolare la dimensione aggregata</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {collegamenti.map((collegamento, index) => (
-                      <div key={collegamento.id || index} className="border rounded-lg p-3 bg-white">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h5 className="font-medium text-gray-900">
-                                {collegamento.denominazione_collegata || 'Azienda collegata'}
-                              </h5>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                collegamento.tipo_collegamento === 'ASSOCIATA'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}>
-                                {collegamento.tipo_collegamento}
-                              </span>
-                            </div>
+              <div className="border rounded-lg">
+                <div className="px-4 py-3 border-b flex items-center justify-between bg-gray-50">
+                  <h4 className="font-medium text-gray-900">Rapporti di Collegamento Attivi</h4>
+                  <button
+                    type="button"
+                    onClick={() => setShowNuovoCollegamentoModal(true)}
+                    className="btn-primary text-sm py-2 px-3"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Aggiungi Collegamento
+                  </button>
+                </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                              <div>
-                                <span className="text-gray-500">Partecipazione:</span>
-                                <span className="ml-1 font-medium">
-                                  {collegamento.percentuale_partecipazione}%
+                <div className="p-4">
+                  {collegamenti.length === 0 ? (
+                    <div className="text-center py-6 text-gray-500">
+                      <Building2 className="w-6 h-6 mx-auto mb-1 opacity-50" />
+                      <p className="text-sm">Nessun collegamento aziendale configurato</p>
+                      <p className="text-xs mt-1">Aggiungi collegamenti per calcolare la dimensione aggregata</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {collegamenti.map((collegamento, index) => (
+                        <div key={collegamento.id || index} className="border rounded-lg p-3 bg-white">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h5 className="font-medium text-gray-900">
+                                  {collegamento.denominazione_collegata || 'Azienda collegata'}
+                                </h5>
+                                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                  collegamento.tipo_collegamento === 'ASSOCIATA'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {collegamento.tipo_collegamento}
                                 </span>
                               </div>
-                              {collegamento.ula_collegata && (
+
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                 <div>
-                                  <span className="text-gray-500">ULA:</span>
-                                  <span className="ml-1 font-medium">{collegamento.ula_collegata}</span>
-                                </div>
-                              )}
-                              {collegamento.fatturato_collegato && (
-                                <div>
-                                  <span className="text-gray-500">Fatturato:</span>
+                                  <span className="text-gray-500">Partecipazione:</span>
                                   <span className="ml-1 font-medium">
-                                    €{collegamento.fatturato_collegato.toLocaleString()}
+                                    {collegamento.percentuale_partecipazione}%
                                   </span>
                                 </div>
-                              )}
-                              {collegamento.attivo_collegato && (
-                                <div>
-                                  <span className="text-gray-500">Attivo:</span>
-                                  <span className="ml-1 font-medium">
-                                    €{collegamento.attivo_collegato.toLocaleString()}
-                                  </span>
+                                {collegamento.ula_collegata && (
+                                  <div>
+                                    <span className="text-gray-500">ULA:</span>
+                                    <span className="ml-1 font-medium">{collegamento.ula_collegata}</span>
+                                  </div>
+                                )}
+                                {collegamento.fatturato_collegato && (
+                                  <div>
+                                    <span className="text-gray-500">Fatturato:</span>
+                                    <span className="ml-1 font-medium">
+                                      €{collegamento.fatturato_collegato.toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
+                                {collegamento.attivo_collegato && (
+                                  <div>
+                                    <span className="text-gray-500">Attivo:</span>
+                                    <span className="ml-1 font-medium">
+                                      €{collegamento.attivo_collegato.toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {collegamento.note_collegamento && (
+                                <div className="mt-2 text-sm text-gray-600">
+                                  <span className="text-gray-500">Note:</span> {collegamento.note_collegamento}
                                 </div>
                               )}
                             </div>
 
-                            {collegamento.note_collegamento && (
-                              <div className="mt-2 text-sm text-gray-600">
-                                <span className="text-gray-500">Note:</span> {collegamento.note_collegamento}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex gap-2 ml-4">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCollegamentoInModifica(collegamento)
-                                setShowNuovoCollegamentoModal(true)
-                              }}
-                              className="btn-secondary text-xs py-1 px-2"
-                            >
-                              <Edit className="w-3 h-3 mr-1" />
-                              Modifica
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => rimuoviCollegamento(collegamento.id!)}
-                              className="btn-danger text-xs py-1 px-2"
-                            >
-                              <Trash2 className="w-3 h-3 mr-1" />
-                              Rimuovi
-                            </button>
+                            <div className="flex gap-2 ml-4">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCollegamentoInModifica(collegamento)
+                                  setShowNuovoCollegamentoModal(true)
+                                }}
+                                className="btn-secondary text-xs py-1 px-2"
+                              >
+                                <Edit className="w-3 h-3 mr-1" />
+                                Modifica
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => rimuoviCollegamento(collegamento.id!)}
+                                className="btn-danger text-xs py-1 px-2"
+                              >
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Rimuovi
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Calcolo dimensione aggregata */}
-            {collegamenti.length > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <h4 className="text-sm font-medium text-blue-800 mb-2">
-                  📊 Calcolo Dimensione Aggregata
-                </h4>
-                <div className="text-sm text-blue-700">
-                  <p>La dimensione viene calcolata aggregando:</p>
-                  <ul className="list-disc list-inside mt-1 space-y-1">
-                    <li>Azienda principale: {formData.ula || 0} ULA, €{(formData.ultimo_fatturato || 0).toLocaleString()}</li>
-                    {collegamenti.map((col, idx) => (
-                      <li key={idx}>
-                        {col.denominazione_collegata}: {col.tipo_collegamento === 'ASSOCIATA' ? '100%' : `${col.percentuale_partecipazione}%`}
-                        {' '}({col.ula_collegata || 0} ULA, €{(col.fatturato_collegato || 0).toLocaleString()})
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-3 p-2 bg-blue-100 rounded">
-                    <strong>Dimensione aggregata calcolata: {calcolaDimensioneAggregata(formData.ula, formData.ultimo_fatturato, formData.attivo_bilancio)}</strong>
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
+
+              {/* Calcolo dimensione aggregata */}
+              {collegamenti.length > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+                  <h4 className="text-sm font-medium text-blue-800 mb-2">
+                    Calcolo Dimensione Aggregata
+                  </h4>
+                  <div className="text-sm text-blue-700">
+                    <p>La dimensione viene calcolata aggregando:</p>
+                    <ul className="list-disc list-inside mt-1 space-y-1">
+                      <li>Azienda principale: {formData.ula || 0} ULA, €{(formData.ultimo_fatturato || 0).toLocaleString()}</li>
+                      {collegamenti.map((col, idx) => (
+                        <li key={idx}>
+                          {col.denominazione_collegata}: {col.tipo_collegamento === 'ASSOCIATA' ? '100%' : `${col.percentuale_partecipazione}%`}
+                          {' '}({col.ula_collegata || 0} ULA, €{(col.fatturato_collegato || 0).toLocaleString()})
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="mt-3 p-2 bg-blue-100 rounded">
+                      <strong>Dimensione aggregata calcolata: {calcolaDimensioneAggregata(formData.ula, formData.ultimo_fatturato, formData.attivo_bilancio)}</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-3">
+                <h4 className="text-sm font-medium text-gray-800 mb-2">
+                  Criteri di Collegamento UE 2003/361/CE
+                </h4>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <p><strong>Associata (≥50%):</strong> Somma il 100% dei valori dell'azienda associata</p>
+                  <p><strong>Collegata (25-49.99%):</strong> Somma proporzionalmente in base alla percentuale di partecipazione</p>
+                </div>
+              </div>
+            </div>
 
             {showNuovoCollegamentoModal && (
               <NuovoCollegamentoModal
@@ -1612,16 +1615,6 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 collegamentiEsistenti={collegamenti}
               />
             )}
-
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-              <h4 className="text-sm font-medium text-gray-800 mb-2">
-                📖 Criteri di Collegamento UE 2003/361/CE
-              </h4>
-              <div className="text-xs text-gray-600 space-y-1">
-                <p><strong>Associata (≥50%):</strong> Somma il 100% dei valori dell'azienda associata</p>
-                <p><strong>Collegata (25-49.99%):</strong> Somma proporzionalmente in base alla percentuale di partecipazione</p>
-              </div>
-            </div>
           </div>
         )
 

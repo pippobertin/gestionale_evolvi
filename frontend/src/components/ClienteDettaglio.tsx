@@ -13,10 +13,10 @@ import {
   FileText,
   Euro,
   Users,
-  Hash,
   Receipt,
   Shield,
-  ClipboardCheck
+  ClipboardCheck,
+  GraduationCap
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import ReferentiManager from './ReferentiManager'
@@ -24,6 +24,7 @@ import ContrattiEvolviManager from './ContrattiEvolviManager'
 import EvolviInvoicesContent from './EvolviInvoicesContent'
 import DocumentiAmministrativiManager from './DocumentiAmministrativiManager'
 import ContractTrackingPanel from './ContractTrackingPanel'
+import FormazioneManager from './formazione/FormazioneManager'
 
 interface CollegamentoAziendale {
   id: string
@@ -178,6 +179,68 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
     return new Date(dateString).toISOString().split('T')[0]
   }
 
+  // Calcola dimensione aggregata considerando collegamenti (UE 2003/361/CE)
+  const calcolaDimensioneAggregata = (): string => {
+    if (!cliente) return ''
+    if (!cliente.ula && !cliente.ultimo_fatturato && !cliente.attivo_bilancio) return ''
+
+    let ulaTotal = cliente.ula || 0
+    let fatturatoTotal = cliente.ultimo_fatturato || 0
+    let attivoTotal = cliente.attivo_bilancio || 0
+
+    collegamenti.forEach(col => {
+      if (col.tipo_collegamento === 'COLLEGATA') {
+        const perc = (col.percentuale_partecipazione || 0) / 100
+        ulaTotal += (col.ula_collegata || 0) * perc
+        fatturatoTotal += (col.fatturato_collegato || 0) * perc
+        attivoTotal += (col.attivo_collegato || 0) * perc
+      } else if (col.tipo_collegamento === 'ASSOCIATA') {
+        ulaTotal += col.ula_collegata || 0
+        fatturatoTotal += col.fatturato_collegato || 0
+        attivoTotal += col.attivo_collegato || 0
+      }
+    })
+
+    const dimensioniOrdinate = ['MICRO', 'PICCOLA', 'MEDIA', 'GRANDE']
+    const getPeso = (dim: string) => dimensioniOrdinate.indexOf(dim)
+
+    let dimULA = 'MICRO'
+    if (ulaTotal >= 250) dimULA = 'GRANDE'
+    else if (ulaTotal >= 50) dimULA = 'MEDIA'
+    else if (ulaTotal >= 10) dimULA = 'PICCOLA'
+
+    let dimFatt = ''
+    if (fatturatoTotal > 0) {
+      if (fatturatoTotal > 50000000) dimFatt = 'GRANDE'
+      else if (fatturatoTotal > 10000000) dimFatt = 'MEDIA'
+      else if (fatturatoTotal > 2000000) dimFatt = 'PICCOLA'
+      else dimFatt = 'MICRO'
+    }
+
+    let dimAtt = ''
+    if (attivoTotal > 0) {
+      if (attivoTotal > 43000000) dimAtt = 'GRANDE'
+      else if (attivoTotal > 10000000) dimAtt = 'MEDIA'
+      else if (attivoTotal > 2000000) dimAtt = 'PICCOLA'
+      else dimAtt = 'MICRO'
+    }
+
+    let risultato = dimULA
+    if (dimFatt && getPeso(dimFatt) > getPeso(risultato)) risultato = dimFatt
+    if (dimAtt && getPeso(dimAtt) > getPeso(risultato)) risultato = dimAtt
+    return risultato
+  }
+
+  const getDimensioneColor = (dim: string) => {
+    switch (dim) {
+      case 'MICRO': return 'bg-green-100 text-green-800 border-green-200'
+      case 'PICCOLA': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'MEDIA': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'GRANDE': return 'bg-purple-100 text-purple-800 border-purple-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
   if (!isOpen) return null
 
   if (loading) {
@@ -211,9 +274,9 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
     { id: 'contatti', label: 'Contatti', icon: Mail },
     { id: 'legale', label: 'Legale Rappresentante', icon: User },
     { id: 'dimensionamento', label: 'Dimensionamento', icon: Users },
-    { id: 'collegamenti', label: 'Rapporti di Collegamento', icon: Hash },
     { id: 'gestione', label: 'Gestione', icon: FileText },
-    { id: 'doc_amministrativi', label: 'Doc. Amministrativi', icon: Shield }
+    { id: 'doc_amministrativi', label: 'Doc. Amministrativi', icon: Shield },
+    { id: 'formazione', label: 'Formazione', icon: GraduationCap }
   ]
 
   const evolviTabs = isEvolviClient ? [
@@ -530,6 +593,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
         )
 
       case 'dimensionamento':
+        const dimensioneCalc = calcolaDimensioneAggregata()
         return (
           <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -550,6 +614,27 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.attivo_bilancio ? cliente.attivo_bilancio.toLocaleString('it-IT') : '-'}
                 </div>
+              </div>
+            </div>
+
+            {/* Dimensione calcolata */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <h4 className="text-sm font-medium text-blue-800 mb-2">
+                Dimensione Aziendale (UE 2003/361/CE)
+              </h4>
+              <div className="flex items-center gap-3">
+                {dimensioneCalc ? (
+                  <span className={`inline-flex px-3 py-1.5 text-sm font-bold rounded-full border ${getDimensioneColor(dimensioneCalc)}`}>
+                    {dimensioneCalc}
+                  </span>
+                ) : (
+                  <span className="text-sm text-gray-500">Non calcolabile</span>
+                )}
+                {collegamenti.length > 0 && dimensioneCalc && (
+                  <span className="text-xs text-blue-600">
+                    Calcolo aggregato — include {collegamenti.length} collegamento{collegamenti.length > 1 ? 'i' : ''} aziendale{collegamenti.length > 1 ? 'i' : ''}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -588,126 +673,120 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
                 </div>
               </div>
             </div>
-          </div>
-        )
 
-      case 'collegamenti':
-        return (
-          <div className="space-y-3">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <h4 className="text-sm font-medium text-yellow-800 mb-2">
-                ⚖️ Rapporti di Collegamento/Controllo (UE 2003/361/CE)
-              </h4>
-              <p className="text-xs text-yellow-700">
-                Visualizzazione in sola lettura. Cliccare l'icona "Modifica" in alto per gestire i rapporti di collegamento.
-              </p>
-            </div>
-
-            {/* Lista collegamenti esistenti */}
-            <div className="border rounded-lg">
-              <div className="px-4 py-3 border-b bg-gray-50">
-                <h4 className="font-medium text-gray-900">Rapporti di Collegamento Attivi</h4>
+            {/* Rapporti di Collegamento */}
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                <h4 className="text-sm font-medium text-yellow-800 mb-2">
+                  Rapporti di Collegamento/Controllo (UE 2003/361/CE)
+                </h4>
+                <p className="text-xs text-yellow-700">
+                  Visualizzazione in sola lettura. Cliccare "Modifica" in alto per gestire i rapporti di collegamento.
+                </p>
               </div>
 
-              <div className="p-4">
-                {loadingCollegamenti ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
-                    <p className="text-sm text-gray-500 mt-2">Caricamento collegamenti...</p>
-                  </div>
-                ) : collegamenti.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <Building2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Nessun collegamento aziendale configurato</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {collegamenti.map((collegamento, index) => (
-                      <div key={collegamento.id || index} className="border rounded-lg p-3 bg-gray-50">
-                        <div className="flex items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h5 className="font-medium text-gray-900">
-                                {collegamento.denominazione_collegata || 'Azienda collegata'}
-                              </h5>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                collegamento.tipo_collegamento === 'ASSOCIATA'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}>
-                                {collegamento.tipo_collegamento}
-                              </span>
-                            </div>
+              <div className="border rounded-lg">
+                <div className="px-4 py-3 border-b bg-gray-50">
+                  <h4 className="font-medium text-gray-900">Rapporti di Collegamento Attivi</h4>
+                </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                              <div>
-                                <span className="text-gray-500">Partecipazione:</span>
-                                <span className="ml-1 font-medium">
-                                  {collegamento.percentuale_partecipazione}%
+                <div className="p-4">
+                  {loadingCollegamenti ? (
+                    <div className="text-center py-6">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500 mx-auto"></div>
+                      <p className="text-sm text-gray-500 mt-2">Caricamento collegamenti...</p>
+                    </div>
+                  ) : collegamenti.length === 0 ? (
+                    <div className="text-center py-6 text-gray-500">
+                      <Building2 className="w-6 h-6 mx-auto mb-1 opacity-50" />
+                      <p className="text-sm">Nessun collegamento aziendale configurato</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {collegamenti.map((collegamento, index) => (
+                        <div key={collegamento.id || index} className="border rounded-lg p-3 bg-gray-50">
+                          <div className="flex items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h5 className="font-medium text-gray-900">
+                                  {collegamento.denominazione_collegata || 'Azienda collegata'}
+                                </h5>
+                                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                  collegamento.tipo_collegamento === 'ASSOCIATA'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {collegamento.tipo_collegamento}
                                 </span>
                               </div>
-                              {collegamento.ula_collegata !== undefined && collegamento.ula_collegata !== null && (
+
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                 <div>
-                                  <span className="text-gray-500">ULA:</span>
-                                  <span className="ml-1 font-medium">{collegamento.ula_collegata}</span>
-                                </div>
-                              )}
-                              {collegamento.fatturato_collegato !== undefined && collegamento.fatturato_collegato !== null && (
-                                <div>
-                                  <span className="text-gray-500">Fatturato:</span>
+                                  <span className="text-gray-500">Partecipazione:</span>
                                   <span className="ml-1 font-medium">
-                                    €{collegamento.fatturato_collegato.toLocaleString('it-IT')}
+                                    {collegamento.percentuale_partecipazione}%
                                   </span>
                                 </div>
-                              )}
-                              {collegamento.attivo_collegato !== undefined && collegamento.attivo_collegato !== null && (
-                                <div>
-                                  <span className="text-gray-500">Attivo:</span>
-                                  <span className="ml-1 font-medium">
-                                    €{collegamento.attivo_collegato.toLocaleString('it-IT')}
-                                  </span>
+                                {collegamento.ula_collegata !== undefined && collegamento.ula_collegata !== null && (
+                                  <div>
+                                    <span className="text-gray-500">ULA:</span>
+                                    <span className="ml-1 font-medium">{collegamento.ula_collegata}</span>
+                                  </div>
+                                )}
+                                {collegamento.fatturato_collegato !== undefined && collegamento.fatturato_collegato !== null && (
+                                  <div>
+                                    <span className="text-gray-500">Fatturato:</span>
+                                    <span className="ml-1 font-medium">
+                                      €{collegamento.fatturato_collegato.toLocaleString('it-IT')}
+                                    </span>
+                                  </div>
+                                )}
+                                {collegamento.attivo_collegato !== undefined && collegamento.attivo_collegato !== null && (
+                                  <div>
+                                    <span className="text-gray-500">Attivo:</span>
+                                    <span className="ml-1 font-medium">
+                                      €{collegamento.attivo_collegato.toLocaleString('it-IT')}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {collegamento.note_collegamento && (
+                                <div className="mt-2 text-sm text-gray-600">
+                                  <span className="text-gray-500">Note:</span> {collegamento.note_collegamento}
                                 </div>
                               )}
                             </div>
-
-                            {collegamento.note_collegamento && (
-                              <div className="mt-2 text-sm text-gray-600">
-                                <span className="text-gray-500">Note:</span> {collegamento.note_collegamento}
-                              </div>
-                            )}
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Calcolo dimensione aggregata - solo se ci sono collegamenti */}
-            {collegamenti.length > 0 && cliente && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <h4 className="text-sm font-medium text-blue-800 mb-2">
-                  📊 Informazioni Dimensione Aggregata
-                </h4>
-                <div className="text-sm text-blue-700">
-                  <p>Il cliente ha {collegamenti.length} collegamento{collegamenti.length > 1 ? 'i' : ''} aziendale{collegamenti.length > 1 ? 'i' : ''} attivo{collegamenti.length > 1 ? 'i' : ''}.</p>
-                  <p className="mt-1">La dimensione aggregata viene calcolata secondo la normativa UE 2003/361/CE considerando:</p>
-                  <ul className="list-disc list-inside mt-1 space-y-1">
-                    <li>Azienda principale: {cliente.ula || 0} ULA, €{(cliente.ultimo_fatturato || 0).toLocaleString('it-IT')}</li>
-                    {collegamenti.map((col, idx) => (
-                      <li key={idx}>
-                        {col.denominazione_collegata}: {col.tipo_collegamento === 'ASSOCIATA' ? '100%' : `${col.percentuale_partecipazione}%`}
-                        {' '}({col.ula_collegata || 0} ULA, €{(col.fatturato_collegato || 0).toLocaleString('it-IT')})
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="mt-2 text-xs">
-                    Clicca "Modifica" in alto per modificare i rapporti di collegamento e visualizzare la dimensione calcolata.
-                  </p>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
+
+              {/* Calcolo dimensione aggregata */}
+              {collegamenti.length > 0 && cliente && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+                  <h4 className="text-sm font-medium text-blue-800 mb-2">
+                    Informazioni Dimensione Aggregata
+                  </h4>
+                  <div className="text-sm text-blue-700">
+                    <p>Il cliente ha {collegamenti.length} collegamento{collegamenti.length > 1 ? 'i' : ''} aziendale{collegamenti.length > 1 ? 'i' : ''} attivo{collegamenti.length > 1 ? 'i' : ''}.</p>
+                    <p className="mt-1">La dimensione aggregata viene calcolata secondo la normativa UE 2003/361/CE considerando:</p>
+                    <ul className="list-disc list-inside mt-1 space-y-1">
+                      <li>Azienda principale: {cliente.ula || 0} ULA, €{(cliente.ultimo_fatturato || 0).toLocaleString('it-IT')}</li>
+                      {collegamenti.map((col, idx) => (
+                        <li key={idx}>
+                          {col.denominazione_collegata}: {col.tipo_collegamento === 'ASSOCIATA' ? '100%' : `${col.percentuale_partecipazione}%`}
+                          {' '}({col.ula_collegata || 0} ULA, €{(col.fatturato_collegato || 0).toLocaleString('it-IT')})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )
 
@@ -792,6 +871,13 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
           </div>
         )
 
+      case 'formazione':
+        return (
+          <div className="space-y-3">
+            <FormazioneManager clienteId={cliente.id} />
+          </div>
+        )
+
       case 'contratti_evolvi':
         return (
           <div className="space-y-3">
@@ -815,8 +901,8 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-hard max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-hard max-w-6xl w-full h-[95vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="gradient-primary text-white p-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">

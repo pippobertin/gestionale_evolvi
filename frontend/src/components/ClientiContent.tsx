@@ -66,6 +66,9 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
   // CSV Import state
   const [showImportCSV, setShowImportCSV] = useState(false)
 
+  // Collegamenti per calcolo dimensione aggregata
+  const [tuttiCollegamenti, setTuttiCollegamenti] = useState<any[]>([])
+
   // Fetch clienti da Supabase
   useEffect(() => {
     fetchClienti()
@@ -84,7 +87,7 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
         .order('denominazione')
 
       if (clientiError) {
-        console.warn('⚠️ Vista aggregata non disponibile, uso tabella normale:', clientiError.message)
+        console.warn('Vista aggregata non disponibile, uso tabella normale:', clientiError.message)
         // Fallback sulla tabella normale se la view non esiste
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('scadenze_bandi_clienti')
@@ -96,6 +99,17 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
       } else {
         clientiData = data || []
       }
+
+      // Carica tutti i collegamenti aziendali con i dati delle aziende collegate
+      const { data: collegamentiData } = await supabase
+        .from('scadenze_bandi_collegamenti_aziendali')
+        .select(`
+          *,
+          azienda_collegata:scadenze_bandi_clienti!azienda_collegata_id(
+            id, ula, ultimo_fatturato, attivo_bilancio
+          )
+        `)
+      setTuttiCollegamenti(collegamentiData || [])
 
       // Per ogni cliente, ottieni il conteggio progetti e la prossima scadenza
       const clientiConDati = await Promise.all(
@@ -160,13 +174,8 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
     fetchClienti() // Ricarica la lista dopo il salvataggio
   }
 
-  // Calcola dimensione aggregata considerando collegamenti aziendali
+  // Calcola dimensione aggregata considerando collegamenti aziendali (UE 2003/361/CE)
   const calcolaDimensioneAggregata = (cliente: Cliente): string => {
-    // Se la vista DB ha già calcolato la dimensione aggregata, usala
-    if (cliente.dimensione_aggregata) {
-      return cliente.dimensione_aggregata
-    }
-
     if (!cliente.ula && !cliente.ultimo_fatturato && !cliente.attivo_bilancio) {
       return cliente.dimensione || ''
     }
@@ -175,21 +184,33 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
     let fatturatoTotal = cliente.ultimo_fatturato || 0
     let attivoTotal = cliente.attivo_bilancio || 0
 
-    // Se c'è un collegamento aziendale, cerca i dati dell'azienda collegata
-    if (cliente.tipo_collegamento !== 'AUTONOMA' && cliente.impresa_collegata_id) {
-      // Trova l'azienda collegata nella lista
-      const aziendaCollegata = clienti.find(c => c.id === cliente.impresa_collegata_id)
+    // Somma i collegamenti multipli dalla tabella scadenze_bandi_collegamenti_aziendali
+    const collegamentiCliente = tuttiCollegamenti.filter(c => c.azienda_madre_id === cliente.id)
+    collegamentiCliente.forEach(col => {
+      const az = col.azienda_collegata
+      if (!az) return
+      if (col.tipo_collegamento === 'COLLEGATA') {
+        const perc = (col.percentuale_partecipazione || 0) / 100
+        ulaTotal += (az.ula || 0) * perc
+        fatturatoTotal += (az.ultimo_fatturato || 0) * perc
+        attivoTotal += (az.attivo_bilancio || 0) * perc
+      } else if (col.tipo_collegamento === 'ASSOCIATA') {
+        ulaTotal += az.ula || 0
+        fatturatoTotal += az.ultimo_fatturato || 0
+        attivoTotal += az.attivo_bilancio || 0
+      }
+    })
 
+    // Compatibilità vecchio sistema singolo collegamento (solo se non ci sono multi-collegamenti)
+    if (collegamentiCliente.length === 0 && cliente.tipo_collegamento !== 'AUTONOMA' && cliente.impresa_collegata_id) {
+      const aziendaCollegata = clienti.find(c => c.id === cliente.impresa_collegata_id)
       if (aziendaCollegata) {
         const percentuale = (cliente.percentuale_partecipazione || 0) / 100
-
         if (cliente.tipo_collegamento === 'COLLEGATA') {
-          // Per aziende collegate (25-49.99%): somma proporzionale alla partecipazione
           ulaTotal += (aziendaCollegata.ula || 0) * percentuale
           fatturatoTotal += (aziendaCollegata.ultimo_fatturato || 0) * percentuale
           attivoTotal += (aziendaCollegata.attivo_bilancio || 0) * percentuale
         } else if (cliente.tipo_collegamento === 'ASSOCIATA') {
-          // Per aziende associate (≥50%): somma il 100%
           ulaTotal += aziendaCollegata.ula || 0
           fatturatoTotal += aziendaCollegata.ultimo_fatturato || 0
           attivoTotal += aziendaCollegata.attivo_bilancio || 0
@@ -197,11 +218,36 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
       }
     }
 
-    // Applica i limiti UE 2003/361/CE
-    if (ulaTotal < 10 && (fatturatoTotal <= 2000000 || attivoTotal <= 2000000)) return 'MICRO'
-    if (ulaTotal < 50 && (fatturatoTotal <= 10000000 || attivoTotal <= 10000000)) return 'PICCOLA'
-    if (ulaTotal < 250 && (fatturatoTotal <= 50000000 || attivoTotal <= 43000000)) return 'MEDIA'
-    return 'GRANDE'
+    // Classifica per ciascun parametro e prendi il MAX (UE 2003/361/CE)
+    const dimensioniOrdinate = ['MICRO', 'PICCOLA', 'MEDIA', 'GRANDE']
+    const getPeso = (dim: string) => dimensioniOrdinate.indexOf(dim)
+
+    let dimULA = 'MICRO'
+    if (ulaTotal >= 250) dimULA = 'GRANDE'
+    else if (ulaTotal >= 50) dimULA = 'MEDIA'
+    else if (ulaTotal >= 10) dimULA = 'PICCOLA'
+
+    let dimFatt = ''
+    if (fatturatoTotal > 0) {
+      if (fatturatoTotal > 50000000) dimFatt = 'GRANDE'
+      else if (fatturatoTotal > 10000000) dimFatt = 'MEDIA'
+      else if (fatturatoTotal > 2000000) dimFatt = 'PICCOLA'
+      else dimFatt = 'MICRO'
+    }
+
+    let dimAtt = ''
+    if (attivoTotal > 0) {
+      if (attivoTotal > 43000000) dimAtt = 'GRANDE'
+      else if (attivoTotal > 10000000) dimAtt = 'MEDIA'
+      else if (attivoTotal > 2000000) dimAtt = 'PICCOLA'
+      else dimAtt = 'MICRO'
+    }
+
+    let risultato = dimULA
+    if (dimFatt && getPeso(dimFatt) > getPeso(risultato)) risultato = dimFatt
+    if (dimAtt && getPeso(dimAtt) > getPeso(risultato)) risultato = dimAtt
+
+    return risultato
   }
 
   const handleEditFromDettaglio = (cliente: Cliente) => {
@@ -327,7 +373,7 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
                        cliente.partita_iva?.includes(searchTerm) ||
                        cliente.email?.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchDimensione = selectedDimensione === 'all' || cliente.dimensione === selectedDimensione
+    const matchDimensione = selectedDimensione === 'all' || calcolaDimensioneAggregata(cliente) === selectedDimensione
     const matchCategoria = selectedCategoria === 'all' || cliente.categoria_evolvi === selectedCategoria
 
     return matchSearch && matchDimensione && matchCategoria
