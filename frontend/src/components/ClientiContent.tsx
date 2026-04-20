@@ -42,7 +42,7 @@ interface Cliente {
   percentuale_partecipazione?: number // Percentuale di partecipazione (0-100)
 }
 
-export default function ClientiContent({ onNavigate }: { onNavigate?: (page: string, params?: any) => void }) {
+export default function ClientiContent({ onNavigate, navigationParams }: { onNavigate?: (page: string, params?: any) => void; navigationParams?: any }) {
   const [clienti, setClienti] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -73,6 +73,14 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
   useEffect(() => {
     fetchClienti()
   }, [])
+
+  // Auto-open client detail from global search
+  useEffect(() => {
+    if (navigationParams?.openClientId) {
+      setSelectedClienteId(navigationParams.openClientId)
+      setShowDettaglio(true)
+    }
+  }, [navigationParams?.openClientId])
 
   const fetchClienti = async () => {
     try {

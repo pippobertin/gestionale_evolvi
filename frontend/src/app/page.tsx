@@ -94,9 +94,9 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'scadenze':
         return <ScadenzeContent />
       case 'prospect':
-        return <ProspectContent />
+        return <ProspectContent onNavigate={onNavigate} navigationParams={navigationParams} />
       case 'clienti':
-        return <ClientiContent onNavigate={onNavigate} />
+        return <ClientiContent onNavigate={onNavigate} navigationParams={navigationParams} />
       case 'bandi':
         return <BandiContent initialFilter={navigationParams?.filter} />
       case 'progetti':
@@ -141,7 +141,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
         }`}
       >
         {/* Top Bar */}
-        <TopBar title={getPageTitle()} breadcrumb={getBreadcrumb()} onNavigate={setActiveItem} />
+        <TopBar title={getPageTitle()} breadcrumb={getBreadcrumb()} onNavigate={onNavigate} />
 
         {/* Page Content */}
         <main className="flex-1 min-h-0 p-4 overflow-auto">

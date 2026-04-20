@@ -21,7 +21,43 @@ import ProspectForm from './ProspectForm'
 import ProspectDettaglio from './ProspectDettaglio'
 import PrequalificaForm from './PrequalificaForm'
 
-export default function ProspectContent({ onNavigate }: { onNavigate?: (page: string, params?: any) => void }) {
+/**
+ * Normalize text for fuzzy matching: lowercase + strip diacritics
+ */
+function normalize(text: string): string {
+  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
+/**
+ * Fuzzy tokenized search: every token in the query must appear
+ * in at least one of the prospect's searchable text fields.
+ */
+function fuzzyMatch(prospect: Prospect, query: string): boolean {
+  if (!query.trim()) return true
+
+  const tokens = normalize(query).split(/\s+/).filter(Boolean)
+  if (tokens.length === 0) return true
+
+  // Build one big searchable string from all relevant fields
+  const searchableText = normalize([
+    prospect.denominazione,
+    prospect.partita_iva,
+    prospect.email,
+    prospect.numero_prospect,
+    prospect.motivo_congelamento,
+    prospect.note,
+    prospect.bisogno_dichiarato,
+    prospect.bisogno_interpretato,
+    prospect.note_qualitative,
+    prospect.motivo_archiviazione,
+    prospect.settore,
+    prospect.citta,
+  ].filter(Boolean).join(' '))
+
+  return tokens.every(token => searchableText.includes(token))
+}
+
+export default function ProspectContent({ onNavigate, navigationParams }: { onNavigate?: (page: string, params?: any) => void; navigationParams?: any }) {
   const [prospects, setProspects] = useState<Prospect[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -38,6 +74,14 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
   useEffect(() => {
     initLoad()
   }, [])
+
+  // Auto-open prospect detail from global search
+  useEffect(() => {
+    if (navigationParams?.openProspectId) {
+      setSelectedProspectId(navigationParams.openProspectId)
+      setShowDettaglio(true)
+    }
+  }, [navigationParams?.openProspectId])
 
   const initLoad = async () => {
     // Auto-thaw before loading prospects
@@ -105,11 +149,7 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
 
   // Filtri
   const filteredProspects = prospects.filter(prospect => {
-    const matchSearch = prospect.denominazione?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       prospect.partita_iva?.includes(searchTerm) ||
-                       prospect.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       prospect.numero_prospect?.includes(searchTerm)
-
+    const matchSearch = fuzzyMatch(prospect, searchTerm)
     const matchStato = filtroStato === 'tutti' || prospect.stato === filtroStato
     const matchFonte = filtroFonte === 'all' || prospect.fonte_acquisizione === filtroFonte
 
@@ -264,7 +304,7 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Cerca per denominazione, P.IVA, email..."
+              placeholder="Cerca per nome, motivo congelamento, note, bando..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-80"
@@ -372,10 +412,19 @@ export default function ProspectContent({ onNavigate }: { onNavigate?: (page: st
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatoBadge(prospect.stato)}`}>
                         {getStatoLabel(prospect.stato)}
                       </span>
-                      {prospect.stato === 'congelato' && prospect.scongela_il && (
-                        <div className="text-xs text-cyan-600 mt-0.5">
-                          fino al {formatDateShort(prospect.scongela_il)}
-                        </div>
+                      {prospect.stato === 'congelato' && (
+                        <>
+                          {prospect.scongela_il && (
+                            <div className="text-xs text-cyan-600 mt-0.5">
+                              fino al {formatDateShort(prospect.scongela_il)}
+                            </div>
+                          )}
+                          {prospect.motivo_congelamento && (
+                            <div className="text-xs text-cyan-500 mt-0.5 truncate max-w-[200px]" title={prospect.motivo_congelamento}>
+                              {prospect.motivo_congelamento}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </td>
