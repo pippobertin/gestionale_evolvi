@@ -52,7 +52,7 @@ export default function NotificationSettings() {
     emailDigestSettimanale: true,
     emailProgettiAssegnati: true,
     additionalRecipients: [],
-    calendarEnabled: false,
+    calendarEnabled: true,
     calendarId: '',
     calendarSyncScadenze: true,
     calendarSyncMilestones: true,

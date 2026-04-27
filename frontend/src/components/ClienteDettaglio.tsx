@@ -104,9 +104,11 @@ interface ClienteDettaglioProps {
   isOpen: boolean
   onClose: () => void
   onEdit: (cliente: Cliente) => void
+  onNavigate?: (page: string, params?: any) => void
+  onClienteDeleted?: () => void
 }
 
-export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }: ClienteDettaglioProps) {
+export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, onNavigate, onClienteDeleted }: ClienteDettaglioProps) {
   const [cliente, setCliente] = useState<Cliente | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentTab, setCurrentTab] = useState('anagrafica')

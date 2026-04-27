@@ -185,7 +185,7 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
   // Calcola dimensione aggregata considerando collegamenti aziendali (UE 2003/361/CE)
   const calcolaDimensioneAggregata = (cliente: Cliente): string => {
     if (!cliente.ula && !cliente.ultimo_fatturato && !cliente.attivo_bilancio) {
-      return cliente.dimensione || ''
+      return ''
     }
 
     let ulaTotal = cliente.ula || 0
@@ -411,10 +411,14 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
     }
   }
 
+  const CATEGORIE_VISIBILI = ['CLIENTE_SPOT', 'EVOLVI', 'FPI', 'CONSULENTI']
+
   const getCategoriaColor = (categoria?: string) => {
     switch (categoria) {
       case 'CLIENTE_SPOT': return 'bg-yellow-100 text-yellow-800'
       case 'EVOLVI': return 'bg-blue-100 text-blue-800'
+      case 'FPI': return 'bg-green-100 text-green-800'
+      case 'CONSULENTI': return 'bg-purple-100 text-purple-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
@@ -423,6 +427,8 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
     switch (categoria) {
       case 'CLIENTE_SPOT': return 'Spot'
       case 'EVOLVI': return 'Evolvi'
+      case 'FPI': return 'FPI'
+      case 'CONSULENTI': return 'Consulenti'
       default: return categoria || ''
     }
   }
@@ -431,6 +437,8 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
   // Counts for status bar
   const evolviCount = filteredClienti.filter(c => c.categoria_evolvi === 'EVOLVI').length
   const spotCount = filteredClienti.filter(c => c.categoria_evolvi === 'CLIENTE_SPOT').length
+  const fpiCount = filteredClienti.filter(c => c.categoria_evolvi === 'FPI').length
+  const consulentiCount = filteredClienti.filter(c => c.categoria_evolvi === 'CONSULENTI').length
 
   if (loading) {
     return (
@@ -546,6 +554,8 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
             <option value="all">Tutte le categorie</option>
             <option value="CLIENTE_SPOT">Spot</option>
             <option value="EVOLVI">Evolvi</option>
+            <option value="FPI">FPI</option>
+            <option value="CONSULENTI">Consulenti</option>
           </select>
         </div>
       )}
@@ -677,7 +687,7 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
                     {cliente.numero_dipendenti ?? '-'}
                   </td>
                   <td className="px-1 py-2">
-                    {cliente.categoria_evolvi ? (
+                    {cliente.categoria_evolvi && CATEGORIE_VISIBILI.includes(cliente.categoria_evolvi) ? (
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoriaColor(cliente.categoria_evolvi)}`}>
                         {getCategoriaLabel(cliente.categoria_evolvi)}
                       </span>
@@ -710,7 +720,7 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
       {/* Status bar */}
       <div className="border-t border-gray-200 px-4 py-1 bg-white">
         <span className="text-[10px] text-gray-400">
-          {filteredClienti.length} clienti{evolviCount > 0 && ` \u00b7 ${evolviCount} Evolvi`}{spotCount > 0 && ` \u00b7 ${spotCount} Spot`}
+          {filteredClienti.length} clienti{evolviCount > 0 && ` \u00b7 ${evolviCount} Evolvi`}{spotCount > 0 && ` \u00b7 ${spotCount} Spot`}{fpiCount > 0 && ` \u00b7 ${fpiCount} FPI`}{consulentiCount > 0 && ` \u00b7 ${consulentiCount} Consulenti`}
         </span>
       </div>
 
@@ -720,6 +730,7 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
         isOpen={showForm}
         onClose={handleCloseForm}
         onSave={handleSaveCliente}
+        onNavigate={onNavigate}
       />
 
       <ClienteDettaglio
@@ -727,6 +738,11 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
         isOpen={showDettaglio}
         onClose={handleCloseDettaglio}
         onEdit={handleEditFromDettaglio as any}
+        onNavigate={onNavigate}
+        onClienteDeleted={() => {
+          handleCloseDettaglio()
+          fetchClienti()
+        }}
       />
 
       <ClientiMappingCSV

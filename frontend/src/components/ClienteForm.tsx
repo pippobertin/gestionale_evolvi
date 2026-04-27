@@ -18,7 +18,10 @@ import {
   Trash2,
   FolderOpen,
   GraduationCap,
-  Briefcase
+  Briefcase,
+  Undo2,
+  AlertTriangle,
+  CheckCircle
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -120,14 +123,38 @@ interface CollegamentoAziendale {
   attivo_collegato?: number
 }
 
+interface DependencyData {
+  scenario: 'A' | 'B'
+  prospectId: string | null
+  prospectNumero: string | null
+  dependencies: Record<string, number>
+  hasDependencies: boolean
+  totalDependencies: number
+}
+
+const DEPENDENCY_LABELS: Record<string, string> = {
+  contratti: 'Contratti Evolvi',
+  fatture: 'Fatture',
+  documenti: 'Documenti amministrativi',
+  referenti: 'Referenti',
+  piani_formativi: 'Piani formativi',
+  corsi: 'Corsi formativi',
+  adesioni_fpi: 'Adesioni FPI',
+  collegamenti: 'Collegamenti aziendali',
+  contract_tracking: 'Tracking contratti',
+  scadenze_contrattuali: 'Scadenze contrattuali',
+  progetti: 'Progetti',
+}
+
 interface ClienteFormProps {
   cliente?: Cliente
   isOpen: boolean
   onClose: () => void
   onSave: () => void
+  onNavigate?: (page: string, params?: any) => void
 }
 
-export default function ClienteForm({ cliente, isOpen, onClose, onSave }: ClienteFormProps) {
+export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNavigate }: ClienteFormProps) {
   const { canDelete, user } = useAuth()
   const [formData, setFormData] = useState<Cliente>({
     denominazione: '',
@@ -152,6 +179,14 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
   // Stati per il modal nuova azienda collegata
   const [showNuovaAziendaModal, setShowNuovaAziendaModal] = useState(false)
+
+  // Stati per conversione a prospect
+  const [showConvertModal, setShowConvertModal] = useState(false)
+  const [convertLoading, setConvertLoading] = useState(false)
+  const [dependencyData, setDependencyData] = useState<DependencyData | null>(null)
+  const [dependencyLoading, setDependencyLoading] = useState(false)
+  const [convertError, setConvertError] = useState<string | null>(null)
+  const [convertSuccess, setConvertSuccess] = useState<{ prospectId: string; scenario: string } | null>(null)
 
   useEffect(() => {
     if (cliente) {
@@ -734,6 +769,71 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
     { id: 'documenti', label: 'Documenti', icon: FolderOpen }
   ]
 
+
+  // Handler conversione a prospect
+  const handleOpenConvertModal = async () => {
+    if (!cliente?.id) return
+    setShowConvertModal(true)
+    setConvertError(null)
+    setConvertSuccess(null)
+    setDependencyData(null)
+    setDependencyLoading(true)
+
+    try {
+      const res = await fetch(`/api/clienti/${cliente.id}/convert-to-prospect`)
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
+      setDependencyData(result.data)
+    } catch (err: any) {
+      setConvertError(err.message || 'Errore nel controllo delle dipendenze')
+    } finally {
+      setDependencyLoading(false)
+    }
+  }
+
+  const handleConfirmConvert = async () => {
+    if (!cliente?.id) return
+    try {
+      setConvertLoading(true)
+      setConvertError(null)
+
+      const res = await fetch(`/api/clienti/${cliente.id}/convert-to-prospect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force: true })
+      })
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
+
+      setConvertSuccess({
+        prospectId: result.data.prospectId,
+        scenario: result.data.scenario
+      })
+    } catch (err: any) {
+      setConvertError(err.message || 'Errore durante la riconversione')
+    } finally {
+      setConvertLoading(false)
+    }
+  }
+
+  const handleCloseConvertModal = () => {
+    if (convertSuccess) {
+      onSave() // ricarica la lista clienti
+      onClose()
+    }
+    setShowConvertModal(false)
+    setDependencyData(null)
+    setConvertError(null)
+    setConvertSuccess(null)
+  }
+
+  const handleGoToProspect = () => {
+    if (convertSuccess && onNavigate) {
+      onSave()
+      onClose()
+      onNavigate('prospect', { openProspectId: convertSuccess.prospectId })
+    }
+  }
 
   const renderTabContent = () => {
     switch (currentTab) {
@@ -1825,8 +1925,8 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
         {/* Footer */}
         <div className="border-t border-gray-200 px-4 py-2.5 bg-gray-50 flex items-center justify-between flex-shrink-0">
-          {/* Pulsante Elimina a sinistra - solo se siamo in modalità modifica e abbiamo i permessi */}
-          <div className="flex items-center">
+          {/* Pulsanti a sinistra - solo in modalità modifica */}
+          <div className="flex items-center space-x-2">
             {cliente?.id && canDelete(cliente.creato_da) && (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
@@ -1835,6 +1935,16 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Elimina Cliente</span>
+              </button>
+            )}
+            {cliente?.id && (
+              <button
+                onClick={handleOpenConvertModal}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-medium px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading}
+              >
+                <Undo2 className="w-4 h-4" />
+                <span>Converti in Prospect</span>
               </button>
             )}
           </div>
@@ -1916,6 +2026,165 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   <span>{loading ? 'Eliminando...' : 'Elimina Definitivamente'}</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal conversione a prospect */}
+      {showConvertModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-lg w-full overflow-hidden">
+            {/* Header */}
+            <div className="bg-amber-600 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Undo2 className="w-4 h-4" />
+                <h3 className="text-sm font-semibold">Converti in Prospect</h3>
+              </div>
+              {!convertSuccess && (
+                <button
+                  onClick={handleCloseConvertModal}
+                  className="p-1 hover:bg-white/20 rounded transition-colors"
+                  disabled={convertLoading}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="p-5">
+              {/* Loading */}
+              {dependencyLoading && (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto"></div>
+                  <p className="text-sm text-gray-500 mt-3">Verifica dipendenze...</p>
+                </div>
+              )}
+
+              {/* Errore */}
+              {convertError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                  <div className="flex items-center space-x-2">
+                    <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                    <p className="text-sm text-red-700">{convertError}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Successo */}
+              {convertSuccess && (
+                <div className="text-center py-4">
+                  <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                  <h4 className="text-lg font-medium text-gray-900 mb-1">Conversione completata</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    {convertSuccess.scenario === 'A'
+                      ? 'Il prospect originale è stato ripristinato allo stato "Preso in carico".'
+                      : 'Un nuovo prospect è stato creato con stato "Bozza".'}
+                  </p>
+                  <div className="flex justify-center space-x-3">
+                    <button
+                      onClick={handleCloseConvertModal}
+                      className="btn-secondary text-sm py-2 px-4"
+                    >
+                      Chiudi
+                    </button>
+                    {onNavigate && (
+                      <button
+                        onClick={handleGoToProspect}
+                        className="btn-primary text-sm py-2 px-4"
+                      >
+                        Vai al Prospect
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Conferma */}
+              {dependencyData && !convertSuccess && (
+                <div className="space-y-4">
+                  {/* Descrizione scenario */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-sm text-blue-800">
+                      {dependencyData.scenario === 'A' ? (
+                        <>
+                          Questo cliente era originariamente un prospect
+                          {dependencyData.prospectNumero && <strong> ({dependencyData.prospectNumero})</strong>}.
+                          La conversione ripristinerà il prospect allo stato <strong>&quot;Preso in carico&quot;</strong> e
+                          tutti i dati della prequalifica saranno conservati.
+                        </>
+                      ) : (
+                        <>
+                          Questo cliente non ha un prospect di origine. Verrà creato un <strong>nuovo prospect</strong> con
+                          stato <strong>&quot;Bozza&quot;</strong> contenente i dati anagrafici attuali del cliente.
+                        </>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Avviso dipendenze */}
+                  {dependencyData.hasDependencies && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                      <div className="flex items-start space-x-2 mb-2">
+                        <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm font-medium text-red-800">
+                          I seguenti dati associati al cliente verranno eliminati definitivamente:
+                        </p>
+                      </div>
+                      <ul className="ml-6 space-y-1">
+                        {Object.entries(dependencyData.dependencies)
+                          .filter(([, count]) => count > 0)
+                          .map(([key, count]) => (
+                            <li key={key} className="text-sm text-red-700 flex items-center">
+                              <span className="w-1.5 h-1.5 bg-red-400 rounded-full mr-2 flex-shrink-0"></span>
+                              {count} {DEPENDENCY_LABELS[key] || key}
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {!dependencyData.hasDependencies && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <p className="text-sm text-green-800">
+                        Nessun dato dipendente trovato. Il cliente può essere convertito senza perdita di dati.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Pulsanti */}
+                  <div className="flex justify-end space-x-3 pt-2">
+                    <button
+                      onClick={handleCloseConvertModal}
+                      className="btn-secondary text-sm py-2 px-4"
+                      disabled={convertLoading}
+                    >
+                      Annulla
+                    </button>
+                    <button
+                      onClick={handleConfirmConvert}
+                      className={`text-sm py-2 px-4 rounded-lg font-medium flex items-center space-x-2 transition-colors ${
+                        dependencyData.hasDependencies
+                          ? 'bg-red-600 hover:bg-red-700 text-white'
+                          : 'bg-amber-600 hover:bg-amber-700 text-white'
+                      }`}
+                      disabled={convertLoading}
+                    >
+                      {convertLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          <span>Conversione...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Undo2 className="w-4 h-4" />
+                          <span>Conferma Conversione</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
