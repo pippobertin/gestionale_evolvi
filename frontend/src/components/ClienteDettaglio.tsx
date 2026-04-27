@@ -16,7 +16,8 @@ import {
   Receipt,
   Shield,
   ClipboardCheck,
-  GraduationCap
+  GraduationCap,
+  Briefcase
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import ReferentiManager from './ReferentiManager'
@@ -73,7 +74,7 @@ interface Cliente {
   numero_dipendenti?: number
   numero_volontari?: number
   numero_collaboratori?: number
-  categoria_evolvi?: 'CLIENTE_SPOT' | 'EVOLVI'
+  categoria_evolvi?: 'CLIENTE_SPOT' | 'EVOLVI' | 'FPI' | 'CONSULENTI'
   durata_evolvi?: string
   scadenza_evolvi?: string
   rating?: number
@@ -800,7 +801,9 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
                 <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
                 <div className="input bg-gray-50 cursor-not-allowed">
                   {cliente.categoria_evolvi === 'CLIENTE_SPOT' ? 'Spot' :
-                   cliente.categoria_evolvi === 'EVOLVI' ? 'Evolvi' : '-'}
+                   cliente.categoria_evolvi === 'EVOLVI' ? 'Evolvi' :
+                   cliente.categoria_evolvi === 'FPI' ? 'FPI' :
+                   cliente.categoria_evolvi === 'CONSULENTI' ? 'Consulenti' : '-'}
                 </div>
               </div>
 
@@ -844,6 +847,32 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit }:
                 </div>
                 <p className="text-blue-700 text-sm mt-2">
                   Cliente con abbonamento Metodo Evolvi attivo.
+                </p>
+              </div>
+            )}
+
+            {/* Informazione per clienti FPI */}
+            {cliente.categoria_evolvi === 'FPI' && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex items-center">
+                  <GraduationCap className="w-5 h-5 text-green-600 mr-2" />
+                  <h4 className="text-green-800 font-medium">Cliente FPI</h4>
+                </div>
+                <p className="text-green-700 text-sm mt-2">
+                  Cliente per gestione Fondi Paritetici Interprofessionali.
+                </p>
+              </div>
+            )}
+
+            {/* Informazione per consulenti */}
+            {cliente.categoria_evolvi === 'CONSULENTI' && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <div className="flex items-center">
+                  <Briefcase className="w-5 h-5 text-purple-600 mr-2" />
+                  <h4 className="text-purple-800 font-medium">Consulente</h4>
+                </div>
+                <p className="text-purple-700 text-sm mt-2">
+                  Consulente esterno. Visibile nella sezione Consulenti del gestionale.
                 </p>
               </div>
             )}

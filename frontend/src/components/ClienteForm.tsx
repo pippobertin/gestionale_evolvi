@@ -16,7 +16,9 @@ import {
   Plus,
   Edit,
   Trash2,
-  FolderOpen
+  FolderOpen,
+  GraduationCap,
+  Briefcase
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -64,7 +66,7 @@ interface Cliente {
   diritti_voto?: number
   influenza_dominante?: boolean
   note_collegamento?: string
-  categoria_evolvi?: 'CLIENTE_SPOT' | 'EVOLVI'
+  categoria_evolvi?: 'CLIENTE_SPOT' | 'EVOLVI' | 'FPI' | 'CONSULENTI'
   durata_evolvi?: string
   scadenza_evolvi?: string
   assegnato_a?: string
@@ -1636,6 +1638,8 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   <option value="">Seleziona categoria</option>
                   <option value="CLIENTE_SPOT">Spot</option>
                   <option value="EVOLVI">Evolvi</option>
+                  <option value="FPI">FPI</option>
+                  <option value="CONSULENTI">Consulenti</option>
                 </select>
               </div>
 
@@ -1692,6 +1696,32 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 <p className="text-blue-700 text-sm mt-2">
                   Cliente con abbonamento Metodo Evolvi attivo.
                   Monitorare la scadenza per il rinnovo.
+                </p>
+              </div>
+            )}
+
+            {/* Informazione per clienti FPI */}
+            {formData.categoria_evolvi === 'FPI' && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex items-center">
+                  <GraduationCap className="w-5 h-5 text-green-600 mr-2" />
+                  <h4 className="text-green-800 font-medium">Cliente FPI</h4>
+                </div>
+                <p className="text-green-700 text-sm mt-2">
+                  Cliente per gestione Fondi Paritetici Interprofessionali. Verificare adesione e piani formativi nel tab Formazione.
+                </p>
+              </div>
+            )}
+
+            {/* Informazione per consulenti */}
+            {formData.categoria_evolvi === 'CONSULENTI' && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <div className="flex items-center">
+                  <Briefcase className="w-5 h-5 text-purple-600 mr-2" />
+                  <h4 className="text-purple-800 font-medium">Consulente</h4>
+                </div>
+                <p className="text-purple-700 text-sm mt-2">
+                  Questo soggetto è un consulente esterno. La denominazione comparirà automaticamente nella sezione Consulenti del gestionale.
                 </p>
               </div>
             )}

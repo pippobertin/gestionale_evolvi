@@ -27,7 +27,7 @@ interface Cliente {
   numero_collegamenti?: number // Numero di collegamenti aziendali
   ultimo_fatturato?: number
   numero_dipendenti?: number
-  categoria_evolvi?: 'CLIENTE_SPOT' | 'EVOLVI'
+  categoria_evolvi?: 'CLIENTE_SPOT' | 'EVOLVI' | 'FPI' | 'CONSULENTI'
   scadenza_evolvi?: string
   citta_fatturazione?: string
   created_at: string
