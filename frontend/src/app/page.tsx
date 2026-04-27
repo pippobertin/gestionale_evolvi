@@ -15,6 +15,7 @@ import GmailClient from '@/components/GmailClient'
 import ReportsContent from '@/components/ReportsContent'
 import ProspectContent from '@/components/ProspectContent'
 import FaqContent from '@/components/FaqContent'
+import ConsulentiContent from '@/components/ConsulentiContent'
 import ChatbotWidget from '@/components/ChatbotWidget'
 import { LoadingSpinner } from '@/components/shared'
 
@@ -108,12 +109,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
           </div>
         )
       case 'consulenti':
-        return (
-          <div className="bg-white rounded-lg card-shadow p-8 text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Gestione Consulenti</h2>
-            <p className="text-gray-600">Sezione in sviluppo - Team e consulenti</p>
-          </div>
-        )
+        return <ConsulentiContent onNavigate={onNavigate} />
       case 'reports':
         return <ReportsContent />
       case 'settings':
