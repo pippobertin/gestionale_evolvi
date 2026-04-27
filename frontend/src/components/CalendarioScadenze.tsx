@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, Calendar, Clock } from 'lucide-react'
 
 interface Scadenza {
@@ -18,10 +18,18 @@ interface CalendarioScadenzeProps {
   scadenze: Scadenza[]
   mesiDaVisualizzare?: number
   onDayClick?: (date: Date) => void
+  initialDate?: Date
 }
 
-export default function CalendarioScadenze({ scadenze, mesiDaVisualizzare = 3, onDayClick }: CalendarioScadenzeProps) {
+export default function CalendarioScadenze({ scadenze, mesiDaVisualizzare = 3, onDayClick, initialDate }: CalendarioScadenzeProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
+
+  // Posiziona il calendario sul mese della data iniziale
+  useEffect(() => {
+    if (initialDate) {
+      setCurrentDate(new Date(initialDate.getFullYear(), initialDate.getMonth(), 1))
+    }
+  }, [initialDate])
 
   // Naviga mese precedente/successivo
   const previousMonth = () => {

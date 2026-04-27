@@ -91,7 +91,10 @@ export default function DocumentiFormazioneManager({ clienteId }: DocumentiForma
     try {
       const file = uploadForm.file
       const timestamp = Date.now()
-      const storagePath = `formazione/${clienteId}/${timestamp}_${file.name}`
+      const sanitizedName = file.name
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9._-]/g, '_')
+      const storagePath = `formazione/${clienteId}/${timestamp}_${sanitizedName}`
 
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage

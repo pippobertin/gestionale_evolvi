@@ -1027,7 +1027,10 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
-        const fileName = `${Date.now()}_${file.name}`
+        const sanitizedName = file.name
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-zA-Z0-9._-]/g, '_')
+        const fileName = `${Date.now()}_${sanitizedName}`
 
         setUploadProgress(prev => ({ ...prev, [fileName]: 0 }))
 

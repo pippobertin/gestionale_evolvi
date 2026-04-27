@@ -99,11 +99,10 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
 
       if (scadenzeError) throw scadenzeError
 
-      // Fetch scadenze contrattuali/generali
+      // Fetch scadenze contrattuali/generali (tutte, per conteggi KPI accurati)
       const { data: dataContr } = await supabase
         .from('scadenze_bandi_scadenze_contrattuali')
         .select('*')
-        .in('stato', ['APERTA', 'IN_CORSO'])
         .order('data_scadenza', { ascending: true })
 
       const today = new Date()
@@ -117,8 +116,10 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
         const giorni_rimanenti = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
         let urgenza: 'NORMALE' | 'IMMINENTE' | 'URGENTE' = 'NORMALE'
-        if (giorni_rimanenti < 0) urgenza = 'URGENTE'
-        else if (giorni_rimanenti <= 7) urgenza = 'IMMINENTE'
+        if (item.stato !== 'completata') {
+          if (giorni_rimanenti < 0) urgenza = 'URGENTE'
+          else if (giorni_rimanenti <= 7) urgenza = 'IMMINENTE'
+        }
 
         return {
           ...item,
@@ -143,8 +144,10 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
         const giorni_rimanenti = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
         let urgenza: 'NORMALE' | 'IMMINENTE' | 'URGENTE' = 'NORMALE'
-        if (giorni_rimanenti < 0) urgenza = 'URGENTE'
-        else if (giorni_rimanenti <= 7) urgenza = 'IMMINENTE'
+        if (item.stato !== 'COMPLETATA' && item.stato !== 'ANNULLATA') {
+          if (giorni_rimanenti < 0) urgenza = 'URGENTE'
+          else if (giorni_rimanenti <= 7) urgenza = 'IMMINENTE'
+        }
 
         let clienteNome = '-'
         if (item.categoria === 'riunione_prospect') {
@@ -312,20 +315,6 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         <button
           onClick={() => onNavigate('scadenze')}
-          className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 hover:from-red-600 hover:to-red-700 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-red-100 drop-shadow-sm">Urgenti</p>
-              <p className="text-lg font-black text-white drop-shadow">{stats.urgenti}</p>
-              <p className="text-xs font-medium text-red-100 drop-shadow-sm">Scadute o critiche</p>
-            </div>
-            <AlertTriangle className="w-6 h-6 text-red-200 drop-shadow" />
-          </div>
-        </button>
-
-        <button
-          onClick={() => onNavigate('scadenze')}
           className="bg-gradient-to-br from-amber-500 to-yellow-500 p-4 rounded-xl border border-amber-400 hover:from-amber-600 hover:to-yellow-600 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
         >
           <div className="flex items-center justify-between">
@@ -370,6 +359,20 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
             <Activity className="w-6 h-6 text-cyan-200 drop-shadow" />
           </div>
         </button>
+
+        <button
+          onClick={() => onNavigate('scadenze')}
+          className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 hover:from-red-600 hover:to-red-700 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-red-100 drop-shadow-sm">Scadute</p>
+              <p className="text-lg font-black text-white drop-shadow">{stats.urgenti}</p>
+              <p className="text-xs font-medium text-red-100 drop-shadow-sm">Scadute o critiche</p>
+            </div>
+            <AlertTriangle className="w-6 h-6 text-red-200 drop-shadow" />
+          </div>
+        </button>
       </div>
 
       {/* Sezione Panoramica */}
@@ -402,8 +405,8 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
                     <tr
                       key={scadenza.id}
                       className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => onNavigate('scadenze')}
-                      title="Clicca per andare alle scadenze"
+                      onClick={() => onNavigate('scadenze', { date: scadenza.data_scadenza })}
+                      title="Clicca per vedere questa scadenza nel calendario"
                     >
                       <td className="px-3 py-1.5">
                         <div className="text-sm font-medium text-gray-900 hover:text-blue-600">{scadenza.titolo}</div>

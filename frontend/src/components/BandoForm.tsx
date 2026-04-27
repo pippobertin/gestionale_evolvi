@@ -381,7 +381,11 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
       const fileName = file.name
-      const fileKey = `${Date.now()}-${fileName}`
+      // Sanitizza il nome file per Supabase Storage (no caratteri accentati/speciali)
+      const sanitizedName = fileName
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9._-]/g, '_')
+      const fileKey = `${Date.now()}-${sanitizedName}`
 
       try {
         setUploadProgress(prev => ({ ...prev, [fileName]: 0 }))

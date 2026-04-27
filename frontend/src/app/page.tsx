@@ -92,7 +92,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'dashboard':
         return <DashboardContent onNavigate={onNavigate} />
       case 'scadenze':
-        return <ScadenzeContent />
+        return <ScadenzeContent navigationParams={navigationParams} />
       case 'prospect':
         return <ProspectContent onNavigate={onNavigate} navigationParams={navigationParams} />
       case 'clienti':

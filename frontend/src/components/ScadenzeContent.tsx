@@ -30,7 +30,7 @@ interface Scadenza {
 
 type ViewMode = 'lista' | 'calendario' | 'settimana'
 
-export default function ScadenzeContent() {
+export default function ScadenzeContent({ navigationParams }: { navigationParams?: any }) {
   const [scadenze, setScadenze] = useState<Scadenza[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -45,6 +45,7 @@ export default function ScadenzeContent() {
   const [scadenzaDaCompletare, setScadenzaDaCompletare] = useState<Scadenza | null>(null)
   const [noteCompletamento, setNoteCompletamento] = useState('')
   const [calendarioMesi, setCalendarioMesi] = useState<number>(1) // 1, 2, 3, 12 mesi
+  const [calendarioDate, setCalendarioDate] = useState<Date | undefined>(undefined)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [showDayModal, setShowDayModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -54,6 +55,18 @@ export default function ScadenzeContent() {
   useEffect(() => {
     fetchScadenze()
   }, [])
+
+  // Naviga alla data specifica se arriva da navigationParams
+  useEffect(() => {
+    if (navigationParams?.date && !loading) {
+      const dateStr = navigationParams.date.split('T')[0]
+      setSelectedDate(dateStr)
+      setShowDayModal(true)
+      setViewMode('calendario')
+      // Posiziona il calendario sul mese della scadenza
+      setCalendarioDate(new Date(dateStr + 'T12:00:00'))
+    }
+  }, [navigationParams?.date, loading])
 
   const fetchScadenze = async () => {
     try {
@@ -106,8 +119,10 @@ export default function ScadenzeContent() {
         const giorni_rimanenti = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
         let urgenza: 'NORMALE' | 'IMMINENTE' | 'URGENTE' = 'NORMALE'
-        if (giorni_rimanenti < 0) urgenza = 'URGENTE'
-        else if (giorni_rimanenti <= 7) urgenza = 'IMMINENTE'
+        if (item.stato !== 'completata') {
+          if (giorni_rimanenti < 0) urgenza = 'URGENTE'
+          else if (giorni_rimanenti <= 7) urgenza = 'IMMINENTE'
+        }
 
         return {
           ...item,
@@ -133,8 +148,10 @@ export default function ScadenzeContent() {
         const giorni_rimanenti = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
         let urgenza: 'NORMALE' | 'IMMINENTE' | 'URGENTE' = 'NORMALE'
-        if (giorni_rimanenti < 0) urgenza = 'URGENTE'
-        else if (giorni_rimanenti <= 7) urgenza = 'IMMINENTE'
+        if (item.stato !== 'COMPLETATA' && item.stato !== 'ANNULLATA') {
+          if (giorni_rimanenti < 0) urgenza = 'URGENTE'
+          else if (giorni_rimanenti <= 7) urgenza = 'IMMINENTE'
+        }
 
         // Estrai contesto dal titolo per cliente_nome
         let clienteNome = '-'
@@ -344,12 +361,15 @@ export default function ScadenzeContent() {
         if (error) throw error
       }
 
-      // Aggiorna le scadenze locali
-      setScadenze(prev => prev.map(s =>
-        s.id === scadenzaId
-          ? { ...s, stato: nuovoStato as any }
-          : s
-      ))
+      // Aggiorna le scadenze locali (ricalcola urgenza se completata)
+      setScadenze(prev => prev.map(s => {
+        if (s.id !== scadenzaId) return s
+        const updated = { ...s, stato: nuovoStato as any }
+        if (nuovoStato === 'completata') {
+          updated.urgenza = 'NORMALE'
+        }
+        return updated
+      }))
 
       // Gestisci aggiornamenti a cascata (solo per scadenze progetto)
       if (scadenza?.source !== 'contrattuali') {
@@ -459,7 +479,7 @@ export default function ScadenzeContent() {
         <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-red-100 drop-shadow-sm">Urgenti</p>
+              <p className="text-sm font-bold text-red-100 drop-shadow-sm">Scadute</p>
               <p className="text-lg font-black text-white drop-shadow">{urgenti.length}</p>
             </div>
             <AlertTriangle className="w-6 h-6 text-red-200 drop-shadow" />
@@ -741,6 +761,7 @@ export default function ScadenzeContent() {
             scadenze={scadenzeFiltrate}
             mesiDaVisualizzare={calendarioMesi}
             onDayClick={openDayModal}
+            initialDate={calendarioDate}
           />
         </div>
       )}
