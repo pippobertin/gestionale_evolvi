@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { getValidGoogleToken } from '@/lib/googleAuth'
+import { verifyJWT } from '@/lib/jwtAuth'
 import { findWordTemplate, processWordTemplate } from '@/lib/wordTemplate'
-import { uploadFileToFolder, createDriveFolderInSharedDrive, listSharedDriveFiles } from '@/lib/googleDrive'
+import { uploadFileToFolder, createDriveFolderInSharedDrive, listSharedDriveFiles, createDriveClient } from '@/lib/googleDrive'
 
 export async function POST(req: NextRequest) {
   try {
@@ -166,6 +167,36 @@ export async function POST(req: NextRequest) {
     )
 
     console.log('Contratto Evolvi caricato su Drive:', uploadResult.id)
+
+    // 12b. Condividi il file con l'utente loggato (così si apre col suo account Google)
+    try {
+      const decoded = await verifyJWT(req)
+      if (decoded?.userId) {
+        const { data: utente } = await supabase
+          .from('scadenze_bandi_utenti')
+          .select('gmail_email, email')
+          .eq('id', decoded.userId)
+          .single()
+
+        const userEmail = utente?.gmail_email || utente?.email
+        if (userEmail) {
+          const drive = await createDriveClient(googleAccessToken)
+          await drive.permissions.create({
+            fileId: uploadResult.id!,
+            supportsAllDrives: true,
+            sendNotificationEmail: false,
+            requestBody: {
+              role: 'writer',
+              type: 'user',
+              emailAddress: userEmail
+            }
+          })
+          console.log(`✅ File condiviso con ${userEmail}`)
+        }
+      }
+    } catch (shareError) {
+      console.warn('⚠️ Impossibile condividere il file con l\'utente:', shareError)
+    }
 
     // 13. Aggiorna record contratto nel database
     const { error: updateError } = await supabase

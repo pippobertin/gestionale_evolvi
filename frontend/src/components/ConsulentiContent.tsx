@@ -28,12 +28,23 @@ export default function ConsulentiContent({ onNavigate }: ConsulentiContentProps
     try {
       const { data, error } = await supabase
         .from('scadenze_bandi_clienti')
-        .select('id, denominazione, partita_iva, citta, provincia, telefono, email')
+        .select('*')
         .eq('categoria_evolvi', 'CONSULENTI')
         .order('denominazione', { ascending: true })
 
-      if (error) throw error
-      setConsulenti(data || [])
+      if (error) {
+        console.error('Supabase error:', error.message, error.details, error.hint)
+        throw error
+      }
+      setConsulenti((data || []).map((d: any) => ({
+        id: d.id,
+        denominazione: d.denominazione,
+        partita_iva: d.partita_iva,
+        citta: d.citta,
+        provincia: d.provincia,
+        telefono: d.telefono,
+        email: d.email
+      })))
     } catch (error) {
       console.error('Errore caricamento consulenti:', error)
     } finally {

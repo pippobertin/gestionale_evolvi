@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { X, FileText, ChevronRight, ChevronLeft, CheckCircle, Loader2, AlertCircle, ExternalLink, Mail, Eye } from 'lucide-react'
+import { X, FileText, ChevronRight, ChevronLeft, CheckCircle, Loader2, AlertCircle, ExternalLink, Eye } from 'lucide-react'
 import { useEvolviContractGeneration } from '@/hooks/useEvolviContractGeneration'
 
 interface EvolviContractModalProps {
@@ -226,23 +226,14 @@ export default function EvolviContractModal({
     }
   }
 
-  const handleApprove = async () => {
+  const handleApproveAndSend = async () => {
     if (!createdContractId) return
     try {
       await approveContract(createdContractId)
-      onSuccess()
-    } catch (err: any) {
-      console.error('Errore approvazione:', err)
-    }
-  }
-
-  const handleSendEmail = async () => {
-    if (!createdContractId) return
-    try {
       await sendEmail({ contrattoId: createdContractId })
       onSuccess()
     } catch (err: any) {
-      console.error('Errore invio email:', err)
+      console.error('Errore approvazione/invio:', err)
     }
   }
 
@@ -626,30 +617,19 @@ export default function EvolviContractModal({
                 >
                   Chiudi
                 </button>
-                <div className="flex items-center space-x-2">
-                  <button
-                    type="button"
-                    onClick={handleSendEmail}
-                    className="btn-secondary flex items-center space-x-1"
-                    disabled={loading}
-                  >
-                    <Mail className="w-4 h-4" />
-                    <span>Invia Email</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleApprove}
-                    className="btn-primary flex items-center space-x-1 bg-green-600 hover:bg-green-700"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <CheckCircle className="w-4 h-4" />
-                    )}
-                    <span>Approva Contratto</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleApproveAndSend}
+                  className="btn-primary flex items-center space-x-1 bg-green-600 hover:bg-green-700"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle className="w-4 h-4" />
+                  )}
+                  <span>Approva e invia al cliente</span>
+                </button>
               </div>
             </div>
           )}
