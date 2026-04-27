@@ -167,9 +167,9 @@ export default function ReferentiManager({ clienteId, isNewClient = false }: Ref
       // Ricarica la lista
       await loadReferenti()
       closeForm()
-    } catch (error) {
-      console.error('Errore nel salvataggio del referente:', error)
-      alert('Errore nel salvataggio del referente')
+    } catch (error: any) {
+      console.error('Errore nel salvataggio del referente:', error?.message || error?.details || error?.code || error)
+      alert(`Errore nel salvataggio del referente: ${error?.message || error?.details || 'Errore sconosciuto'}`)
     } finally {
       setLoading(false)
     }

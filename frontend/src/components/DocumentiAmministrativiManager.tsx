@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import {
   Upload, FileText, Trash2, Download, CheckCircle, XCircle,
-  ChevronDown, ChevronRight, AlertTriangle, RefreshCw, X, Plus, Search
+  ChevronDown, ChevronRight, AlertTriangle, RefreshCw, X, Plus, Search,
+  Eye, FileQuestion, ZoomIn, ZoomOut, RotateCw
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import {
@@ -46,6 +47,11 @@ export default function DocumentiAmministrativiManager({ clienteId }: DocumentiA
   const [dragActive, setDragActive] = useState(false)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState('')
+  const [previewDoc, setPreviewDoc] = useState<DocumentoAmministrativo | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewZoom, setPreviewZoom] = useState(100)
+  const [previewRotation, setPreviewRotation] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Upload form state
@@ -226,6 +232,41 @@ export default function DocumentiAmministrativiManager({ clienteId }: DocumentiA
       console.error('Errore toggle verifica:', err)
       setError(err.message || 'Errore nell\'aggiornamento del documento')
     }
+  }
+
+  const isPreviewable = (mimeType: string | null | undefined): boolean => {
+    if (!mimeType) return false
+    return mimeType === 'application/pdf' ||
+      mimeType.startsWith('image/')
+  }
+
+  const handlePreview = async (doc: DocumentoAmministrativo) => {
+    try {
+      setPreviewDoc(doc)
+      setPreviewLoading(true)
+      setPreviewUrl(null)
+      setPreviewZoom(100)
+      setPreviewRotation(0)
+
+      const res = await fetch(`/api/clienti/${clienteId}/documenti-amministrativi/${doc.id}/download`)
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
+
+      setPreviewUrl(result.data.url)
+    } catch (err: any) {
+      console.error('Errore anteprima:', err)
+      setError(err.message || 'Errore nel caricamento dell\'anteprima')
+      setPreviewDoc(null)
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
+
+  const closePreview = () => {
+    setPreviewDoc(null)
+    setPreviewUrl(null)
+    setPreviewZoom(100)
+    setPreviewRotation(0)
   }
 
   const toggleCategory = (cat: string) => {
@@ -617,6 +658,15 @@ export default function DocumentiAmministrativiManager({ clienteId }: DocumentiA
 
                                 <button
                                   type="button"
+                                  onClick={() => handlePreview(doc)}
+                                  className="p-1.5 rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                  title={isPreviewable(doc.mime_type) ? 'Anteprima' : 'Anteprima (formato non supportato)'}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+
+                                <button
+                                  type="button"
                                   onClick={() => handleDownload(doc)}
                                   className="p-1.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                                   title="Scarica"
@@ -642,6 +692,119 @@ export default function DocumentiAmministrativiManager({ clienteId }: DocumentiA
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Preview Modal */}
+      {previewDoc && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="gradient-primary text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center space-x-2 min-w-0">
+                <Eye className="w-4 h-4 flex-shrink-0" />
+                <span className="text-sm font-semibold truncate">{previewDoc.nome_originale}</span>
+                {previewDoc.mime_type && (
+                  <span className="text-xs bg-white/20 rounded px-2 py-0.5 flex-shrink-0">
+                    {previewDoc.mime_type.split('/').pop()?.toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center space-x-1 flex-shrink-0">
+                {/* Zoom/rotate controls for images */}
+                {previewDoc.mime_type?.startsWith('image/') && previewUrl && (
+                  <>
+                    <button
+                      onClick={() => setPreviewZoom(z => Math.max(25, z - 25))}
+                      className="p-1.5 hover:bg-white/20 rounded transition-colors"
+                      title="Riduci"
+                    >
+                      <ZoomOut className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs min-w-[3rem] text-center">{previewZoom}%</span>
+                    <button
+                      onClick={() => setPreviewZoom(z => Math.min(300, z + 25))}
+                      className="p-1.5 hover:bg-white/20 rounded transition-colors"
+                      title="Ingrandisci"
+                    >
+                      <ZoomIn className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setPreviewRotation(r => (r + 90) % 360)}
+                      className="p-1.5 hover:bg-white/20 rounded transition-colors"
+                      title="Ruota"
+                    >
+                      <RotateCw className="w-4 h-4" />
+                    </button>
+                    <div className="w-px h-5 bg-white/30 mx-1" />
+                  </>
+                )}
+                <button
+                  onClick={() => handleDownload(previewDoc)}
+                  className="p-1.5 hover:bg-white/20 rounded transition-colors"
+                  title="Scarica"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={closePreview}
+                  className="p-1.5 hover:bg-white/20 rounded transition-colors"
+                  title="Chiudi"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Preview content */}
+            <div className="flex-1 overflow-auto bg-gray-100">
+              {previewLoading ? (
+                <div className="flex flex-col items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500"></div>
+                  <p className="text-sm text-gray-500 mt-3">Caricamento anteprima...</p>
+                </div>
+              ) : !previewUrl ? (
+                <div className="flex flex-col items-center justify-center h-full">
+                  <AlertTriangle className="w-10 h-10 text-yellow-500 mb-2" />
+                  <p className="text-sm text-gray-700">Impossibile caricare l&apos;anteprima</p>
+                </div>
+              ) : previewDoc.mime_type === 'application/pdf' ? (
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-full border-0"
+                  title={`Anteprima: ${previewDoc.nome_originale}`}
+                />
+              ) : previewDoc.mime_type?.startsWith('image/') ? (
+                <div className="flex items-center justify-center min-h-full p-4 overflow-auto">
+                  <img
+                    src={previewUrl}
+                    alt={previewDoc.nome_originale}
+                    className="max-w-none transition-transform duration-200"
+                    style={{
+                      transform: `scale(${previewZoom / 100}) rotate(${previewRotation}deg)`,
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center px-8">
+                  <FileQuestion className="w-16 h-16 text-gray-300 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-700 mb-1">
+                    Anteprima non disponibile
+                  </h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Il formato <strong>{previewDoc.mime_type?.split('/').pop()?.toUpperCase() || 'sconosciuto'}</strong> non supporta l&apos;anteprima nel browser.
+                  </p>
+                  <button
+                    onClick={() => handleDownload(previewDoc)}
+                    className="btn-primary text-sm py-2 px-4"
+                  >
+                    <Download className="w-4 h-4 mr-1" />
+                    Scarica il documento
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
