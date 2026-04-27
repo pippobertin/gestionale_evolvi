@@ -8,7 +8,9 @@ import {
   Building2,
   FileText,
   Zap,
-  ExternalLink
+  ExternalLink,
+  GraduationCap,
+  Briefcase
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Prospect } from '@/types/prospect'
@@ -22,7 +24,7 @@ interface ProspectConversionModalProps {
 
 export default function ProspectConversionModal({ prospect, isOpen, onClose, onConvert }: ProspectConversionModalProps) {
   const [currentStep, setCurrentStep] = useState(1)
-  const [decisione, setDecisione] = useState<'EVOLVI' | 'SPOT' | ''>('')
+  const [decisione, setDecisione] = useState<'EVOLVI' | 'SPOT' | 'FPI' | 'CONSULENTI' | ''>('')
   const [loading, setLoading] = useState(false)
   const [conversionResult, setConversionResult] = useState<{ clienteId: string; denominazione: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -79,7 +81,7 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
         legale_rappresentante_cognome: prospect.legale_rappresentante_cognome || null,
         legale_rappresentante_email: prospect.legale_rappresentante_email || null,
         legale_rappresentante_telefono: prospect.legale_rappresentante_telefono || null,
-        categoria_evolvi: decisione === 'EVOLVI' ? 'EVOLVI' : 'CLIENTE_SPOT',
+        categoria_evolvi: decisione === 'SPOT' ? 'CLIENTE_SPOT' : decisione,
         stato_fatturazione: 'Italia'
       }
 
@@ -111,7 +113,12 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
           prospect_id: prospect.id,
           stato_precedente: prospect.stato,
           stato_nuovo: 'convertito',
-          note: `Convertito in cliente (${decisione === 'EVOLVI' ? 'Evolvi Base' : 'Cliente Spot'})`
+          note: `Convertito in cliente (${
+            decisione === 'EVOLVI' ? 'Evolvi' :
+            decisione === 'SPOT' ? 'Cliente Spot' :
+            decisione === 'FPI' ? 'FPI' :
+            'Consulente'
+          })`
         }])
 
       setConversionResult({
@@ -135,7 +142,7 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
         <p className="text-sm text-gray-600 mt-1">Scegli la tipologia di cliente per la conversione</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {/* EVOLVI */}
         <button
           onClick={() => setDecisione('EVOLVI')}
@@ -188,6 +195,62 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
           </p>
           {decisione === 'SPOT' && (
             <div className="mt-3 flex items-center text-yellow-600 text-sm font-medium">
+              <CheckCircle className="w-4 h-4 mr-1" />
+              Selezionato
+            </div>
+          )}
+        </button>
+
+        {/* FPI */}
+        <button
+          onClick={() => setDecisione('FPI')}
+          className={`border-2 rounded-lg p-4 text-left transition-all ${
+            decisione === 'FPI'
+              ? 'border-green-500 bg-green-50 ring-2 ring-green-200'
+              : 'border-gray-200 hover:border-gray-300 bg-white'
+          }`}
+        >
+          <div className="flex items-center space-x-3 mb-3">
+            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+              decisione === 'FPI' ? 'bg-green-100' : 'bg-gray-100'
+            }`}>
+              <GraduationCap className={`w-5 h-5 ${decisione === 'FPI' ? 'text-green-600' : 'text-gray-500'}`} />
+            </div>
+            <h4 className="font-semibold text-gray-900">FPI</h4>
+          </div>
+          <p className="text-sm text-gray-600">
+            Cliente per gestione Fondi Paritetici Interprofessionali e piani formativi.
+          </p>
+          {decisione === 'FPI' && (
+            <div className="mt-3 flex items-center text-green-600 text-sm font-medium">
+              <CheckCircle className="w-4 h-4 mr-1" />
+              Selezionato
+            </div>
+          )}
+        </button>
+
+        {/* CONSULENTI */}
+        <button
+          onClick={() => setDecisione('CONSULENTI')}
+          className={`border-2 rounded-lg p-4 text-left transition-all ${
+            decisione === 'CONSULENTI'
+              ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
+              : 'border-gray-200 hover:border-gray-300 bg-white'
+          }`}
+        >
+          <div className="flex items-center space-x-3 mb-3">
+            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+              decisione === 'CONSULENTI' ? 'bg-purple-100' : 'bg-gray-100'
+            }`}>
+              <Briefcase className={`w-5 h-5 ${decisione === 'CONSULENTI' ? 'text-purple-600' : 'text-gray-500'}`} />
+            </div>
+            <h4 className="font-semibold text-gray-900">CONSULENTI</h4>
+          </div>
+          <p className="text-sm text-gray-600">
+            Consulente esterno. Comparirà automaticamente nella sezione Consulenti.
+          </p>
+          {decisione === 'CONSULENTI' && (
+            <div className="mt-3 flex items-center text-purple-600 text-sm font-medium">
               <CheckCircle className="w-4 h-4 mr-1" />
               Selezionato
             </div>
