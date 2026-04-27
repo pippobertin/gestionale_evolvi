@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Users, Search, RefreshCw, ExternalLink } from 'lucide-react'
+import ConsulenteDettaglio from './ConsulenteDettaglio'
 
 interface Consulente {
   id: string
@@ -22,6 +23,8 @@ export default function ConsulentiContent({ onNavigate }: ConsulentiContentProps
   const [consulenti, setConsulenti] = useState<Consulente[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedConsulenteId, setSelectedConsulenteId] = useState<string | null>(null)
+  const [showDettaglio, setShowDettaglio] = useState(false)
 
   const fetchConsulenti = useCallback(async () => {
     setLoading(true)
@@ -60,6 +63,17 @@ export default function ConsulentiContent({ onNavigate }: ConsulentiContentProps
     c.denominazione.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (c.citta && c.citta.toLowerCase().includes(searchTerm.toLowerCase()))
   )
+
+  const handleOpenDettaglio = (id: string) => {
+    setSelectedConsulenteId(id)
+    setShowDettaglio(true)
+  }
+
+  const handleCloseDettaglio = () => {
+    setShowDettaglio(false)
+    setSelectedConsulenteId(null)
+    fetchConsulenti()
+  }
 
   return (
     <div className="space-y-4">
@@ -132,7 +146,7 @@ export default function ConsulentiContent({ onNavigate }: ConsulentiContentProps
                   <tr
                     key={c.id}
                     className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => onNavigate?.('clienti', { openClientId: c.id })}
+                    onClick={() => handleOpenDettaglio(c.id)}
                   >
                     <td className="px-4 py-2 text-sm font-medium text-gray-900 hover:text-blue-600">
                       {c.denominazione}
@@ -146,10 +160,10 @@ export default function ConsulentiContent({ onNavigate }: ConsulentiContentProps
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          onNavigate?.('clienti', { openClientId: c.id })
+                          handleOpenDettaglio(c.id)
                         }}
-                        className="text-gray-400 hover:text-blue-600 transition-colors"
-                        title="Apri scheda cliente"
+                        className="text-gray-400 hover:text-purple-600 transition-colors"
+                        title="Apri dettaglio consulente"
                       >
                         <ExternalLink className="w-4 h-4" />
                       </button>
@@ -161,6 +175,16 @@ export default function ConsulentiContent({ onNavigate }: ConsulentiContentProps
           </div>
         )}
       </div>
+
+      {/* Modal Dettaglio Consulente */}
+      {showDettaglio && selectedConsulenteId && (
+        <ConsulenteDettaglio
+          consulenteId={selectedConsulenteId}
+          isOpen={showDettaglio}
+          onClose={handleCloseDettaglio}
+          onNavigate={onNavigate}
+        />
+      )}
     </div>
   )
 }

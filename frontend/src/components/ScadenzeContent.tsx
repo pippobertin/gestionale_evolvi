@@ -476,16 +476,6 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
 
       {/* Statistiche Rapide */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-bold text-red-100 drop-shadow-sm">Scadute</p>
-              <p className="text-lg font-black text-white drop-shadow">{urgenti.length}</p>
-            </div>
-            <AlertTriangle className="w-6 h-6 text-red-200 drop-shadow" />
-          </div>
-        </div>
-
         <div className="bg-gradient-to-br from-amber-500 to-yellow-500 p-4 rounded-xl border border-amber-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
@@ -515,6 +505,16 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
               </p>
             </div>
             <CheckCircle className="w-6 h-6 text-emerald-200 drop-shadow" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-red-100 drop-shadow-sm">Scadute</p>
+              <p className="text-lg font-black text-white drop-shadow">{urgenti.length}</p>
+            </div>
+            <AlertTriangle className="w-6 h-6 text-red-200 drop-shadow" />
           </div>
         </div>
       </div>
