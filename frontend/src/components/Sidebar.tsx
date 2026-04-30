@@ -17,7 +17,8 @@ import {
   Pin,
   PinOff,
   Mail,
-  HelpCircle
+  HelpCircle,
+  Inbox
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -41,6 +42,7 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
     { id: 'bandi', label: 'Bandi', icon: FileText, adminOnly: false },
     { id: 'progetti', label: 'Progetti', icon: Target, adminOnly: false },
     { id: 'email', label: 'Email', icon: Mail, adminOnly: false },
+    { id: 'note-inbox', label: 'Inbox Note', icon: Inbox, adminOnly: false },
     { id: 'consulenti', label: 'Consulenti', icon: Building, adminOnly: false },
     { id: 'reports', label: 'Reports', icon: BarChart3, adminOnly: false },
     { id: 'settings', label: 'Impostazioni', icon: Settings, adminOnly: false },

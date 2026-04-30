@@ -26,6 +26,7 @@ import EvolviInvoicesContent from './EvolviInvoicesContent'
 import DocumentiAmministrativiManager from './DocumentiAmministrativiManager'
 import ContractTrackingPanel from './ContractTrackingPanel'
 import FormazioneManager from './formazione/FormazioneManager'
+import NoteTimeline from './NoteTimeline'
 
 interface CollegamentoAziendale {
   id: string
@@ -887,10 +888,15 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Note</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Note libere</label>
               <div className="input bg-gray-50 cursor-not-allowed min-h-[60px]">
                 {cliente.note || '-'}
               </div>
+            </div>
+
+            {/* Timeline note ingestionate da trascrizioni Plaud / altre fonti */}
+            <div className="pt-4 border-t border-gray-200">
+              <NoteTimeline clienteId={cliente.id} />
             </div>
           </div>
         )

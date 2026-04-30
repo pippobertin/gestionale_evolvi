@@ -17,6 +17,7 @@ import ProspectContent from '@/components/ProspectContent'
 import FaqContent from '@/components/FaqContent'
 import ConsulentiContent from '@/components/ConsulentiContent'
 import ChatbotWidget from '@/components/ChatbotWidget'
+import NoteInboxContent from '@/components/NoteInboxContent'
 import { LoadingSpinner } from '@/components/shared'
 
 function AppContent() {
@@ -63,6 +64,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'bandi': return 'Bandi'
       case 'progetti': return 'Progetti'
       case 'email': return 'Centro Email'
+      case 'note-inbox': return 'Inbox Note'
       case 'consulenti': return 'Consulenti'
       case 'reports': return 'Reports'
       case 'settings': return 'Impostazioni'
@@ -80,6 +82,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'bandi': return ['Home', 'Gestione', 'Bandi']
       case 'progetti': return ['Home', 'Gestione', 'Progetti']
       case 'email': return ['Home', 'Comunicazione', 'Email']
+      case 'note-inbox': return ['Home', 'Comunicazione', 'Inbox Note']
       case 'consulenti': return ['Home', 'Gestione', 'Consulenti']
       case 'reports': return ['Home', 'Analytics', 'Reports']
       case 'settings': return ['Home', 'Sistema', 'Impostazioni']
@@ -108,6 +111,8 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
             <GmailClient isOpen={true} onClose={() => setActiveItem('dashboard')} />
           </div>
         )
+      case 'note-inbox':
+        return <NoteInboxContent />
       case 'consulenti':
         return <ConsulentiContent onNavigate={onNavigate} />
       case 'reports':

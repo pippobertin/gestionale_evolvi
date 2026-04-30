@@ -23,6 +23,7 @@ import { useSession, signIn, signOut } from 'next-auth/react'
 import DocumentPreviewModal from './DocumentPreviewModal'
 import ContractModal from './ContractModal'
 import ContractTrackingWidget from './ContractTrackingWidget'
+import NoteCollegateBox from './NoteCollegateBox'
 
 interface ProgettoFormData {
   bando_id: string
@@ -2169,6 +2170,13 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                 </div>
               )}
             </div>
+
+            {/* Note collegate (solo in edit) */}
+            {progetto?.id && (
+              <div className="px-4 py-3 border-t border-gray-200 bg-white max-h-[40vh] overflow-y-auto">
+                <NoteCollegateBox tipo="progetto" id={progetto.id} />
+              </div>
+            )}
 
             {/* Footer */}
             <div className="p-4 border-t border-gray-200 bg-gray-50">

@@ -23,6 +23,7 @@ import {
 import { supabase } from '@/lib/supabase'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import UnifiedMultiResponsableSelector, { Responsabile } from './UnifiedMultiResponsableSelector'
+import NoteCollegateBox from './NoteCollegateBox'
 
 interface EventoCatalogo {
   id: string
@@ -1750,6 +1751,13 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
             </div>
           )}
         </div>
+
+        {/* Note collegate (solo in edit) */}
+        {bando?.id && (
+          <div className="px-4 py-3 border-t border-gray-200 bg-white flex-shrink-0 max-h-[40vh] overflow-y-auto">
+            <NoteCollegateBox tipo="bando" id={bando.id} />
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex justify-between items-center p-4 border-t bg-gray-50 flex-shrink-0">
