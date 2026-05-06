@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import {
   BarChart3, Award, BookOpen, GraduationCap,
-  ShieldCheck, FileText
+  ShieldCheck, FileText, ClipboardList
 } from 'lucide-react'
 import SecondaryTabsBar from '../shared/SecondaryTabsBar'
 import FormazionePanoramica from './FormazionePanoramica'
@@ -12,6 +12,7 @@ import PianiFormativiManager from './PianiFormativiManager'
 import CorsiFormativiManager from './CorsiFormativiManager'
 import CertificazioniObbligatorieManager from './CertificazioniObbligatorieManager'
 import DocumentiFormazioneManager from './DocumentiFormazioneManager'
+import RilevazioneFabbisognoManager from './RilevazioneFabbisognoManager'
 import { supabase } from '@/lib/supabase'
 
 interface FormazioneManagerProps {
@@ -25,6 +26,7 @@ const subTabs = [
   { id: 'corsi', label: 'Corsi ed Edizioni', icon: GraduationCap },
   { id: 'certificazioni', label: 'Certificazioni Obbligatorie', icon: ShieldCheck },
   { id: 'documenti', label: 'Documenti Formazione', icon: FileText },
+  { id: 'fabbisogno', label: 'Rilevazione Fabbisogno', icon: ClipboardList },
 ]
 
 export default function FormazioneManager({ clienteId }: FormazioneManagerProps) {
@@ -64,6 +66,8 @@ export default function FormazioneManager({ clienteId }: FormazioneManagerProps)
         return <CertificazioniObbligatorieManager clienteId={clienteId} />
       case 'documenti':
         return <DocumentiFormazioneManager clienteId={clienteId} />
+      case 'fabbisogno':
+        return <RilevazioneFabbisognoManager clienteId={clienteId} />
       default:
         return null
     }
