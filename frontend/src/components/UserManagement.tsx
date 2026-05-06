@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
 import {
   Users,
   UserCheck,
@@ -30,7 +29,6 @@ interface User {
 }
 
 export default function UserManagement() {
-  const { data: session, status } = useSession()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -49,19 +47,24 @@ export default function UserManagement() {
   const [createdUserEmail, setCreatedUserEmail] = useState('')
 
   useEffect(() => {
-    if (session) {
-      fetchUsers()
-    }
-  }, [session])
+    fetchUsers()
+  }, [])
 
   const fetchUsers = async () => {
     try {
-      if (!session) {
-        setError('Sessione non valida')
+      // Ottieni il token JWT dal localStorage
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        setError('Non autenticato - effettua nuovamente il login')
+        setLoading(false)
         return
       }
 
-      const response = await fetch('/api/admin/users')
+      const response = await fetch('/api/admin/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       const data = await response.json()
 
       if (!response.ok) {
@@ -79,10 +82,18 @@ export default function UserManagement() {
   const updateUser = async (userId: string, updates: Partial<User>) => {
     setActionLoading(userId)
     try {
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        setError('Non autenticato - effettua nuovamente il login')
+        setActionLoading(null)
+        return
+      }
+
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(updates)
       })
@@ -106,8 +117,18 @@ export default function UserManagement() {
   const deleteUser = async (userId: string) => {
     setActionLoading(userId)
     try {
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        setError('Non autenticato - effettua nuovamente il login')
+        setActionLoading(null)
+        return
+      }
+
       const response = await fetch(`/api/admin/users/${userId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       })
 
       const data = await response.json()
@@ -133,10 +154,18 @@ export default function UserManagement() {
 
     setActionLoading('creating')
     try {
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        setError('Non autenticato - effettua nuovamente il login')
+        setActionLoading(null)
+        return
+      }
+
       const response = await fetch('/api/admin/users', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(newUserData)
       })
@@ -200,19 +229,19 @@ export default function UserManagement() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-            <Users className="w-6 h-6 text-blue-600" />
+          <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
+            <Users className="w-4 h-4 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Gestione Utenti</h1>
+            <h1 className="text-sm font-semibold text-gray-900">Gestione Utenti</h1>
             <p className="text-gray-600">Gestisci utenti, permessi e accessi</p>
           </div>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3">
           <div className="text-sm text-gray-500">
             {users.length} utenti totali
           </div>
@@ -229,7 +258,7 @@ export default function UserManagement() {
       {/* Error Message */}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md flex items-center space-x-2">
-          <AlertTriangle className="w-5 h-5" />
+          <AlertTriangle className="w-4 h-4" />
           <span>{error}</span>
           <button
             onClick={() => setError('')}
@@ -242,30 +271,30 @@ export default function UserManagement() {
 
       {/* Users Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h3 className="text-lg font-semibold text-gray-900">Lista Utenti</h3>
+        <div className="px-3 py-1.5 border-b border-gray-200 bg-gray-50">
+          <h3 className="text-sm font-semibold text-gray-900">Lista Utenti</h3>
         </div>
 
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Utente
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Ruolo
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Registrato
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Ultimo Accesso
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-1.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Azioni
                 </th>
               </tr>
@@ -273,9 +302,9 @@ export default function UserManagement() {
             <tbody className="bg-white divide-y divide-gray-200">
               {users.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
+                      <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center">
                         <span className="text-teal-600 font-semibold text-sm">
                           {user.nome?.[0]?.toUpperCase() || 'U'}
                         </span>
@@ -288,7 +317,7 @@ export default function UserManagement() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       user.livello_permessi === 'admin'
                         ? 'bg-purple-100 text-purple-800'
@@ -301,7 +330,7 @@ export default function UserManagement() {
                       )}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       user.attivo
                         ? 'bg-green-100 text-green-800'
@@ -314,13 +343,13 @@ export default function UserManagement() {
                       )}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-500">
                     {formatDate(user.created_at)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-500">
                     {user.ultimo_accesso ? formatDate(user.ultimo_accesso) : 'Mai'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-3 py-1.5 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
                       {/* Toggle Status */}
                       <button
@@ -381,18 +410,18 @@ export default function UserManagement() {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
             <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
+              <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4 text-red-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Conferma Eliminazione</h3>
+                <h3 className="text-sm font-semibold text-gray-900">Conferma Eliminazione</h3>
                 <p className="text-sm text-gray-500">Questa azione non può essere annullata</p>
               </div>
             </div>
 
-            <p className="text-gray-700 mb-6">
+            <p className="text-gray-700 mb-3">
               Sei sicuro di voler eliminare questo utente? Tutti i suoi dati verranno rimossi definitivamente.
             </p>
 
@@ -423,18 +452,18 @@ export default function UserManagement() {
       {/* Add User Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <UserPlus className="w-6 h-6 text-blue-600" />
+          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                <UserPlus className="w-4 h-4 text-blue-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Aggiungi Nuovo Utente</h3>
+                <h3 className="text-sm font-semibold text-gray-900">Aggiungi Nuovo Utente</h3>
                 <p className="text-sm text-gray-500">Inserisci i dati del nuovo utente</p>
               </div>
             </div>
 
-            <div className="space-y-4 mb-6">
+            <div className="space-y-3 mb-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Nome *
@@ -525,20 +554,20 @@ export default function UserManagement() {
       {/* Password Display Modal */}
       {showPasswordModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-4 h-4 text-green-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Utente Creato con Successo</h3>
+                <h3 className="text-sm font-semibold text-gray-900">Utente Creato con Successo</h3>
                 <p className="text-sm text-gray-500">Ecco le credenziali temporanee</p>
               </div>
             </div>
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-3">
               <div className="flex items-center space-x-2 mb-3">
-                <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                <AlertTriangle className="w-4 h-4 text-yellow-600" />
                 <span className="text-sm font-medium text-yellow-800">Password Temporanea</span>
               </div>
               <div className="space-y-2">

@@ -89,10 +89,10 @@ export default function GmailSetup() {
   }, [])
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold flex items-center">
-          <Mail className="mr-2 h-5 w-5" />
+        <h3 className="text-sm font-semibold flex items-center">
+          <Mail className="mr-2 h-4 w-4" />
           Configurazione Google API
         </h3>
 
@@ -114,9 +114,9 @@ export default function GmailSetup() {
       {status.configured ? (
         <div className="space-y-4">
           <div className="p-4 bg-green-50 rounded-lg">
-            <h4 className="font-medium text-green-800 mb-2">✅ Gmail Configurato</h4>
+            <h4 className="font-medium text-green-800 mb-1">✅ Gmail Configurato</h4>
             {status.email && (
-              <p className="text-green-600 text-sm mb-2">
+              <p className="text-green-600 text-sm mb-1">
                 Account: <strong>{status.email}</strong>
               </p>
             )}
@@ -148,7 +148,7 @@ export default function GmailSetup() {
       ) : (
         <div className="space-y-4">
           <div className="p-4 bg-yellow-50 rounded-lg">
-            <h4 className="font-medium text-yellow-800 mb-2">⚙️ Configurazione Necessaria</h4>
+            <h4 className="font-medium text-yellow-800 mb-1">⚙️ Configurazione Necessaria</h4>
             <p className="text-yellow-600 text-sm mb-3">
               Per inviare email reali tramite Gmail API, è necessario configurare l'autorizzazione.
             </p>
@@ -186,10 +186,10 @@ export default function GmailSetup() {
       )}
 
       {/* Sezione Google Drive */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mt-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold flex items-center">
-            <FolderOpen className="mr-2 h-5 w-5" />
+          <h3 className="text-sm font-semibold flex items-center">
+            <FolderOpen className="mr-2 h-4 w-4" />
             Configurazione Google Drive
           </h3>
 
@@ -216,8 +216,8 @@ export default function GmailSetup() {
         {isDriveConnected ? (
           <div className="space-y-4">
             <div className="p-4 bg-green-50 rounded-lg">
-              <h4 className="font-medium text-green-800 mb-2">✅ Google Drive Connesso</h4>
-              <p className="text-green-600 text-sm mb-2">
+              <h4 className="font-medium text-green-800 mb-1">✅ Google Drive Connesso</h4>
+              <p className="text-green-600 text-sm mb-1">
                 Il sistema ha accesso ai Drive Condivisi per la gestione automatica delle cartelle bandi e progetti.
               </p>
               <p className="text-green-600 text-sm">
@@ -228,11 +228,11 @@ export default function GmailSetup() {
         ) : (
           <div className="space-y-4">
             <div className="p-4 bg-yellow-50 rounded-lg">
-              <h4 className="font-medium text-yellow-800 mb-2">⚙️ Google Drive Non Connesso</h4>
+              <h4 className="font-medium text-yellow-800 mb-1">⚙️ Google Drive Non Connesso</h4>
               <p className="text-yellow-600 text-sm mb-3">
                 Per abilitare la sincronizzazione automatica delle cartelle bandi e progetti, è necessario configurare l'accesso a Google Drive.
               </p>
-              <p className="text-yellow-600 text-sm mb-2">
+              <p className="text-yellow-600 text-sm mb-1">
                 <strong>Funzionalità disponibili con Drive:</strong>
               </p>
               <ul className="text-yellow-600 text-sm list-disc list-inside space-y-1">
@@ -251,7 +251,7 @@ export default function GmailSetup() {
             )}
 
             <div className="p-4 bg-blue-50 rounded-lg">
-              <h4 className="font-medium text-blue-800 mb-2">ℹ️ Come collegare Google Drive</h4>
+              <h4 className="font-medium text-blue-800 mb-1">ℹ️ Come collegare Google Drive</h4>
               <p className="text-blue-600 text-sm mb-3">
                 Google Drive utilizza gli stessi token di Gmail. Se hai già configurato Gmail, Drive dovrebbe funzionare automaticamente.
               </p>

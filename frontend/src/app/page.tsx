@@ -12,6 +12,12 @@ import BandiContent from '@/components/BandiContent'
 import ProgettiContent from '@/components/ProgettiContent'
 import SettingsContent from '@/components/SettingsContent'
 import GmailClient from '@/components/GmailClient'
+import ReportsContent from '@/components/ReportsContent'
+import ProspectContent from '@/components/ProspectContent'
+import FaqContent from '@/components/FaqContent'
+import ConsulentiContent from '@/components/ConsulentiContent'
+import ChatbotWidget from '@/components/ChatbotWidget'
+import NoteInboxContent from '@/components/NoteInboxContent'
 import { LoadingSpinner } from '@/components/shared'
 
 function AppContent() {
@@ -48,17 +54,21 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
   sidebarExpanded: boolean
   setSidebarExpanded: (expanded: boolean) => void
 }) {
+  const { isAdmin } = useAuth()
   const getPageTitle = () => {
     switch (activeItem) {
       case 'dashboard': return 'Dashboard'
       case 'scadenze': return 'Scadenzario'
+      case 'prospect': return 'Prospect'
       case 'clienti': return 'Clienti'
       case 'bandi': return 'Bandi'
       case 'progetti': return 'Progetti'
       case 'email': return 'Centro Email'
+      case 'note-inbox': return 'Inbox Note'
       case 'consulenti': return 'Consulenti'
       case 'reports': return 'Reports'
       case 'settings': return 'Impostazioni'
+      case 'faq': return 'FAQ'
       default: return 'Dashboard'
     }
   }
@@ -67,13 +77,16 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
     switch (activeItem) {
       case 'dashboard': return ['Home', 'Dashboard']
       case 'scadenze': return ['Home', 'Scadenzario']
+      case 'prospect': return ['Home', 'Gestione', 'Prospect']
       case 'clienti': return ['Home', 'Gestione', 'Clienti']
       case 'bandi': return ['Home', 'Gestione', 'Bandi']
       case 'progetti': return ['Home', 'Gestione', 'Progetti']
       case 'email': return ['Home', 'Comunicazione', 'Email']
+      case 'note-inbox': return ['Home', 'Comunicazione', 'Inbox Note']
       case 'consulenti': return ['Home', 'Gestione', 'Consulenti']
       case 'reports': return ['Home', 'Analytics', 'Reports']
       case 'settings': return ['Home', 'Sistema', 'Impostazioni']
+      case 'faq': return ['Home', 'Aiuto', 'FAQ']
       default: return ['Home', 'Dashboard']
     }
   }
@@ -83,35 +96,31 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'dashboard':
         return <DashboardContent onNavigate={onNavigate} />
       case 'scadenze':
-        return <ScadenzeContent />
+        return <ScadenzeContent navigationParams={navigationParams} />
+      case 'prospect':
+        return <ProspectContent onNavigate={onNavigate} navigationParams={navigationParams} />
       case 'clienti':
-        return <ClientiContent onNavigate={onNavigate} />
+        return <ClientiContent onNavigate={onNavigate} navigationParams={navigationParams} />
       case 'bandi':
         return <BandiContent initialFilter={navigationParams?.filter} />
       case 'progetti':
         return <ProgettiContent initialFilter={navigationParams?.clienteFilter} onNavigate={onNavigate} />
       case 'email':
         return (
-          <div className="h-[calc(100vh-200px)] bg-white rounded-lg card-shadow overflow-hidden">
+          <div className="overflow-hidden -m-4 h-[calc(100%+2rem)] w-[calc(100%+2rem)]">
             <GmailClient isOpen={true} onClose={() => setActiveItem('dashboard')} />
           </div>
         )
+      case 'note-inbox':
+        return <NoteInboxContent />
       case 'consulenti':
-        return (
-          <div className="bg-white rounded-lg card-shadow p-8 text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Gestione Consulenti</h2>
-            <p className="text-gray-600">Sezione in sviluppo - Team e consulenti</p>
-          </div>
-        )
+        return <ConsulentiContent onNavigate={onNavigate} />
       case 'reports':
-        return (
-          <div className="bg-white rounded-lg card-shadow p-8 text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Reports & Analytics</h2>
-            <p className="text-gray-600">Sezione in sviluppo - Reportistica avanzata</p>
-          </div>
-        )
+        return <ReportsContent />
       case 'settings':
         return <SettingsContent />
+      case 'faq':
+        return <FaqContent />
       default:
         return <DashboardContent onNavigate={setActiveItem} />
     }
@@ -128,18 +137,20 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
 
       {/* Main Content - with dynamic left margin based on sidebar state */}
       <div
-        className={`flex flex-col min-h-screen transition-all duration-300 ease-in-out ${
-          sidebarExpanded ? 'ml-72' : 'ml-16'
+        className={`flex flex-col h-screen overflow-hidden transition-all duration-300 ease-in-out ${
+          sidebarExpanded ? 'ml-56' : 'ml-16'
         }`}
       >
         {/* Top Bar */}
-        <TopBar title={getPageTitle()} breadcrumb={getBreadcrumb()} onNavigate={setActiveItem} />
+        <TopBar title={getPageTitle()} breadcrumb={getBreadcrumb()} onNavigate={onNavigate} />
 
         {/* Page Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 min-h-0 p-4 overflow-auto">
           {renderContent()}
         </main>
       </div>
+
+      <ChatbotWidget />
     </div>
   )
 }

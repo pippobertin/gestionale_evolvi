@@ -1,6 +1,7 @@
+import { verifyJWT } from '@/lib/jwtAuth'
 import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
-import { supabase } from '@/lib/supabase'
+import { getGmailClient } from '@/lib/gmail'
 
 export async function GET(
   request: NextRequest,
@@ -12,40 +13,12 @@ export async function GET(
     const messageId = resolvedParams.id
     console.log('Gmail message ID:', messageId)
 
-    // Get Gmail tokens
-    const { data: refreshTokenData } = await supabase
-      .from('scadenze_bandi_system_settings')
-      .select('value')
-      .eq('key', 'gmail_refresh_token')
-      .single()
+    // Get logged-in user ID
+    const decoded = await verifyJWT(request)
+    const userId = decoded?.userId
 
-    const { data: accessTokenData } = await supabase
-      .from('scadenze_bandi_system_settings')
-      .select('value')
-      .eq('key', 'gmail_access_token')
-      .single()
-
-    if (!refreshTokenData?.value) {
-      return NextResponse.json({
-        success: false,
-        error: 'Gmail non configurato'
-      }, { status: 401 })
-    }
-
-    // Set up OAuth2 client
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/gmail/callback`
-    )
-
-    oauth2Client.setCredentials({
-      refresh_token: refreshTokenData.value,
-      access_token: accessTokenData?.value
-    })
-
-    // Get Gmail service
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client })
+    // Get Gmail client with user's tokens
+    const gmail = await getGmailClient(userId)
 
     // Fetch full message
     const messageResponse = await gmail.users.messages.get({
@@ -150,33 +123,9 @@ export async function DELETE(
     const { searchParams } = new URL(request.url)
     const permanent = searchParams.get('permanent') === 'true'
 
-    // Get Gmail tokens
-    const { data: refreshTokenData } = await supabase
-      .from('scadenze_bandi_system_settings')
-      .select('value')
-      .eq('key', 'gmail_refresh_token')
-      .single()
-
-    if (!refreshTokenData?.value) {
-      return NextResponse.json({
-        success: false,
-        error: 'Gmail non configurato'
-      }, { status: 401 })
-    }
-
-    // Set up OAuth2 client
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/gmail/callback`
-    )
-
-    oauth2Client.setCredentials({
-      refresh_token: refreshTokenData.value
-    })
-
-    // Get Gmail service
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client })
+    const decoded = await verifyJWT(request)
+    const userId = decoded?.userId
+    const gmail = await getGmailClient(userId)
 
     if (permanent) {
       // Permanently delete message

@@ -59,10 +59,10 @@ export default function GmailTestPanel() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border p-6">
+    <div className="bg-white rounded-lg shadow-sm border p-4">
       <div className="flex items-center gap-3 mb-4">
         <Mail className="w-6 h-6 text-red-500" />
-        <h3 className="text-lg font-semibold text-gray-900">Test Gmail Integration</h3>
+        <h3 className="text-sm font-semibold text-gray-900">Test Gmail Integration</h3>
       </div>
 
       {/* Status */}
@@ -70,9 +70,9 @@ export default function GmailTestPanel() {
         <div className="flex items-center justify-between p-4 border rounded-lg">
           <div className="flex items-center gap-3">
             {status.configured ? (
-              <CheckCircle className="w-5 h-5 text-green-500" />
+              <CheckCircle className="w-4 h-4 text-green-500" />
             ) : (
-              <XCircle className="w-5 h-5 text-red-500" />
+              <XCircle className="w-4 h-4 text-red-500" />
             )}
             <div>
               <div className="font-medium text-gray-900">
@@ -122,9 +122,9 @@ export default function GmailTestPanel() {
               }`}>
                 <div className="flex items-center gap-2">
                   {testResult.success ? (
-                    <CheckCircle className="w-5 h-5" />
+                    <CheckCircle className="w-4 h-4" />
                   ) : (
-                    <AlertCircle className="w-5 h-5" />
+                    <AlertCircle className="w-4 h-4" />
                   )}
                   <span className="font-medium">{testResult.message}</span>
                 </div>
@@ -137,9 +137,9 @@ export default function GmailTestPanel() {
         {!status.configured && (
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start gap-2">
-              <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-blue-800">
-                <p className="font-medium mb-2">Setup Gmail:</p>
+                <p className="font-medium mb-1">Setup Gmail:</p>
                 <ol className="list-decimal list-inside space-y-1 text-blue-700">
                   <li>Vai in Impostazioni → Configurazione Google</li>
                   <li>Completa l'autenticazione Gmail</li>

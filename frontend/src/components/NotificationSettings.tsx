@@ -52,7 +52,7 @@ export default function NotificationSettings() {
     emailDigestSettimanale: true,
     emailProgettiAssegnati: true,
     additionalRecipients: [],
-    calendarEnabled: false,
+    calendarEnabled: true,
     calendarId: '',
     calendarSyncScadenze: true,
     calendarSyncMilestones: true,
@@ -282,12 +282,12 @@ export default function NotificationSettings() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8">
+    <div className="max-w-4xl mx-auto p-4 space-y-3">
 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Impostazioni Notifiche</h2>
+          <h2 className="text-sm font-semibold text-gray-900">Impostazioni Notifiche</h2>
           <p className="text-gray-600 mt-1">Configura come e quando ricevere le notifiche</p>
         </div>
 
@@ -314,24 +314,24 @@ export default function NotificationSettings() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-500" />
+          <AlertCircle className="w-4 h-4 text-red-500" />
           <span className="text-red-800">{error}</span>
         </div>
       )}
 
       {/* Email Notifications */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center gap-3 mb-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex items-center gap-3 mb-3">
           <div className="bg-blue-100 p-2 rounded-lg">
-            <Mail className="w-5 h-5 text-blue-600" />
+            <Mail className="w-4 h-4 text-blue-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Notifiche Email</h3>
+            <h3 className="text-sm font-semibold text-gray-900">Notifiche Email</h3>
             <p className="text-sm text-gray-600">Ricevi alert e digest via email</p>
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Enable Email */}
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
             <div>
@@ -404,18 +404,18 @@ export default function NotificationSettings() {
       </div>
 
       {/* Destinatari Aggiuntivi */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center gap-3 mb-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex items-center gap-3 mb-3">
           <div className="bg-purple-100 p-2 rounded-lg">
-            <Users className="w-5 h-5 text-purple-600" />
+            <Users className="w-4 h-4 text-purple-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Destinatari Aggiuntivi</h3>
+            <h3 className="text-sm font-semibold text-gray-900">Destinatari Aggiuntivi</h3>
             <p className="text-sm text-gray-600">Email che riceveranno TUTTE le notifiche di scadenze</p>
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Aggiungi nuovo destinatario */}
           <div className="flex items-center gap-3">
             <input
@@ -465,18 +465,18 @@ export default function NotificationSettings() {
       </div>
 
       {/* Google Calendar Integration */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center gap-3 mb-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex items-center gap-3 mb-3">
           <div className="bg-green-100 p-2 rounded-lg">
-            <Calendar className="w-5 h-5 text-green-600" />
+            <Calendar className="w-4 h-4 text-green-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Google Calendar</h3>
+            <h3 className="text-sm font-semibold text-gray-900">Google Calendar</h3>
             <p className="text-sm text-gray-600">Sincronizza scadenze e milestone con Google Calendar</p>
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Enable Calendar */}
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
             <div>
@@ -498,7 +498,7 @@ export default function NotificationSettings() {
             <>
               {/* Calendar ID */}
               <div className="pl-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   ID Google Calendar (opzionale)
                 </label>
                 <input
@@ -541,18 +541,18 @@ export default function NotificationSettings() {
       </div>
 
       {/* Quiet Hours */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center gap-3 mb-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex items-center gap-3 mb-3">
           <div className="bg-purple-100 p-2 rounded-lg">
-            <Moon className="w-5 h-5 text-purple-600" />
+            <Moon className="w-4 h-4 text-purple-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Orari Non Disturbare</h3>
+            <h3 className="text-sm font-semibold text-gray-900">Orari Non Disturbare</h3>
             <p className="text-sm text-gray-600">Blocca le notifiche in determinati orari</p>
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Enable Quiet Hours */}
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
             <div>
@@ -571,9 +571,9 @@ export default function NotificationSettings() {
           </div>
 
           {settings.quietHoursEnabled && (
-            <div className="pl-6 grid grid-cols-2 gap-4">
+            <div className="pl-6 grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   <Clock className="w-4 h-4 inline mr-1" />
                   Ora inizio
                 </label>
@@ -585,7 +585,7 @@ export default function NotificationSettings() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   <Clock className="w-4 h-4 inline mr-1" />
                   Ora fine
                 </label>
@@ -604,7 +604,7 @@ export default function NotificationSettings() {
       {/* Info Card */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-start gap-3">
-          <Bell className="w-5 h-5 text-blue-600 mt-0.5" />
+          <Bell className="w-4 h-4 text-blue-600 mt-0.5" />
           <div>
             <h4 className="font-medium text-blue-900">Come funzionano le notifiche</h4>
             <ul className="text-sm text-blue-800 mt-2 space-y-1 list-disc list-inside">

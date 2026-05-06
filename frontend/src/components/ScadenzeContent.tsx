@@ -25,11 +25,12 @@ interface Scadenza {
   progetto_codice: string
   bando_nome: string
   bando_id: string
+  source: 'scadenze' | 'contrattuali'
 }
 
 type ViewMode = 'lista' | 'calendario' | 'settimana'
 
-export default function ScadenzeContent() {
+export default function ScadenzeContent({ navigationParams }: { navigationParams?: any }) {
   const [scadenze, setScadenze] = useState<Scadenza[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -44,6 +45,7 @@ export default function ScadenzeContent() {
   const [scadenzaDaCompletare, setScadenzaDaCompletare] = useState<Scadenza | null>(null)
   const [noteCompletamento, setNoteCompletamento] = useState('')
   const [calendarioMesi, setCalendarioMesi] = useState<number>(1) // 1, 2, 3, 12 mesi
+  const [calendarioDate, setCalendarioDate] = useState<Date | undefined>(undefined)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [showDayModal, setShowDayModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -54,10 +56,24 @@ export default function ScadenzeContent() {
     fetchScadenze()
   }, [])
 
+  // Naviga alla data specifica se arriva da navigationParams
+  useEffect(() => {
+    if (navigationParams?.date && !loading) {
+      const dateStr = navigationParams.date.split('T')[0]
+      setSelectedDate(dateStr)
+      setShowDayModal(true)
+      setViewMode('calendario')
+      // Posiziona il calendario sul mese della scadenza
+      setCalendarioDate(new Date(dateStr + 'T12:00:00'))
+    }
+  }, [navigationParams?.date, loading])
+
   const fetchScadenze = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+
+      // 1. Fetch scadenze progetto
+      const { data: dataProgetto, error: errProgetto } = await supabase
         .from('scadenze_bandi_scadenze')
         .select(`
           id,
@@ -84,18 +100,29 @@ export default function ScadenzeContent() {
         `)
         .order('data_scadenza', { ascending: true })
 
-      if (error) throw error
+      if (errProgetto) throw errProgetto
 
-      // Processa i dati per calcolare urgenza e giorni rimanenti
-      const scadenzeProcessate = (data || []).map(item => {
-        const today = new Date()
+      // 2. Fetch scadenze contrattuali/generali
+      const { data: dataContr, error: errContr } = await supabase
+        .from('scadenze_bandi_scadenze_contrattuali')
+        .select('*')
+        .order('data_scadenza', { ascending: true })
+
+      if (errContr) console.error('Errore scadenze contrattuali:', errContr)
+
+      const today = new Date()
+
+      // Processa scadenze progetto
+      const scadenzeProgetto = (dataProgetto || []).map(item => {
         const dataScadenza = new Date(item.data_scadenza)
         const diffTime = dataScadenza.getTime() - today.getTime()
         const giorni_rimanenti = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
         let urgenza: 'NORMALE' | 'IMMINENTE' | 'URGENTE' = 'NORMALE'
-        if (giorni_rimanenti < 0) urgenza = 'URGENTE'
-        else if (giorni_rimanenti <= 7) urgenza = 'IMMINENTE'
+        if (item.stato !== 'completata') {
+          if (giorni_rimanenti < 0) urgenza = 'URGENTE'
+          else if (giorni_rimanenti <= 7) urgenza = 'IMMINENTE'
+        }
 
         return {
           ...item,
@@ -106,11 +133,62 @@ export default function ScadenzeContent() {
           progetto_titolo: item.scadenze_bandi_progetti?.titolo_progetto || 'N/D',
           progetto_codice: item.scadenze_bandi_progetti?.codice_progetto || 'N/D',
           bando_nome: item.scadenze_bandi_bandi?.nome || 'N/D',
-          tipo_scadenza_nome: item.titolo
+          tipo_scadenza_nome: item.titolo,
+          source: 'scadenze' as const
         }
       })
 
-      setScadenze(scadenzeProcessate)
+      // Processa scadenze contrattuali → normalizza allo stesso formato
+      const statoMap: Record<string, string> = { APERTA: 'non_iniziata', IN_CORSO: 'in_corso', COMPLETATA: 'completata', ANNULLATA: 'completata' }
+      const prioritaMap: Record<string, string> = { BASSA: 'bassa', MEDIA: 'media', ALTA: 'alta', CRITICA: 'alta' }
+
+      const scadenzeContrattuali = (dataContr || []).map(item => {
+        const dataScadenza = new Date(item.data_scadenza)
+        const diffTime = dataScadenza.getTime() - today.getTime()
+        const giorni_rimanenti = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+        let urgenza: 'NORMALE' | 'IMMINENTE' | 'URGENTE' = 'NORMALE'
+        if (item.stato !== 'COMPLETATA' && item.stato !== 'ANNULLATA') {
+          if (giorni_rimanenti < 0) urgenza = 'URGENTE'
+          else if (giorni_rimanenti <= 7) urgenza = 'IMMINENTE'
+        }
+
+        // Estrai contesto dal titolo per cliente_nome
+        let clienteNome = '-'
+        if (item.categoria === 'riunione_prospect') {
+          clienteNome = item.titolo.replace('Riunione qualifica: ', '') + ' (prospect)'
+        } else if (item.categoria === 'CONTRATTI') {
+          const match = item.titolo.match(/- (.+)$/)
+          clienteNome = match ? match[1] : '-'
+        }
+
+        return {
+          id: item.id,
+          titolo: item.titolo,
+          data_scadenza: item.data_scadenza,
+          stato: (statoMap[item.stato] || 'non_iniziata') as 'non_iniziata' | 'in_corso' | 'completata',
+          priorita: (prioritaMap[item.priorita] || 'media') as 'bassa' | 'media' | 'alta',
+          responsabile_email: item.responsabile_email || '',
+          note: item.descrizione || '',
+          giorni_rimanenti,
+          urgenza,
+          cliente_nome: clienteNome,
+          cliente_email: '',
+          tipo_scadenza_nome: item.tipo_scadenza || item.categoria || '',
+          progetto_id: '',
+          progetto_titolo: '-',
+          progetto_codice: '-',
+          bando_nome: '-',
+          bando_id: '',
+          source: 'contrattuali' as const
+        }
+      })
+
+      // Unisci e ordina per data
+      const tutte = [...scadenzeProgetto, ...scadenzeContrattuali]
+        .sort((a, b) => new Date(a.data_scadenza).getTime() - new Date(b.data_scadenza).getTime())
+
+      setScadenze(tutte)
     } catch (err: any) {
       console.error('Errore nel caricamento scadenze:', err)
       setError('Errore nel caricamento delle scadenze')
@@ -198,56 +276,44 @@ export default function ScadenzeContent() {
     if (!scadenzaDaEliminare) return
 
     try {
-      // Elimina prima i responsabili associati
-      await supabase
-        .from('scadenze_bandi_responsabili_scadenze')
-        .delete()
-        .eq('scadenza_id', scadenzaDaEliminare.id)
+      if (scadenzaDaEliminare.source === 'contrattuali') {
+        // Elimina dalla tabella contrattuali
+        const { error } = await supabase
+          .from('scadenze_bandi_scadenze_contrattuali')
+          .delete()
+          .eq('id', scadenzaDaEliminare.id)
+        if (error) throw error
+      } else {
+        // Elimina prima i responsabili associati
+        await supabase
+          .from('scadenze_bandi_responsabili_scadenze')
+          .delete()
+          .eq('scadenza_id', scadenzaDaEliminare.id)
 
-      // Elimina eventuali eventi calendario associati
-      await supabase
-        .from('scadenze_bandi_calendar_events')
-        .delete()
-        .eq('entity_id', scadenzaDaEliminare.id)
-        .eq('event_type', 'scadenza')
+        // Elimina la scadenza
+        const { error } = await supabase
+          .from('scadenze_bandi_scadenze')
+          .delete()
+          .eq('id', scadenzaDaEliminare.id)
 
-      // Elimina la scadenza
-      const { error } = await supabase
-        .from('scadenze_bandi_scadenze')
-        .delete()
-        .eq('id', scadenzaDaEliminare.id)
+        if (error) throw error
 
-      if (error) throw error
-
-      // Elimina evento dal calendario Google se esiste
-      try {
-        console.log('🔍 Tentativo eliminazione evento calendario per scadenza:', scadenzaDaEliminare.id)
-        const { CalendarService } = await import('@/lib/notifications/calendarService')
-
-        // Prima prova l'eliminazione normale
-        const success = await CalendarService.deleteEvent(scadenzaDaEliminare.id, 'scadenza')
-
-        if (success) {
-          console.log('✅ Evento calendario eliminato con successo')
-        } else {
-          console.warn('⚠️ Evento non trovato nel DB, provo eliminazione orfana...')
-          // Se non trovato nel database, prova la pulizia eventi orfani
-          const orphanSuccess = await CalendarService.deleteOrphanCalendarEvents(
-            scadenzaDaEliminare.id,
-            scadenzaDaEliminare.titolo
-          )
-          if (orphanSuccess) {
-            console.log('✅ Eventi orfani eliminati con successo')
+        // Elimina evento dal calendario Google se esiste
+        try {
+          const { CalendarService } = await import('@/lib/notifications/calendarService')
+          const success = await CalendarService.deleteEvent(scadenzaDaEliminare.id, 'scadenza')
+          if (!success) {
+            await CalendarService.deleteOrphanCalendarEvents(
+              scadenzaDaEliminare.id,
+              scadenzaDaEliminare.titolo
+            )
           }
+        } catch (calError) {
+          console.error('Errore eliminazione evento calendario:', calError)
         }
-      } catch (calError) {
-        console.error('❌ Errore eliminazione evento calendario:', calError)
       }
 
-      // Ricarica le scadenze
       fetchScadenze()
-
-      // Chiudi ENTRAMBI i modal dopo eliminazione
       setShowDeleteModal(false)
       setScadenzaDaEliminare(null)
       setShowDayModal(false)
@@ -267,31 +333,48 @@ export default function ScadenzeContent() {
   // Aggiorna stato scadenza con cascata
   const updateScadenzaStato = async (scadenzaId: string, nuovoStato: string, note?: string) => {
     try {
-      const updateData: any = {
-        stato: nuovoStato
+      const scadenza = scadenze.find(s => s.id === scadenzaId)
+
+      if (scadenza?.source === 'contrattuali') {
+        // Mappa stato indietro a formato contrattuali
+        const reverseStatoMap: Record<string, string> = { non_iniziata: 'APERTA', in_corso: 'IN_CORSO', completata: 'COMPLETATA' }
+        const updateData: any = { stato: reverseStatoMap[nuovoStato] || 'APERTA' }
+        if (nuovoStato === 'completata') {
+          updateData.data_completamento = new Date().toISOString()
+          if (note) updateData.note_completamento = note
+        }
+        const { error } = await supabase
+          .from('scadenze_bandi_scadenze_contrattuali')
+          .update(updateData)
+          .eq('id', scadenzaId)
+        if (error) throw error
+      } else {
+        const updateData: any = { stato: nuovoStato }
+        if (nuovoStato === 'completata') {
+          updateData.completata_il = new Date().toISOString()
+          if (note) updateData.note_completamento = note
+        }
+        const { error } = await supabase
+          .from('scadenze_bandi_scadenze')
+          .update(updateData)
+          .eq('id', scadenzaId)
+        if (error) throw error
       }
 
-      if (nuovoStato === 'completata') {
-        updateData.completata_il = new Date().toISOString()
-        if (note) updateData.note_completamento = note
+      // Aggiorna le scadenze locali (ricalcola urgenza se completata)
+      setScadenze(prev => prev.map(s => {
+        if (s.id !== scadenzaId) return s
+        const updated = { ...s, stato: nuovoStato as any }
+        if (nuovoStato === 'completata') {
+          updated.urgenza = 'NORMALE'
+        }
+        return updated
+      }))
+
+      // Gestisci aggiornamenti a cascata (solo per scadenze progetto)
+      if (scadenza?.source !== 'contrattuali') {
+        await handleCascadeUpdates(scadenzaId, nuovoStato)
       }
-
-      const { error } = await supabase
-        .from('scadenze_bandi_scadenze')
-        .update(updateData)
-        .eq('id', scadenzaId)
-
-      if (error) throw error
-
-      // Aggiorna le scadenze locali
-      setScadenze(prev => prev.map(s =>
-        s.id === scadenzaId
-          ? { ...s, stato: nuovoStato as any }
-          : s
-      ))
-
-      // Gestisci aggiornamenti a cascata
-      await handleCascadeUpdates(scadenzaId, nuovoStato)
 
     } catch (error) {
       console.error('Errore aggiornamento stato scadenza:', error)
@@ -375,10 +458,10 @@ export default function ScadenzeContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Gestione Scadenze</h1>
+        <h1 className="text-sm font-semibold text-gray-900">Agenda Scadenze</h1>
         <button
           onClick={() => setShowNuovaScadenza(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
@@ -388,25 +471,18 @@ export default function ScadenzeContent() {
         </button>
       </div>
 
-      {/* Statistiche Rapide */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-bold text-red-100 drop-shadow-sm">Urgenti</p>
-              <p className="text-2xl font-black text-white drop-shadow">{urgenti.length}</p>
-            </div>
-            <AlertTriangle className="w-8 h-8 text-red-200 drop-shadow" />
-          </div>
-        </div>
+      {/* Contenuto unificato */}
+      <>
 
+      {/* Statistiche Rapide */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="bg-gradient-to-br from-amber-500 to-yellow-500 p-4 rounded-xl border border-amber-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-white drop-shadow-sm">Imminenti</p>
-              <p className="text-2xl font-black text-white drop-shadow">{imminenti.length}</p>
+              <p className="text-lg font-black text-white drop-shadow">{imminenti.length}</p>
             </div>
-            <Clock className="w-8 h-8 text-white drop-shadow" />
+            <Clock className="w-6 h-6 text-white drop-shadow" />
           </div>
         </div>
 
@@ -414,9 +490,9 @@ export default function ScadenzeContent() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-cyan-100 drop-shadow-sm">Normali</p>
-              <p className="text-2xl font-black text-white drop-shadow">{normali.length}</p>
+              <p className="text-lg font-black text-white drop-shadow">{normali.length}</p>
             </div>
-            <Calendar className="w-8 h-8 text-cyan-200 drop-shadow" />
+            <Calendar className="w-6 h-6 text-cyan-200 drop-shadow" />
           </div>
         </div>
 
@@ -424,17 +500,27 @@ export default function ScadenzeContent() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-emerald-100 drop-shadow-sm">Completate</p>
-              <p className="text-2xl font-black text-white drop-shadow">
+              <p className="text-lg font-black text-white drop-shadow">
                 {scadenze.filter(s => s.stato === 'completata').length}
               </p>
             </div>
-            <CheckCircle className="w-8 h-8 text-emerald-200 drop-shadow" />
+            <CheckCircle className="w-6 h-6 text-emerald-200 drop-shadow" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-red-100 drop-shadow-sm">Scadute</p>
+              <p className="text-lg font-black text-white drop-shadow">{urgenti.length}</p>
+            </div>
+            <AlertTriangle className="w-6 h-6 text-red-200 drop-shadow" />
           </div>
         </div>
       </div>
 
       {/* Controlli Vista e Filtri */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+      <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
         {/* Toggle Vista */}
         <div className="flex bg-gray-100 rounded-lg p-1">
           <button
@@ -547,28 +633,28 @@ export default function ScadenzeContent() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Scadenza
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Cliente
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Progetto
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Bando
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Data
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Giorni Rim.
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Urgenza
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Stato
                   </th>
                 </tr>
@@ -576,15 +662,15 @@ export default function ScadenzeContent() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {scadenzeFiltrate.map((scadenza) => (
                   <tr key={scadenza.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-1.5 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {scadenza.titolo || scadenza.note}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                       {scadenza.cliente_nome || 'N/D'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                       <div>
                         <div className="font-medium">{scadenza.progetto_titolo || 'N/D'}</div>
                         <div className="text-gray-500 text-xs truncate max-w-32">
@@ -592,13 +678,13 @@ export default function ScadenzeContent() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                       {scadenza.bando_nome || 'N/D'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                       {formatDate(scadenza.data_scadenza)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-1.5 whitespace-nowrap">
                       <span className={`text-sm font-medium ${
                         scadenza.giorni_rimanenti < 0 ? 'text-red-600' :
                         scadenza.giorni_rimanenti <= 2 ? 'text-red-600' :
@@ -611,12 +697,12 @@ export default function ScadenzeContent() {
                         }
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-1.5 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(scadenza.urgenza)}`}>
                         {scadenza.urgenza}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-1.5 whitespace-nowrap">
                       <select
                         value={scadenza.stato}
                         onChange={(e) => handleStatoChange(scadenza, e.target.value)}
@@ -675,6 +761,7 @@ export default function ScadenzeContent() {
             scadenze={scadenzeFiltrate}
             mesiDaVisualizzare={calendarioMesi}
             onDayClick={openDayModal}
+            initialDate={calendarioDate}
           />
         </div>
       )}
@@ -688,10 +775,10 @@ export default function ScadenzeContent() {
       )}
       {/* Modal Completamento Scadenza */}
       {showCompletaModal && scadenzaDaCompletare && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Completa Scadenza</h3>
+              <h3 className="text-sm font-medium text-gray-900">Completa Scadenza</h3>
               <button
                 onClick={() => setShowCompletaModal(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -744,9 +831,9 @@ export default function ScadenzeContent() {
       {/* Modal Conferma Eliminazione */}
       {showDeleteModal && scadenzaDaEliminare && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900 text-red-600">
+              <h3 className="text-sm font-medium text-gray-900 text-red-600">
                 🗑️ Elimina Scadenza
               </h3>
               <button
@@ -804,8 +891,8 @@ export default function ScadenzeContent() {
       {showDayModal && selectedDate && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-sm font-medium text-gray-900">
                 Scadenze del {new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', {
                   weekday: 'long',
                   day: 'numeric',
@@ -821,7 +908,7 @@ export default function ScadenzeContent() {
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto max-h-96">
+            <div className="p-4 overflow-y-auto max-h-96">
               {getSelectedDateScadenze().length > 0 ? (
                 <div className="space-y-4">
                   {getSelectedDateScadenze().map((scadenza) => (
@@ -888,7 +975,7 @@ export default function ScadenzeContent() {
               )}
             </div>
 
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
               <button
                 onClick={closeDayModal}
                 className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
@@ -899,6 +986,8 @@ export default function ScadenzeContent() {
           </div>
         </div>
       )}
+
+      </>
     </div>
   )
 }

@@ -215,12 +215,12 @@ export default function GroupsManagement() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <Users className="h-6 w-6 text-primary-500" />
-          <h2 className="text-xl font-semibold text-gray-900">Gestione Gruppi</h2>
+          <h2 className="text-sm font-semibold text-gray-900">Gestione Gruppi</h2>
         </div>
         <button
           onClick={() => setShowNewGroupForm(true)}
@@ -236,9 +236,9 @@ export default function GroupsManagement() {
       {showNewGroupForm && (
         <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
           <h3 className="text-lg font-medium mb-4">Crea Nuovo Gruppo</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Nome Gruppo *
               </label>
               <input
@@ -250,7 +250,7 @@ export default function GroupsManagement() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Descrizione
               </label>
               <input
@@ -262,7 +262,7 @@ export default function GroupsManagement() {
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Colore
               </label>
               <div className="flex items-center space-x-2">
@@ -307,9 +307,9 @@ export default function GroupsManagement() {
             {editingGroup === gruppo.id ? (
               // Form di modifica
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Nome</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
                     <input
                       type="text"
                       value={editGroup.nome}
@@ -318,7 +318,7 @@ export default function GroupsManagement() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Descrizione</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione</label>
                     <input
                       type="text"
                       value={editGroup.descrizione}
@@ -327,7 +327,7 @@ export default function GroupsManagement() {
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Colore</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Colore</label>
                     <div className="flex items-center space-x-2">
                       {coloriPredefiniti.map(colore => (
                         <button
@@ -394,7 +394,7 @@ export default function GroupsManagement() {
 
                 {/* Utenti nel gruppo */}
                 <div className="mt-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                  <h4 className="text-sm font-medium text-gray-700 mb-1">
                     Utenti in questo gruppo ({getUsersInGroup(gruppo.id).length})
                   </h4>
                   <div className="space-y-2">

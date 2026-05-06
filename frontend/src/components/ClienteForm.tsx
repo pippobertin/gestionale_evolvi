@@ -13,11 +13,15 @@ import {
   FileText,
   Euro,
   Users,
-  Hash,
   Plus,
   Edit,
   Trash2,
-  FolderOpen
+  FolderOpen,
+  GraduationCap,
+  Briefcase,
+  Undo2,
+  AlertTriangle,
+  CheckCircle
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -65,7 +69,7 @@ interface Cliente {
   diritti_voto?: number
   influenza_dominante?: boolean
   note_collegamento?: string
-  categoria_evolvi?: 'CLIENTE_SPOT' | 'EVOLVI_BASE' | 'EVOLVI_FULL'
+  categoria_evolvi?: 'CLIENTE_SPOT' | 'EVOLVI' | 'FPI' | 'CONSULENTI'
   durata_evolvi?: string
   scadenza_evolvi?: string
   assegnato_a?: string
@@ -119,14 +123,38 @@ interface CollegamentoAziendale {
   attivo_collegato?: number
 }
 
+interface DependencyData {
+  scenario: 'A' | 'B'
+  prospectId: string | null
+  prospectNumero: string | null
+  dependencies: Record<string, number>
+  hasDependencies: boolean
+  totalDependencies: number
+}
+
+const DEPENDENCY_LABELS: Record<string, string> = {
+  contratti: 'Contratti Evolvi',
+  fatture: 'Fatture',
+  documenti: 'Documenti amministrativi',
+  referenti: 'Referenti',
+  piani_formativi: 'Piani formativi',
+  corsi: 'Corsi formativi',
+  adesioni_fpi: 'Adesioni FPI',
+  collegamenti: 'Collegamenti aziendali',
+  contract_tracking: 'Tracking contratti',
+  scadenze_contrattuali: 'Scadenze contrattuali',
+  progetti: 'Progetti',
+}
+
 interface ClienteFormProps {
   cliente?: Cliente
   isOpen: boolean
   onClose: () => void
   onSave: () => void
+  onNavigate?: (page: string, params?: any) => void
 }
 
-export default function ClienteForm({ cliente, isOpen, onClose, onSave }: ClienteFormProps) {
+export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNavigate }: ClienteFormProps) {
   const { canDelete, user } = useAuth()
   const [formData, setFormData] = useState<Cliente>({
     denominazione: '',
@@ -151,6 +179,14 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
   // Stati per il modal nuova azienda collegata
   const [showNuovaAziendaModal, setShowNuovaAziendaModal] = useState(false)
+
+  // Stati per conversione a prospect
+  const [showConvertModal, setShowConvertModal] = useState(false)
+  const [convertLoading, setConvertLoading] = useState(false)
+  const [dependencyData, setDependencyData] = useState<DependencyData | null>(null)
+  const [dependencyLoading, setDependencyLoading] = useState(false)
+  const [convertError, setConvertError] = useState<string | null>(null)
+  const [convertSuccess, setConvertSuccess] = useState<{ prospectId: string; scenario: string } | null>(null)
 
   useEffect(() => {
     if (cliente) {
@@ -406,7 +442,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
       formData.attivo_bilancio
     )
     setDimensioneCalcolataCorrente(nuovaDimensione)
-  }, [formData.ula, formData.ultimo_fatturato, formData.attivo_bilancio, formData.tipo_collegamento, formData.percentuale_partecipazione, datiAziendaCollegata])
+  }, [formData.ula, formData.ultimo_fatturato, formData.attivo_bilancio, formData.tipo_collegamento, formData.percentuale_partecipazione, datiAziendaCollegata, collegamenti])
 
   // Calcola dimensione considerando aziende collegate secondo UE 2003/361/CE
   const calcolaDimensioneAggregata = (ula?: number, fatturato?: number, attivo?: number): string => {
@@ -449,11 +485,52 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
 
     // Applica i limiti UE 2003/361/CE
-    let dimensioneCalcolata = ''
-    if (ulaTotal < 10 && (fatturatoTotal <= 2000000 || attivoTotal <= 2000000)) dimensioneCalcolata = 'MICRO'
-    else if (ulaTotal < 50 && (fatturatoTotal <= 10000000 || attivoTotal <= 10000000)) dimensioneCalcolata = 'PICCOLA'
-    else if (ulaTotal < 250 && (fatturatoTotal <= 50000000 || attivoTotal <= 43000000)) dimensioneCalcolata = 'MEDIA'
-    else dimensioneCalcolata = 'GRANDE'
+    // Strategia: classifica separatamente per ULA, Fatturato e Attivo
+    // Poi prendi la dimensione PIÙ GRANDE tra quelle calcolate
+    // Questo evita che un valore basso "salvi" la classificazione quando un altro è altissimo
+
+    const hasFatturato = fatturatoTotal > 0
+    const hasAttivo = attivoTotal > 0
+
+    // Classifica per ULA
+    let dimensionePerULA = ''
+    if (ulaTotal < 10) dimensionePerULA = 'MICRO'
+    else if (ulaTotal < 50) dimensionePerULA = 'PICCOLA'
+    else if (ulaTotal < 250) dimensionePerULA = 'MEDIA'
+    else dimensionePerULA = 'GRANDE'
+
+    // Classifica per Fatturato (se presente)
+    let dimensionePerFatturato = ''
+    if (hasFatturato) {
+      if (fatturatoTotal <= 2000000) dimensionePerFatturato = 'MICRO'
+      else if (fatturatoTotal <= 10000000) dimensionePerFatturato = 'PICCOLA'
+      else if (fatturatoTotal <= 50000000) dimensionePerFatturato = 'MEDIA'
+      else dimensionePerFatturato = 'GRANDE'
+    }
+
+    // Classifica per Attivo (se presente)
+    let dimensionePerAttivo = ''
+    if (hasAttivo) {
+      if (attivoTotal <= 2000000) dimensionePerAttivo = 'MICRO'
+      else if (attivoTotal <= 10000000) dimensionePerAttivo = 'PICCOLA'
+      else if (attivoTotal <= 43000000) dimensionePerAttivo = 'MEDIA'
+      else dimensionePerAttivo = 'GRANDE'
+    }
+
+    // Funzione helper per confrontare dimensioni
+    const dimensioniOrdinate = ['MICRO', 'PICCOLA', 'MEDIA', 'GRANDE']
+    const getPeso = (dim: string) => dimensioniOrdinate.indexOf(dim)
+
+    // Prendi la dimensione più grande tra quelle calcolate
+    let dimensioneCalcolata = dimensionePerULA // Partiamo sempre da ULA
+
+    if (dimensionePerFatturato && getPeso(dimensionePerFatturato) > getPeso(dimensioneCalcolata)) {
+      dimensioneCalcolata = dimensionePerFatturato
+    }
+
+    if (dimensionePerAttivo && getPeso(dimensionePerAttivo) > getPeso(dimensioneCalcolata)) {
+      dimensioneCalcolata = dimensionePerAttivo
+    }
 
 
     return dimensioneCalcolata
@@ -503,30 +580,27 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
   // Funzione per salvare un collegamento
   const salvaCollegamento = async (collegamento: CollegamentoAziendale) => {
     try {
-
       if (!cliente?.id) {
         throw new Error('ID cliente mancante - salvare prima il cliente')
       }
 
       if (collegamento.id) {
         // Update existing
-        const { data, error } = await supabase
-          .from('scadenze_bandi_collegamenti_aziendali')
-          .update({
-            azienda_collegata_id: collegamento.azienda_collegata_id,
-            tipo_collegamento: collegamento.tipo_collegamento,
-            percentuale_partecipazione: collegamento.percentuale_partecipazione || null,
-            diritti_voto: collegamento.diritti_voto || null,
-            influenza_dominante: collegamento.influenza_dominante || false,
-            note_collegamento: collegamento.note_collegamento || null
-          })
-          .eq('id', collegamento.id)
-          .select()
-
-        if (error) {
-          console.error('❌ Errore update:', error)
-          throw error
+        const updateData = {
+          azienda_collegata_id: collegamento.azienda_collegata_id,
+          tipo_collegamento: collegamento.tipo_collegamento,
+          percentuale_partecipazione: collegamento.percentuale_partecipazione || null,
+          diritti_voto: collegamento.diritti_voto || null,
+          influenza_dominante: collegamento.influenza_dominante || false,
+          note_collegamento: collegamento.note_collegamento || null
         }
+
+        const { error } = await supabase
+          .from('scadenze_bandi_collegamenti_aziendali')
+          .update(updateData)
+          .eq('id', collegamento.id)
+
+        if (error) throw error
       } else {
         // Create new
         const insertData = {
@@ -539,22 +613,17 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
           note_collegamento: collegamento.note_collegamento || null
         }
 
-
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('scadenze_bandi_collegamenti_aziendali')
           .insert([insertData])
-          .select()
 
-        if (error) {
-          console.error('❌ Errore insert:', error)
-          throw error
-        }
+        if (error) throw error
       }
 
       // Ricarica i collegamenti
       await loadCollegamenti(cliente.id)
     } catch (error) {
-      console.error('❌ Errore nel salvataggio del collegamento:', error)
+      console.error('Errore nel salvataggio del collegamento:', error)
 
       // Gestisci errore di collegamento duplicato
       const errorCode = (error as any)?.code
@@ -681,9 +750,9 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
       onSave()
       onClose()
-    } catch (error) {
-      console.error('Errore nel salvataggio:', error)
-      alert('Errore nel salvataggio del cliente')
+    } catch (error: any) {
+      console.error('Errore nel salvataggio:', error?.message || error?.details || error?.hint || error)
+      alert(`Errore nel salvataggio: ${error?.message || error?.details || 'Errore sconosciuto'}`)
     } finally {
       setSaving(false)
     }
@@ -696,20 +765,84 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
     { id: 'contatti', label: 'Contatti', icon: Mail },
     { id: 'legale', label: 'Legale Rappresentante', icon: User },
     { id: 'dimensionamento', label: 'Dimensionamento', icon: Users },
-    { id: 'collegamenti', label: 'Rapporti di Collegamento', icon: Hash },
     { id: 'gestione', label: 'Gestione', icon: FileText },
     { id: 'documenti', label: 'Documenti', icon: FolderOpen }
   ]
 
 
+  // Handler conversione a prospect
+  const handleOpenConvertModal = async () => {
+    if (!cliente?.id) return
+    setShowConvertModal(true)
+    setConvertError(null)
+    setConvertSuccess(null)
+    setDependencyData(null)
+    setDependencyLoading(true)
+
+    try {
+      const res = await fetch(`/api/clienti/${cliente.id}/convert-to-prospect`)
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
+      setDependencyData(result.data)
+    } catch (err: any) {
+      setConvertError(err.message || 'Errore nel controllo delle dipendenze')
+    } finally {
+      setDependencyLoading(false)
+    }
+  }
+
+  const handleConfirmConvert = async () => {
+    if (!cliente?.id) return
+    try {
+      setConvertLoading(true)
+      setConvertError(null)
+
+      const res = await fetch(`/api/clienti/${cliente.id}/convert-to-prospect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force: true })
+      })
+      const result = await res.json()
+      if (!result.success) throw new Error(result.error)
+
+      setConvertSuccess({
+        prospectId: result.data.prospectId,
+        scenario: result.data.scenario
+      })
+    } catch (err: any) {
+      setConvertError(err.message || 'Errore durante la riconversione')
+    } finally {
+      setConvertLoading(false)
+    }
+  }
+
+  const handleCloseConvertModal = () => {
+    if (convertSuccess) {
+      onSave() // ricarica la lista clienti
+      onClose()
+    }
+    setShowConvertModal(false)
+    setDependencyData(null)
+    setConvertError(null)
+    setConvertSuccess(null)
+  }
+
+  const handleGoToProspect = () => {
+    if (convertSuccess && onNavigate) {
+      onSave()
+      onClose()
+      onNavigate('prospect', { openProspectId: convertSuccess.prospectId })
+    }
+  }
+
   const renderTabContent = () => {
     switch (currentTab) {
       case 'anagrafica':
         return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Denominazione *
                 </label>
                 <input
@@ -722,7 +855,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Numero Azienda (Auto-generato)
                 </label>
                 <input
@@ -738,9 +871,9 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Partita IVA
                 </label>
                 <input
@@ -752,7 +885,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Codice Fiscale
                 </label>
                 <input
@@ -764,7 +897,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   REA
                 </label>
                 <input
@@ -777,10 +910,10 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* Selezione Sezione ATECO */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Sezione Attività ATECO 2025
                 </label>
                 <select
@@ -799,7 +932,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
               {/* Selezione Codice ATECO specifico */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Codice ATECO specifico
                 </label>
                 <select
@@ -833,9 +966,9 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Data Costituzione
                 </label>
                 <input
@@ -846,7 +979,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Estremi iscrizione al RUNTS
                 </label>
                 <input
@@ -860,14 +993,14 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
             </div>
 
             {/* Sezione Dati Bancari */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Euro className="w-5 h-5 mr-2" />
+            <div className="border-t pt-3">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                <Euro className="w-4 h-4 mr-2" />
                 Dati Bancari e Fatturazione
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Coordinate Bancarie (IBAN)
                   </label>
                   <input
@@ -879,7 +1012,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Banca/Filiale
                   </label>
                   <input
@@ -891,7 +1024,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Codice SDI
                   </label>
                   <input
@@ -906,14 +1039,14 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
             </div>
 
             {/* Indirizzo */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <MapPin className="w-5 h-5 mr-2" />
+            <div className="border-t pt-3">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                <MapPin className="w-4 h-4 mr-2" />
                 Indirizzo di Fatturazione
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Indirizzo
                   </label>
                   <input
@@ -925,7 +1058,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     CAP
                   </label>
                   <input
@@ -937,7 +1070,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Città
                   </label>
                   <input
@@ -949,7 +1082,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Provincia
                   </label>
                   <input
@@ -962,7 +1095,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Stato
                   </label>
                   <input
@@ -979,16 +1112,16 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
       case 'contatti':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             {/* Contatti aziendali principali */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Mail className="w-5 h-5 mr-2" />
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                <Mail className="w-4 h-4 mr-2" />
                 Contatti Aziendali Principali
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Email
                   </label>
                   <input
@@ -1000,7 +1133,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     PEC
                   </label>
                   <input
@@ -1012,7 +1145,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Telefono
                   </label>
                   <input
@@ -1024,7 +1157,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Sito Web
                   </label>
                   <input
@@ -1039,7 +1172,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
             </div>
 
             {/* Referenti aziendali */}
-            <div className="border-t pt-6">
+            <div className="border-t pt-3">
               <ReferentiManager
                 clienteId={cliente?.id || ''}
                 isNewClient={!cliente?.id}
@@ -1050,11 +1183,11 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
       case 'legale':
         return (
-          <div className="space-y-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="space-y-3">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
               <div className="flex items-center">
                 <User className="w-5 h-5 text-blue-600 mr-2" />
-                <h3 className="text-lg font-semibold text-blue-900">Dati Legale Rappresentante</h3>
+                <h3 className="text-sm font-semibold text-blue-900">Dati Legale Rappresentante</h3>
               </div>
               <p className="text-blue-700 mt-2 text-sm">
                 Inserisci i dati del legale rappresentante dell'azienda
@@ -1063,13 +1196,13 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
             {/* Dati Anagrafici */}
             <div>
-              <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                 <User className="w-4 h-4 mr-2" />
                 Dati Anagrafici
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Nome *
                   </label>
                   <input
@@ -1081,7 +1214,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Cognome *
                   </label>
                   <input
@@ -1093,7 +1226,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Codice Fiscale
                   </label>
                   <input
@@ -1106,7 +1239,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Data di Nascita
                   </label>
                   <input
@@ -1117,7 +1250,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Luogo di Nascita
                   </label>
                   <input
@@ -1129,7 +1262,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Provincia di Nascita
                   </label>
                   <input
@@ -1142,7 +1275,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Nazionalità
                   </label>
                   <input
@@ -1158,13 +1291,13 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
             {/* Indirizzo */}
             <div>
-              <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                 <MapPin className="w-4 h-4 mr-2" />
                 Indirizzo di Residenza
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Indirizzo
                   </label>
                   <input
@@ -1176,7 +1309,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     CAP
                   </label>
                   <input
@@ -1189,7 +1322,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Città
                   </label>
                   <input
@@ -1201,7 +1334,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Provincia
                   </label>
                   <input
@@ -1218,13 +1351,13 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
             {/* Contatti */}
             <div>
-              <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
                 <Mail className="w-4 h-4 mr-2" />
                 Contatti
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Email
                   </label>
                   <input
@@ -1236,7 +1369,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Telefono
                   </label>
                   <input
@@ -1248,7 +1381,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Note
                   </label>
                   <textarea
@@ -1269,41 +1402,41 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
         const dimensioneCalcolata = dimensioneCalcolataCorrente
 
         return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   ULA (Unità Lavorative Annue)
                 </label>
                 <input
                   type="number"
                   step="0.01"
                   value={formData.ula || ''}
-                  onChange={(e) => handleInputChange('ula', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => handleInputChange('ula', e.target.value === '' ? null : parseFloat(e.target.value))}
                   className="input"
                   placeholder="2.5"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Ultimo Fatturato (€)
                 </label>
                 <input
                   type="number"
                   value={formData.ultimo_fatturato || ''}
-                  onChange={(e) => handleInputChange('ultimo_fatturato', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => handleInputChange('ultimo_fatturato', e.target.value === '' ? null : parseFloat(e.target.value))}
                   className="input"
                   placeholder="325000"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Attivo di Bilancio (€)
                 </label>
                 <input
                   type="number"
                   value={formData.attivo_bilancio || ''}
-                  onChange={(e) => handleInputChange('attivo_bilancio', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => handleInputChange('attivo_bilancio', e.target.value === '' ? null : parseFloat(e.target.value))}
                   className="input"
                   placeholder="140000"
                 />
@@ -1311,21 +1444,20 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
             </div>
 
             {/* Dimensione calcolata automaticamente */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <h4 className="text-sm font-medium text-blue-800 mb-2">
                 📊 Dimensione Aziendale (Calcolata automaticamente secondo UE 2003/361/CE)
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <span className="text-lg font-bold text-blue-600">
                     {dimensioneCalcolata || 'Non calcolabile'}
                   </span>
                   {dimensioneCalcolata && (
                     <p className="text-xs text-blue-600 mt-1">
-                      {formData.tipo_collegamento !== 'AUTONOMA' && datiAziendaCollegata ? (
+                      {collegamenti.length > 0 ? (
                         <>
-                          📊 <strong>Calcolo aggregato</strong> secondo UE 2003/361/CE<br/>
-                          Include dati dell'azienda {formData.tipo_collegamento?.toLowerCase()}
+                          <strong>Calcolo aggregato</strong> secondo UE 2003/361/CE — include {collegamenti.length} collegamento{collegamenti.length > 1 ? 'i' : ''} aziendale{collegamenti.length > 1 ? 'i' : ''}
                         </>
                       ) : (
                         'Basata su ULA, fatturato e attivo di bilancio inseriti'
@@ -1334,7 +1466,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Rating (1-5)
                   </label>
                   <select
@@ -1353,48 +1485,48 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Numero Dipendenti
                 </label>
                 <input
                   type="number"
-                  value={formData.numero_dipendenti || 0}
-                  onChange={(e) => handleInputChange('numero_dipendenti', parseInt(e.target.value) || 0)}
+                  value={formData.numero_dipendenti || ''}
+                  onChange={(e) => handleInputChange('numero_dipendenti', e.target.value === '' ? null : parseInt(e.target.value))}
                   className="input"
                   min="0"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Numero Volontari
                 </label>
                 <input
                   type="number"
-                  value={formData.numero_volontari || 0}
-                  onChange={(e) => handleInputChange('numero_volontari', parseInt(e.target.value) || 0)}
+                  value={formData.numero_volontari || ''}
+                  onChange={(e) => handleInputChange('numero_volontari', e.target.value === '' ? null : parseInt(e.target.value))}
                   className="input"
                   min="0"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Numero Collaboratori
                 </label>
                 <input
                   type="number"
-                  value={formData.numero_collaboratori || 0}
-                  onChange={(e) => handleInputChange('numero_collaboratori', parseInt(e.target.value) || 0)}
+                  value={formData.numero_collaboratori || ''}
+                  onChange={(e) => handleInputChange('numero_collaboratori', e.target.value === '' ? null : parseInt(e.target.value))}
                   className="input"
                   min="0"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Matricola INPS
                 </label>
                 <input
@@ -1406,7 +1538,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   PAT INAIL
                 </label>
                 <input
@@ -1418,152 +1550,158 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 />
               </div>
             </div>
-          </div>
-        )
 
-      case 'collegamenti':
-        return (
-          <div className="space-y-6">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-yellow-800 mb-2">
-                ⚖️ Rapporti di Collegamento/Controllo (UE 2003/361/CE)
-              </h4>
-              <p className="text-xs text-yellow-700">
-                Questi rapporti sono fondamentali per determinare la dimensione aziendale ai fini dei bandi europei.
-                Un'azienda può avere più rapporti di collegamento con aziende diverse.
-              </p>
-            </div>
-
-            {/* Lista collegamenti esistenti */}
-            <div className="border rounded-lg">
-              <div className="px-4 py-3 border-b flex items-center justify-between bg-gray-50">
-                <h4 className="font-medium text-gray-900">Rapporti di Collegamento Attivi</h4>
-                <button
-                  type="button"
-                  onClick={() => setShowNuovoCollegamentoModal(true)}
-                  className="btn-primary text-sm py-2 px-3"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Aggiungi Collegamento
-                </button>
+            {/* Rapporti di Collegamento */}
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                <h4 className="text-sm font-medium text-yellow-800 mb-2">
+                  Rapporti di Collegamento/Controllo (UE 2003/361/CE)
+                </h4>
+                <p className="text-xs text-yellow-700">
+                  Questi rapporti influiscono direttamente sulla dimensione aziendale ai fini dei bandi europei.
+                </p>
               </div>
 
-              <div className="p-4">
-                {collegamenti.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <Building2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Nessun collegamento aziendale configurato</p>
-                    <p className="text-xs mt-1">Aggiungi collegamenti per calcolare la dimensione aggregata</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {collegamenti.map((collegamento, index) => (
-                      <div key={collegamento.id || index} className="border rounded-lg p-4 bg-white">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h5 className="font-medium text-gray-900">
-                                {collegamento.denominazione_collegata || 'Azienda collegata'}
-                              </h5>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                collegamento.tipo_collegamento === 'ASSOCIATA'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}>
-                                {collegamento.tipo_collegamento}
-                              </span>
-                            </div>
+              <div className="border rounded-lg">
+                <div className="px-4 py-3 border-b flex items-center justify-between bg-gray-50">
+                  <h4 className="font-medium text-gray-900">Rapporti di Collegamento Attivi</h4>
+                  <button
+                    type="button"
+                    onClick={() => setShowNuovoCollegamentoModal(true)}
+                    className="btn-primary text-sm py-2 px-3"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Aggiungi Collegamento
+                  </button>
+                </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                              <div>
-                                <span className="text-gray-500">Partecipazione:</span>
-                                <span className="ml-1 font-medium">
-                                  {collegamento.percentuale_partecipazione}%
+                <div className="p-4">
+                  {collegamenti.length === 0 ? (
+                    <div className="text-center py-6 text-gray-500">
+                      <Building2 className="w-6 h-6 mx-auto mb-1 opacity-50" />
+                      <p className="text-sm">Nessun collegamento aziendale configurato</p>
+                      <p className="text-xs mt-1">Aggiungi collegamenti per calcolare la dimensione aggregata</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {collegamenti.map((collegamento, index) => (
+                        <div key={collegamento.id || index} className="border rounded-lg p-3 bg-white">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h5 className="font-medium text-gray-900">
+                                  {collegamento.denominazione_collegata || 'Azienda collegata'}
+                                </h5>
+                                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                  collegamento.tipo_collegamento === 'ASSOCIATA'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {collegamento.tipo_collegamento}
                                 </span>
                               </div>
-                              {collegamento.ula_collegata && (
+
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                 <div>
-                                  <span className="text-gray-500">ULA:</span>
-                                  <span className="ml-1 font-medium">{collegamento.ula_collegata}</span>
-                                </div>
-                              )}
-                              {collegamento.fatturato_collegato && (
-                                <div>
-                                  <span className="text-gray-500">Fatturato:</span>
+                                  <span className="text-gray-500">Partecipazione:</span>
                                   <span className="ml-1 font-medium">
-                                    €{collegamento.fatturato_collegato.toLocaleString()}
+                                    {collegamento.percentuale_partecipazione}%
                                   </span>
                                 </div>
-                              )}
-                              {collegamento.attivo_collegato && (
-                                <div>
-                                  <span className="text-gray-500">Attivo:</span>
-                                  <span className="ml-1 font-medium">
-                                    €{collegamento.attivo_collegato.toLocaleString()}
-                                  </span>
+                                {collegamento.ula_collegata && (
+                                  <div>
+                                    <span className="text-gray-500">ULA:</span>
+                                    <span className="ml-1 font-medium">{collegamento.ula_collegata}</span>
+                                  </div>
+                                )}
+                                {collegamento.fatturato_collegato && (
+                                  <div>
+                                    <span className="text-gray-500">Fatturato:</span>
+                                    <span className="ml-1 font-medium">
+                                      €{collegamento.fatturato_collegato.toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
+                                {collegamento.attivo_collegato && (
+                                  <div>
+                                    <span className="text-gray-500">Attivo:</span>
+                                    <span className="ml-1 font-medium">
+                                      €{collegamento.attivo_collegato.toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {collegamento.note_collegamento && (
+                                <div className="mt-2 text-sm text-gray-600">
+                                  <span className="text-gray-500">Note:</span> {collegamento.note_collegamento}
                                 </div>
                               )}
                             </div>
 
-                            {collegamento.note_collegamento && (
-                              <div className="mt-2 text-sm text-gray-600">
-                                <span className="text-gray-500">Note:</span> {collegamento.note_collegamento}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex gap-2 ml-4">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCollegamentoInModifica(collegamento)
-                                setShowNuovoCollegamentoModal(true)
-                              }}
-                              className="btn-secondary text-xs py-1 px-2"
-                            >
-                              <Edit className="w-3 h-3 mr-1" />
-                              Modifica
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => rimuoviCollegamento(collegamento.id!)}
-                              className="btn-danger text-xs py-1 px-2"
-                            >
-                              <Trash2 className="w-3 h-3 mr-1" />
-                              Rimuovi
-                            </button>
+                            <div className="flex gap-2 ml-4">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCollegamentoInModifica(collegamento)
+                                  setShowNuovoCollegamentoModal(true)
+                                }}
+                                className="btn-secondary text-xs py-1 px-2"
+                              >
+                                <Edit className="w-3 h-3 mr-1" />
+                                Modifica
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => rimuoviCollegamento(collegamento.id!)}
+                                className="btn-danger text-xs py-1 px-2"
+                              >
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Rimuovi
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Calcolo dimensione aggregata */}
-            {collegamenti.length > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-blue-800 mb-2">
-                  📊 Calcolo Dimensione Aggregata
-                </h4>
-                <div className="text-sm text-blue-700">
-                  <p>La dimensione viene calcolata aggregando:</p>
-                  <ul className="list-disc list-inside mt-1 space-y-1">
-                    <li>Azienda principale: {formData.ula || 0} ULA, €{(formData.ultimo_fatturato || 0).toLocaleString()}</li>
-                    {collegamenti.map((col, idx) => (
-                      <li key={idx}>
-                        {col.denominazione_collegata}: {col.tipo_collegamento === 'ASSOCIATA' ? '100%' : `${col.percentuale_partecipazione}%`}
-                        {' '}({col.ula_collegata || 0} ULA, €{(col.fatturato_collegato || 0).toLocaleString()})
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-3 p-2 bg-blue-100 rounded">
-                    <strong>Dimensione aggregata calcolata: {calcolaDimensioneAggregata(formData.ula, formData.ultimo_fatturato, formData.attivo_bilancio)}</strong>
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
+
+              {/* Calcolo dimensione aggregata */}
+              {collegamenti.length > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+                  <h4 className="text-sm font-medium text-blue-800 mb-2">
+                    Calcolo Dimensione Aggregata
+                  </h4>
+                  <div className="text-sm text-blue-700">
+                    <p>La dimensione viene calcolata aggregando:</p>
+                    <ul className="list-disc list-inside mt-1 space-y-1">
+                      <li>Azienda principale: {formData.ula || 0} ULA, €{(formData.ultimo_fatturato || 0).toLocaleString()}</li>
+                      {collegamenti.map((col, idx) => (
+                        <li key={idx}>
+                          {col.denominazione_collegata}: {col.tipo_collegamento === 'ASSOCIATA' ? '100%' : `${col.percentuale_partecipazione}%`}
+                          {' '}({col.ula_collegata || 0} ULA, €{(col.fatturato_collegato || 0).toLocaleString()})
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="mt-3 p-2 bg-blue-100 rounded">
+                      <strong>Dimensione aggregata calcolata: {calcolaDimensioneAggregata(formData.ula, formData.ultimo_fatturato, formData.attivo_bilancio)}</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-3">
+                <h4 className="text-sm font-medium text-gray-800 mb-2">
+                  Criteri di Collegamento UE 2003/361/CE
+                </h4>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <p><strong>Associata (≥50%):</strong> Somma il 100% dei valori dell'azienda associata</p>
+                  <p><strong>Collegata (25-49.99%):</strong> Somma proporzionalmente in base alla percentuale di partecipazione</p>
+                </div>
+              </div>
+            </div>
 
             {showNuovoCollegamentoModal && (
               <NuovoCollegamentoModal
@@ -1579,27 +1717,17 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                 collegamentiEsistenti={collegamenti}
               />
             )}
-
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-800 mb-2">
-                📖 Criteri di Collegamento UE 2003/361/CE
-              </h4>
-              <div className="text-xs text-gray-600 space-y-1">
-                <p><strong>Associata (≥50%):</strong> Somma il 100% dei valori dell'azienda associata</p>
-                <p><strong>Collegata (25-49.99%):</strong> Somma proporzionalmente in base alla percentuale di partecipazione</p>
-              </div>
-            </div>
           </div>
         )
 
       case 'gestione':
-        const showEvolviFields = formData.categoria_evolvi === 'EVOLVI_BASE' || formData.categoria_evolvi === 'EVOLVI_FULL'
+        const showEvolviFields = formData.categoria_evolvi === 'EVOLVI'
 
         return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Categoria
                 </label>
                 <select
@@ -1608,9 +1736,10 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   className="input"
                 >
                   <option value="">Seleziona categoria</option>
-                  <option value="CLIENTE_SPOT">Cliente spot</option>
-                  <option value="EVOLVI_BASE">Evolvi Base</option>
-                  <option value="EVOLVI_FULL">Evolvi Full</option>
+                  <option value="CLIENTE_SPOT">Spot</option>
+                  <option value="EVOLVI">Evolvi</option>
+                  <option value="FPI">FPI</option>
+                  <option value="CONSULENTI">Consulenti</option>
                 </select>
               </div>
 
@@ -1618,7 +1747,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
               {showEvolviFields && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Scadenza Evolvi
                     </label>
                     <input
@@ -1629,7 +1758,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Durata Evolvi
                     </label>
                     <input
@@ -1646,7 +1775,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
             {/* Informazione per clienti spot */}
             {formData.categoria_evolvi === 'CLIENTE_SPOT' && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                 <div className="flex items-center">
                   <FileText className="w-5 h-5 text-yellow-600 mr-2" />
                   <h4 className="text-yellow-800 font-medium">Cliente Spot</h4>
@@ -1659,20 +1788,46 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
             {/* Informazione per clienti Evolvi */}
             {showEvolviFields && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <div className="flex items-center">
                   <FileText className="w-5 h-5 text-blue-600 mr-2" />
                   <h4 className="text-blue-800 font-medium">Cliente Evolvi</h4>
                 </div>
                 <p className="text-blue-700 text-sm mt-2">
-                  Cliente con abbonamento attivo {formData.categoria_evolvi === 'EVOLVI_BASE' ? 'Base' : 'Full'}.
+                  Cliente con abbonamento Metodo Evolvi attivo.
                   Monitorare la scadenza per il rinnovo.
                 </p>
               </div>
             )}
 
+            {/* Informazione per clienti FPI */}
+            {formData.categoria_evolvi === 'FPI' && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex items-center">
+                  <GraduationCap className="w-5 h-5 text-green-600 mr-2" />
+                  <h4 className="text-green-800 font-medium">Cliente FPI</h4>
+                </div>
+                <p className="text-green-700 text-sm mt-2">
+                  Cliente per gestione Fondi Paritetici Interprofessionali. Verificare adesione e piani formativi nel tab Formazione.
+                </p>
+              </div>
+            )}
+
+            {/* Informazione per consulenti */}
+            {formData.categoria_evolvi === 'CONSULENTI' && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <div className="flex items-center">
+                  <Briefcase className="w-5 h-5 text-purple-600 mr-2" />
+                  <h4 className="text-purple-800 font-medium">Consulente</h4>
+                </div>
+                <p className="text-purple-700 text-sm mt-2">
+                  Questo soggetto è un consulente esterno. La denominazione comparirà automaticamente nella sezione Consulenti del gestionale.
+                </p>
+              </div>
+            )}
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Descrizione
               </label>
               <textarea
@@ -1685,7 +1840,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Note
               </label>
               <textarea
@@ -1701,7 +1856,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
       case 'documenti':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <DocumentiManager
               clienteId={cliente?.id || ''}
               isNewClient={!cliente?.id}
@@ -1716,51 +1871,46 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-hard max-w-7xl w-full max-h-[95vh] overflow-hidden flex flex-col border-4 border-orange-400">
+      <div className="bg-white rounded-xl shadow-hard max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col border-4 border-orange-400">
         {/* Header */}
-        <div className="gradient-primary text-white p-6 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Building2 className="w-6 h-6" />
+        <div className="gradient-primary text-white p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Building2 className="w-4 h-4" />
             <div>
-              <h2 className="text-xl font-bold">
+              <h2 className="text-sm font-semibold">
                 {cliente ? 'Modifica Cliente' : 'Nuovo Cliente'}
               </h2>
-              <div className="flex items-center space-x-2 mt-1">
-                <span className="px-2 py-1 bg-orange-400 text-orange-900 text-xs font-semibold rounded-full">
-                  ✏️ MODIFICA
+              {cliente?.denominazione && (
+                <span className="text-primary-100 text-xs">
+                  {cliente.denominazione}
                 </span>
-                {cliente?.denominazione && (
-                  <span className="text-primary-100 text-sm">
-                    {cliente.denominazione}
-                  </span>
-                )}
-              </div>
+              )}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-gray-200 px-6">
-          <div className="flex space-x-6 overflow-x-auto min-w-full">
+        <div className="border-b border-gray-200 px-4">
+          <div className="flex space-x-3 overflow-x-auto min-w-full">
             {tabs.map((tab) => {
               const Icon = tab.icon
               return (
                 <button
                   key={tab.id}
                   onClick={() => setCurrentTab(tab.id)}
-                  className={`py-4 px-2 border-b-2 font-medium text-sm flex items-center space-x-2 transition-colors flex-shrink-0 ${
+                  className={`py-2 px-1.5 border-b-2 font-medium text-xs flex items-center space-x-1.5 transition-colors flex-shrink-0 ${
                     currentTab === tab.id
                       ? 'border-primary-500 text-primary-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3.5 h-3.5" />
                   <span>{tab.label}</span>
                 </button>
               )
@@ -1769,14 +1919,14 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-4 overflow-y-auto flex-1">
           {renderTabContent()}
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex items-center justify-between flex-shrink-0">
-          {/* Pulsante Elimina a sinistra - solo se siamo in modalità modifica e abbiamo i permessi */}
-          <div className="flex items-center">
+        <div className="border-t border-gray-200 px-4 py-2.5 bg-gray-50 flex items-center justify-between flex-shrink-0">
+          {/* Pulsanti a sinistra - solo in modalità modifica */}
+          <div className="flex items-center space-x-2">
             {cliente?.id && canDelete(cliente.creato_da) && (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
@@ -1785,6 +1935,16 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Elimina Cliente</span>
+              </button>
+            )}
+            {cliente?.id && (
+              <button
+                onClick={handleOpenConvertModal}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-medium px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading}
+              >
+                <Undo2 className="w-4 h-4" />
+                <span>Converti in Prospect</span>
               </button>
             )}
           </div>
@@ -1825,18 +1985,18 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="p-6">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
-                  <Trash2 className="w-6 h-6 text-red-600" />
+            <div className="p-4">
+              <div className="flex items-center mb-3">
+                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                  <Trash2 className="w-4 h-4 text-red-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">Elimina Cliente</h3>
+                  <h3 className="text-sm font-medium text-gray-900">Elimina Cliente</h3>
                   <p className="text-sm text-gray-500">Questa azione non può essere annullata</p>
                 </div>
               </div>
 
-              <div className="mb-6">
+              <div className="mb-3">
                 <p className="text-gray-700">
                   Sei sicuro di voler eliminare il cliente <strong>"{formData.denominazione}"</strong>?
                 </p>
@@ -1866,6 +2026,165 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave }: Client
                   <span>{loading ? 'Eliminando...' : 'Elimina Definitivamente'}</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal conversione a prospect */}
+      {showConvertModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-lg w-full overflow-hidden">
+            {/* Header */}
+            <div className="bg-amber-600 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Undo2 className="w-4 h-4" />
+                <h3 className="text-sm font-semibold">Converti in Prospect</h3>
+              </div>
+              {!convertSuccess && (
+                <button
+                  onClick={handleCloseConvertModal}
+                  className="p-1 hover:bg-white/20 rounded transition-colors"
+                  disabled={convertLoading}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="p-5">
+              {/* Loading */}
+              {dependencyLoading && (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto"></div>
+                  <p className="text-sm text-gray-500 mt-3">Verifica dipendenze...</p>
+                </div>
+              )}
+
+              {/* Errore */}
+              {convertError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                  <div className="flex items-center space-x-2">
+                    <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                    <p className="text-sm text-red-700">{convertError}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Successo */}
+              {convertSuccess && (
+                <div className="text-center py-4">
+                  <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                  <h4 className="text-lg font-medium text-gray-900 mb-1">Conversione completata</h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    {convertSuccess.scenario === 'A'
+                      ? 'Il prospect originale è stato ripristinato allo stato "Preso in carico".'
+                      : 'Un nuovo prospect è stato creato con stato "Bozza".'}
+                  </p>
+                  <div className="flex justify-center space-x-3">
+                    <button
+                      onClick={handleCloseConvertModal}
+                      className="btn-secondary text-sm py-2 px-4"
+                    >
+                      Chiudi
+                    </button>
+                    {onNavigate && (
+                      <button
+                        onClick={handleGoToProspect}
+                        className="btn-primary text-sm py-2 px-4"
+                      >
+                        Vai al Prospect
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Conferma */}
+              {dependencyData && !convertSuccess && (
+                <div className="space-y-4">
+                  {/* Descrizione scenario */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-sm text-blue-800">
+                      {dependencyData.scenario === 'A' ? (
+                        <>
+                          Questo cliente era originariamente un prospect
+                          {dependencyData.prospectNumero && <strong> ({dependencyData.prospectNumero})</strong>}.
+                          La conversione ripristinerà il prospect allo stato <strong>&quot;Preso in carico&quot;</strong> e
+                          tutti i dati della prequalifica saranno conservati.
+                        </>
+                      ) : (
+                        <>
+                          Questo cliente non ha un prospect di origine. Verrà creato un <strong>nuovo prospect</strong> con
+                          stato <strong>&quot;Bozza&quot;</strong> contenente i dati anagrafici attuali del cliente.
+                        </>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Avviso dipendenze */}
+                  {dependencyData.hasDependencies && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                      <div className="flex items-start space-x-2 mb-2">
+                        <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm font-medium text-red-800">
+                          I seguenti dati associati al cliente verranno eliminati definitivamente:
+                        </p>
+                      </div>
+                      <ul className="ml-6 space-y-1">
+                        {Object.entries(dependencyData.dependencies)
+                          .filter(([, count]) => count > 0)
+                          .map(([key, count]) => (
+                            <li key={key} className="text-sm text-red-700 flex items-center">
+                              <span className="w-1.5 h-1.5 bg-red-400 rounded-full mr-2 flex-shrink-0"></span>
+                              {count} {DEPENDENCY_LABELS[key] || key}
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {!dependencyData.hasDependencies && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <p className="text-sm text-green-800">
+                        Nessun dato dipendente trovato. Il cliente può essere convertito senza perdita di dati.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Pulsanti */}
+                  <div className="flex justify-end space-x-3 pt-2">
+                    <button
+                      onClick={handleCloseConvertModal}
+                      className="btn-secondary text-sm py-2 px-4"
+                      disabled={convertLoading}
+                    >
+                      Annulla
+                    </button>
+                    <button
+                      onClick={handleConfirmConvert}
+                      className={`text-sm py-2 px-4 rounded-lg font-medium flex items-center space-x-2 transition-colors ${
+                        dependencyData.hasDependencies
+                          ? 'bg-red-600 hover:bg-red-700 text-white'
+                          : 'bg-amber-600 hover:bg-amber-700 text-white'
+                      }`}
+                      disabled={convertLoading}
+                    >
+                      {convertLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          <span>Conversione...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Undo2 className="w-4 h-4" />
+                          <span>Conferma Conversione</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

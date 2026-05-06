@@ -52,10 +52,22 @@ export async function GET(request: NextRequest) {
       nome_completo: `${utente.nome} ${utente.cognome}`
     }
 
-    return NextResponse.json({
+    // Create response with cookie
+    const response = NextResponse.json({
       success: true,
       user: userData
     })
+
+    // Set auth_token as HTTP-only cookie for API routes
+    response.cookies.set('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      path: '/'
+    })
+
+    return response
 
   } catch (error) {
     console.error('Errore verifica token:', error)

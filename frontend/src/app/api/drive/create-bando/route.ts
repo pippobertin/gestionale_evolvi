@@ -38,12 +38,66 @@ export async function POST(req: NextRequest) {
       }, { status: 404 })
     }
 
-    // 2. Cerca o crea cartella bando nel Drive Condiviso
+    // 2. Cerca o crea cartella "BANDI E PROGETTI" nel Drive Condiviso
+    let bandiProgettiFolder: string
+    try {
+      const existingBandiProgetti = await listSharedDriveFiles(
+        googleAccessToken,
+        sharedDriveId,
+        `name='BANDI E PROGETTI' and mimeType='application/vnd.google-apps.folder'`
+      )
+
+      if (existingBandiProgetti.length > 0) {
+        bandiProgettiFolder = existingBandiProgetti[0].id!
+        console.log('📁 Cartella "BANDI E PROGETTI" esistente trovata:', bandiProgettiFolder)
+      } else {
+        const folder = await createDriveFolderInSharedDrive(
+          googleAccessToken,
+          'BANDI E PROGETTI',
+          sharedDriveId
+        )
+        bandiProgettiFolder = folder.id!
+        console.log('📁 Cartella "BANDI E PROGETTI" creata:', bandiProgettiFolder)
+      }
+    } catch (error: any) {
+      console.error('📁 Errore cartella BANDI E PROGETTI:', error)
+      throw error
+    }
+
+    // 3. Cerca o crea cartella anno (es. "2026") dentro "BANDI E PROGETTI"
+    const currentYear = new Date().getFullYear().toString()
+    let yearFolder: string
+    try {
+      const existingYearFolders = await listSharedDriveFiles(
+        googleAccessToken,
+        bandiProgettiFolder,
+        `name='${currentYear}' and mimeType='application/vnd.google-apps.folder'`
+      )
+
+      if (existingYearFolders.length > 0) {
+        yearFolder = existingYearFolders[0].id!
+        console.log(`📁 Cartella anno "${currentYear}" esistente trovata:`, yearFolder)
+      } else {
+        const folder = await createDriveFolderInSharedDrive(
+          googleAccessToken,
+          currentYear,
+          sharedDriveId,
+          bandiProgettiFolder
+        )
+        yearFolder = folder.id!
+        console.log(`📁 Cartella anno "${currentYear}" creata:`, yearFolder)
+      }
+    } catch (error: any) {
+      console.error(`📁 Errore cartella anno ${currentYear}:`, error)
+      throw error
+    }
+
+    // 4. Cerca o crea cartella bando dentro la cartella anno
     let bandoFolderId: string
     try {
       const existingBandoFolders = await listSharedDriveFiles(
         googleAccessToken,
-        sharedDriveId,
+        yearFolder,
         `name='${bandoName}' and mimeType='application/vnd.google-apps.folder'`
       )
 
@@ -54,7 +108,8 @@ export async function POST(req: NextRequest) {
         const bandoFolderData = await createDriveFolderInSharedDrive(
           googleAccessToken,
           bandoName,
-          sharedDriveId
+          sharedDriveId,
+          yearFolder
         )
         bandoFolderId = bandoFolderData.id!
         console.log('📁 Cartella bando creata:', bandoFolderId)
@@ -103,7 +158,7 @@ export async function POST(req: NextRequest) {
         bandoName,
         bandoFolderId,
         subFolders: createdSubFolders,
-        folderPath: `Drive Condivisi > Gestionale Evolvi > ${bandoName}`
+        folderPath: `Drive Condivisi > Gestionale Evolvi > BANDI E PROGETTI > ${currentYear} > ${bandoName}`
       }
     })
 

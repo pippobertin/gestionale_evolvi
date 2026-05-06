@@ -263,7 +263,7 @@ export default function DocumentiManager({ clienteId, isNewClient = false }: Doc
     return (
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-center">
-          <FileText className="w-5 h-5 text-blue-600 mr-2" />
+          <FileText className="w-4 h-4 text-blue-600 mr-2" />
           <h4 className="text-blue-800 font-medium">Documenti Amministrativi</h4>
         </div>
         <p className="text-blue-700 text-sm mt-2">
@@ -277,7 +277,7 @@ export default function DocumentiManager({ clienteId, isNewClient = false }: Doc
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="text-lg font-medium text-gray-900 flex items-center">
-          <FileText className="w-5 h-5 mr-2" />
+          <FileText className="w-4 h-4 mr-2" />
           Documenti Amministrativi
         </h4>
         <button
@@ -302,7 +302,7 @@ export default function DocumentiManager({ clienteId, isNewClient = false }: Doc
 
       {/* Drop zone */}
       <div
-        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+        className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
           dragActive
             ? 'border-primary-400 bg-primary-50'
             : 'border-gray-300 hover:border-gray-400'
@@ -312,7 +312,7 @@ export default function DocumentiManager({ clienteId, isNewClient = false }: Doc
         onDragOver={handleDrag}
         onDrop={handleDrop}
       >
-        <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+        <Upload className="w-8 h-8 mx-auto text-gray-400 mb-1" />
         <p className="text-sm text-gray-600">
           Trascina i file qui o{' '}
           <button
@@ -337,7 +337,7 @@ export default function DocumentiManager({ clienteId, isNewClient = false }: Doc
           </div>
         ) : documenti.length === 0 ? (
           <div className="text-center py-8 text-gray-500 border border-gray-200 rounded-lg">
-            <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <FileText className="w-8 h-8 mx-auto mb-1 opacity-50" />
             <p className="text-sm">Nessun documento caricato</p>
             <p className="text-xs mt-1">Trascina i file sopra per iniziare</p>
           </div>
@@ -346,7 +346,7 @@ export default function DocumentiManager({ clienteId, isNewClient = false }: Doc
             <div key={doc.id} className="border border-gray-200 rounded-lg p-4 bg-white">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-1">
                     <h5 className="font-medium text-gray-900">{doc.nome_file}</h5>
                     <span className={`px-2 py-1 rounded text-xs font-medium ${getCategoriaColor(doc.categoria)}`}>
                       {CATEGORIE_DOCUMENTO.find(c => c.value === doc.categoria)?.label || doc.categoria}
@@ -409,8 +409,8 @@ export default function DocumentiManager({ clienteId, isNewClient = false }: Doc
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="gradient-primary text-white p-4 flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Upload className="w-5 h-5" />
-                <h3 className="text-lg font-semibold">Carica Documento</h3>
+                <Upload className="w-4 h-4" />
+                <h3 className="text-sm font-semibold">Carica Documento</h3>
               </div>
               <button
                 onClick={() => setShowUploadForm(false)}
@@ -423,7 +423,7 @@ export default function DocumentiManager({ clienteId, isNewClient = false }: Doc
 
             <div className="p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   File selezionato
                 </label>
                 <div className="p-2 bg-gray-50 rounded text-sm text-gray-600">
@@ -432,7 +432,7 @@ export default function DocumentiManager({ clienteId, isNewClient = false }: Doc
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Nome documento *
                 </label>
                 <input
@@ -446,7 +446,7 @@ export default function DocumentiManager({ clienteId, isNewClient = false }: Doc
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Categoria *
                 </label>
                 <select

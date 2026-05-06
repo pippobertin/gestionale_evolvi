@@ -1,7 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { getValidGoogleToken } from '@/lib/googleAuth'
-import { deleteDriveFolder } from '@/lib/googleDrive'
-import { google } from 'googleapis'
+import { getAuthenticatedDriveClient } from '@/lib/googleAuth'
 
 export default async function handler(
   req: NextApiRequest,
@@ -12,18 +10,6 @@ export default async function handler(
   }
 
   try {
-    // Ottieni token Google con refresh automatico
-    const googleAccessToken = await getValidGoogleToken()
-
-    if (!googleAccessToken) {
-      console.log('⚠️ Google Drive non configurato - eliminazione saltata')
-      return res.status(200).json({
-        success: true,
-        message: 'Google Drive non configurato - eliminazione saltata',
-        skipped: true
-      })
-    }
-
     const { bandoName, progettoNome, driveFolderId } = req.body
 
     if (!driveFolderId && (!bandoName || !progettoNome)) {
@@ -32,27 +18,24 @@ export default async function handler(
       })
     }
 
+    // Ottieni client Drive autenticato con Service Account
+    const drive = await getAuthenticatedDriveClient()
+
     let folderIdToDelete = driveFolderId
 
     // Se non abbiamo l'ID, cerchiamo la cartella per nome
     if (!folderIdToDelete && progettoNome) {
       console.log(`🗑️ Ricerca cartella progetto "${progettoNome}" (bando: "${bandoName || 'N/A'}")`)
 
-      // Setup Google Drive API
-      const auth = new google.auth.OAuth2()
-      auth.setCredentials({ access_token: googleAccessToken })
-      const drive = google.drive({ version: 'v3', auth })
-
       // 1. Trova il Drive Condiviso "Gestionale Evolvi"
-      const sharedDrivesResponse = await drive.drives.list({
+      const drivesResponse = await drive.drives.list({
         pageSize: 100,
-        fields: 'drives(id,name,capabilities)'
+        fields: 'drives(id,name)'
       })
 
-      const drives = sharedDrivesResponse.data.drives || []
-      const gestionaleDrive = drives.find(d => d.name === 'Gestionale Evolvi')
+      const gestionaleDrive = drivesResponse.data.drives?.find(d => d.name === 'Gestionale Evolvi')
 
-      if (!gestionaleDrive) {
+      if (!gestionaleDrive?.id) {
         console.log('❌ Drive Condiviso "Gestionale Evolvi" non trovato')
         return res.status(404).json({
           success: false,
@@ -60,147 +43,103 @@ export default async function handler(
         })
       }
 
-      const sharedDriveId = gestionaleDrive.id!
+      const sharedDriveId = gestionaleDrive.id
       console.log(`📁 Drive Condiviso trovato: ${sharedDriveId}`)
 
-      // 2. Strategia migliorata: cerca prima direttamente per nome progetto in tutto il Drive
+      // 2. Ricerca diretta cartella progetto in tutto il Drive
       console.log(`🔍 Ricerca diretta cartella progetto "${progettoNome}" nel Drive Condiviso`)
       const directSearchResponse = await drive.files.list({
         driveId: sharedDriveId,
         includeItemsFromAllDrives: true,
         supportsAllDrives: true,
         corpora: 'drive',
-        q: `name='${progettoNome}' and mimeType='application/vnd.google-apps.folder'`,
+        q: `name='${progettoNome}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
         pageSize: 100,
-        fields: 'files(id,name,parents)'
+        fields: 'files(id,name,parents,trashed)'
       })
 
       console.log(`📊 Ricerca diretta: trovati ${directSearchResponse.data.files?.length || 0} risultati`)
-      if (directSearchResponse.data.files?.length) {
-        console.log(`📂 Cartelle trovate:`, directSearchResponse.data.files.map(f => `${f.name} (${f.id})`).join(', '))
 
-        // Debug dettagliato per ogni cartella trovata
-        for (const folder of directSearchResponse.data.files) {
-          console.log(`🔍 Debug cartella "${folder.name}":`)
-          console.log(`   - ID: ${folder.id}`)
-          console.log(`   - Parent: ${folder.parents?.[0]}`)
+      // Prendi la prima cartella valida (non cestinata)
+      const validFolder = directSearchResponse.data.files?.find(f => !f.trashed)
 
-          // Verifica che la cartella esista davvero
-          try {
-            const verifyResponse = await drive.files.get({
-              fileId: folder.id!,
-              fields: 'id,name,parents,trashed',
-              supportsAllDrives: true
-            })
-            console.log(`   - Stato: Esistente, Cestinata: ${verifyResponse.data.trashed || false}`)
-
-            // Se la cartella è stata cestinata, saltala
-            if (verifyResponse.data.trashed) {
-              console.log(`   ⚠️ Cartella cestinata, ignorata`)
-              continue
-            }
-
-            // Questa è una cartella valida
-            console.log(`🎯 Cartella progetto valida trovata: ${folder.id}`)
-            folderIdToDelete = folder.id!
-            break
-
-          } catch (verifyError) {
-            console.log(`   ❌ Errore verifica cartella: ${verifyError.message}`)
-            continue
-          }
-        }
+      if (validFolder?.id) {
+        console.log(`🎯 Cartella progetto trovata: ${validFolder.id}`)
+        folderIdToDelete = validFolder.id
       }
 
-      // Solo se non abbiamo trovato una cartella valida, procedi con il fallback
-      if (!folderIdToDelete) {
-        // 3. Fallback: cerca per bando (se fornito)
-        if (bandoName) {
-          console.log(`🔍 Fallback: ricerca tramite struttura bando "${bandoName}"`)
+      // 3. Fallback: cerca tramite struttura bando > PROGETTI > progetto
+      if (!folderIdToDelete && bandoName) {
+        console.log(`🔍 Fallback: ricerca tramite struttura bando "${bandoName}"`)
 
-          // Cerca prima tutte le cartelle che potrebbero essere il bando
-          const bandoSearchResponse = await drive.files.list({
+        // Trova cartella bando
+        const bandoSearchResponse = await drive.files.list({
+          driveId: sharedDriveId,
+          includeItemsFromAllDrives: true,
+          supportsAllDrives: true,
+          corpora: 'drive',
+          q: `name='${bandoName}' and mimeType='application/vnd.google-apps.folder' and '${sharedDriveId}' in parents and trashed=false`,
+          pageSize: 1,
+          fields: 'files(id,name)'
+        })
+
+        const bandoFolder = bandoSearchResponse.data.files?.[0]
+
+        if (bandoFolder?.id) {
+          console.log(`📁 Cartella bando trovata: ${bandoFolder.name} (${bandoFolder.id})`)
+
+          // Cerca cartella PROGETTI dentro il bando
+          const progettiResponse = await drive.files.list({
             driveId: sharedDriveId,
             includeItemsFromAllDrives: true,
             supportsAllDrives: true,
             corpora: 'drive',
-            q: `'${sharedDriveId}' in parents and mimeType='application/vnd.google-apps.folder'`,
-            pageSize: 100,
+            q: `'${bandoFolder.id}' in parents and name='PROGETTI' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+            pageSize: 1,
             fields: 'files(id,name)'
           })
 
-          console.log(`📁 Cartelle nel Drive Condiviso trovate: ${bandoSearchResponse.data.files?.map(f => f.name).join(', ')}`)
+          const progettiFolder = progettiResponse.data.files?.[0]
 
-          // Prova con nome esatto del bando
-          let bandoFolder = bandoSearchResponse.data.files?.find(f => f.name === bandoName)
+          if (progettiFolder?.id) {
+            console.log(`📁 Cartella PROGETTI trovata: ${progettiFolder.id}`)
 
-          // Se non trovato, prova varianti comuni (il database potrebbe avere nomi diversi da quelli su Drive)
-          if (!bandoFolder) {
-            console.log(`⚠️ Bando "${bandoName}" non trovato con nome esatto, provo varianti...`)
-            // Cerca cartelle che contengano parti del nome del progetto (estratte dal titolo)
-            const projectWords = progettoNome.split(' ')
-            for (const folder of bandoSearchResponse.data.files || []) {
-              for (const word of projectWords) {
-                if (word.length > 3 && folder.name?.includes(word)) {
-                  console.log(`💡 Possibile match bando trovato: "${folder.name}" (contiene "${word}")`)
-                  bandoFolder = folder
-                  break
-                }
-              }
-              if (bandoFolder) break
-            }
-          }
-
-          if (bandoFolder) {
-            console.log(`📁 Cartella bando utilizzata: ${bandoFolder.name} (${bandoFolder.id})`)
-
-            // Cerca cartella PROGETTI
-            const progettiResponse = await drive.files.list({
+            // Cerca la cartella del progetto dentro PROGETTI
+            const progettoResponse = await drive.files.list({
               driveId: sharedDriveId,
               includeItemsFromAllDrives: true,
               supportsAllDrives: true,
               corpora: 'drive',
-              q: `'${bandoFolder.id}' in parents and name='PROGETTI' and mimeType='application/vnd.google-apps.folder'`,
-              pageSize: 100,
-              fields: 'files(id,name,parents)'
+              q: `'${progettiFolder.id}' in parents and name='${progettoNome}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+              pageSize: 1,
+              fields: 'files(id,name)'
             })
 
-            const progettiFolder = progettiResponse.data.files?.[0]
+            const progettoFolder = progettoResponse.data.files?.[0]
 
-            if (progettiFolder) {
-              // Cerca la cartella specifica del progetto
-              const progettoResponse = await drive.files.list({
-                driveId: sharedDriveId,
-                includeItemsFromAllDrives: true,
-                supportsAllDrives: true,
-                corpora: 'drive',
-                q: `'${progettiFolder.id}' in parents and name='${progettoNome}' and mimeType='application/vnd.google-apps.folder'`,
-                pageSize: 100,
-                fields: 'files(id,name,parents)'
-              })
-
-              const progettoFolder = progettoResponse.data.files?.[0]
-              if (progettoFolder) {
-                console.log(`🎯 Cartella progetto trovata tramite bando: ${progettoFolder.id}`)
-                folderIdToDelete = progettoFolder.id!
-              }
+            if (progettoFolder?.id) {
+              console.log(`🎯 Cartella progetto trovata tramite bando: ${progettoFolder.id}`)
+              folderIdToDelete = progettoFolder.id
             }
           }
         }
+      }
 
-        if (!folderIdToDelete) {
-          console.log(`❌ Cartella progetto "${progettoNome}" non trovata con nessun metodo`)
-          return res.status(404).json({
-            success: false,
-            message: `Cartella progetto "${progettoNome}" non trovata in Google Drive`
-          })
-        }
+      if (!folderIdToDelete) {
+        console.log(`❌ Cartella progetto "${progettoNome}" non trovata con nessun metodo`)
+        return res.status(404).json({
+          success: false,
+          message: `Cartella progetto "${progettoNome}" non trovata in Google Drive`
+        })
       }
     }
 
-    // 5. Elimina la cartella progetto e tutto il suo contenuto
+    // 4. Elimina la cartella progetto e tutto il suo contenuto (ricorsivo)
     console.log(`🗑️ Eliminazione cartella Drive ID: ${folderIdToDelete}`)
-    await deleteDriveFolder(googleAccessToken, folderIdToDelete)
+    await drive.files.delete({
+      fileId: folderIdToDelete,
+      supportsAllDrives: true
+    })
 
     console.log(`✅ Cartella progetto eliminata con successo`)
     return res.status(200).json({

@@ -43,7 +43,7 @@ interface TemplateData {
 export async function findWordTemplate(
   googleAccessToken: string,
   templateName: string = 'MODELLO CONTRATTO SPOT'
-): Promise<{ success: boolean; fileId?: string; error?: string }> {
+): Promise<{ success: boolean; fileId?: string; mimeType?: string; error?: string }> {
   try {
     console.log('🔍 Ricerca template Word:', templateName)
 
@@ -75,8 +75,8 @@ export async function findWordTemplate(
 
     const modelliFolderId = modelliFolders.files[0].id
 
-    // 3. Cerca il template Word nella cartella MODELLI
-    const templateResponse = await fetch(`https://www.googleapis.com/drive/v3/files?q=name contains '${templateName}' and '${modelliFolderId}' in parents&supportsAllDrives=true&includeItemsFromAllDrives=true`, {
+    // 3. Cerca il template Word nella cartella MODELLI (include mimeType per distinguere DOCX da Google Docs)
+    const templateResponse = await fetch(`https://www.googleapis.com/drive/v3/files?q=name contains '${templateName}' and '${modelliFolderId}' in parents&supportsAllDrives=true&includeItemsFromAllDrives=true&fields=files(id,name,mimeType)`, {
       headers: {
         'Authorization': `Bearer ${googleAccessToken}`
       }
@@ -88,9 +88,9 @@ export async function findWordTemplate(
     }
 
     const templateFile = templateFiles.files[0]
-    console.log('✅ Template trovato:', templateFile.name, templateFile.id)
+    console.log('✅ Template trovato:', templateFile.name, templateFile.id, `(${templateFile.mimeType})`)
 
-    return { success: true, fileId: templateFile.id }
+    return { success: true, fileId: templateFile.id, mimeType: templateFile.mimeType }
 
   } catch (error) {
     console.error('❌ Errore ricerca template:', error)
@@ -102,24 +102,36 @@ export async function findWordTemplate(
 export async function processWordTemplate(
   googleAccessToken: string,
   templateFileId: string,
-  templateData: TemplateData
+  templateData: TemplateData | Record<string, any>,
+  templateMimeType?: string
 ): Promise<{ success: boolean; processedDoc?: ArrayBuffer; error?: string }> {
   try {
-    console.log('📄 Processing Word template:', templateFileId)
+    console.log('📄 Processing Word template:', templateFileId, templateMimeType || '')
 
     // 1. Scarica il file template da Google Drive
-    const downloadResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${templateFileId}?alt=media&supportsAllDrives=true`, {
+    // Per Google Docs nativi: usa export endpoint per ottenere DOCX pulito
+    // Per file DOCX: scarica direttamente
+    const isGoogleDoc = templateMimeType === 'application/vnd.google-apps.document'
+    const downloadUrl = isGoogleDoc
+      ? `https://www.googleapis.com/drive/v3/files/${templateFileId}/export?mimeType=application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+      : `https://www.googleapis.com/drive/v3/files/${templateFileId}?alt=media&supportsAllDrives=true`
+
+    console.log(isGoogleDoc ? '📥 Export da Google Docs nativo' : '📥 Download DOCX diretto')
+
+    const downloadResponse = await fetch(downloadUrl, {
       headers: {
         'Authorization': `Bearer ${googleAccessToken}`
       }
     })
 
     if (!downloadResponse.ok) {
+      const errText = await downloadResponse.text().catch(() => '')
+      console.error('❌ Download fallito:', downloadResponse.status, errText.substring(0, 200))
       return { success: false, error: 'Errore download template da Google Drive' }
     }
 
     const templateBuffer = await downloadResponse.arrayBuffer()
-    console.log('✅ Template scaricato:', templateBuffer.byteLength, 'bytes')
+    console.log('✅ Template scaricato:', templateBuffer.byteLength, 'bytes', isGoogleDoc ? '(export)' : '(diretto)')
 
     // 2. Carica il documento con PizZip
     const zip = new PizZip(templateBuffer)
@@ -150,16 +162,23 @@ export async function processWordTemplate(
     }
 
     // 4. Calcola valori derivati
-    const importoNum = parseFloat(templateData.ImportoConsulenza.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0
-    const importoConIVA = importoNum * 1.22 // IVA 22%
-
-    const processedData = {
+    const processedData: Record<string, any> = {
       ...templateData,
-      ImportoConsulenziaPiuIVA: importoConIVA.toLocaleString('it-IT', {
+    }
+
+    // Calcola IVA solo per contratti spot (che hanno ImportoConsulenza)
+    if (templateData.ImportoConsulenza) {
+      const importoNum = parseFloat(templateData.ImportoConsulenza.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0
+      const importoConIVA = importoNum * 1.22 // IVA 22%
+      processedData.ImportoConsulenziaPiuIVA = importoConIVA.toLocaleString('it-IT', {
         style: 'currency',
         currency: 'EUR'
-      }),
-      NumeroContratto: `CTR-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`,
+      })
+    }
+
+    // Genera NumeroContratto solo se non è già fornito
+    if (!processedData.NumeroContratto) {
+      processedData.NumeroContratto = `CTR-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`
     }
 
     console.log('📊 Dati per template:', processedData)
@@ -181,7 +200,21 @@ export async function processWordTemplate(
       }
     }
 
-    // 6. Genera il buffer del documento processato
+    // 6. Post-process: rimuovi artefatti PDF-to-DOCX
+    const docXml = doc.getZip().file('word/document.xml')?.asText()
+    if (docXml) {
+      const cleanedXml = docXml
+        // Rimuovi <w:spacing w:val="X"/> (character spacing, non paragraph spacing)
+        .replace(/<w:spacing w:val="[^"]*"\s*\/>/g, '')
+        // Rimuovi <w:w w:val="X"/> dove non e' 100% (horizontal scaling artifact)
+        .replace(/<w:w w:val="(?!100")[^"]*"\s*\/>/g, '')
+        // Cambia lineRule="exact" in "atLeast" per permettere alle righe di adattarsi
+        .replace(/w:lineRule="exact"/g, 'w:lineRule="atLeast"')
+      doc.getZip().file('word/document.xml', cleanedXml)
+      console.log(`🧹 Post-process PDF artifacts. XML: ${docXml.length} -> ${cleanedXml.length}`)
+    }
+
+    // 7. Genera il buffer del documento processato
     const processedBuffer = doc.getZip().generate({
       type: 'arraybuffer',
       compression: 'DEFLATE',

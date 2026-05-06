@@ -117,23 +117,23 @@ export default function NuovaAziendaCollegataModal({ isOpen, onClose, onSave }: 
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
       <div className="bg-white rounded-xl shadow-hard max-w-2xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="gradient-primary text-white p-6 flex items-center justify-between">
+        <div className="gradient-primary text-white p-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Building2 className="w-6 h-6" />
-            <h2 className="text-xl font-bold">Nuova Azienda Collegata</h2>
+            <Building2 className="w-4 h-4" />
+            <h2 className="text-sm font-semibold">Nuova Azienda Collegata</h2>
           </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-white/20 rounded-lg transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-4 space-y-3">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-blue-800 mb-2">
+            <h4 className="text-sm font-medium text-blue-800 mb-1">
               ℹ️ Dati Essenziali per Collegamento
             </h4>
             <p className="text-xs text-blue-700">
@@ -143,12 +143,12 @@ export default function NuovaAziendaCollegataModal({ isOpen, onClose, onSave }: 
           </div>
 
           {/* Dati Anagrafici */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Dati Anagrafici</h3>
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">Dati Anagrafici</h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Denominazione *
                 </label>
                 <input
@@ -162,7 +162,7 @@ export default function NuovaAziendaCollegataModal({ isOpen, onClose, onSave }: 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Partita IVA
                 </label>
                 <input
@@ -177,12 +177,12 @@ export default function NuovaAziendaCollegataModal({ isOpen, onClose, onSave }: 
           </div>
 
           {/* Dimensionamento */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Dimensionamento</h3>
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">Dimensionamento</h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   ULA (Unità Lavorative Annue)
                 </label>
                 <input
@@ -196,7 +196,7 @@ export default function NuovaAziendaCollegataModal({ isOpen, onClose, onSave }: 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Ultimo Fatturato (€)
                 </label>
                 <input
@@ -209,7 +209,7 @@ export default function NuovaAziendaCollegataModal({ isOpen, onClose, onSave }: 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Attivo di Bilancio (€)
                 </label>
                 <input
@@ -225,7 +225,7 @@ export default function NuovaAziendaCollegataModal({ isOpen, onClose, onSave }: 
             {/* Dimensione calcolata */}
             {dimensioneCalcolata && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-green-800 mb-2">
+                <h4 className="text-sm font-medium text-green-800 mb-1">
                   📊 Dimensione Aziendale Calcolata
                 </h4>
                 <span className="text-lg font-bold text-green-600">
@@ -240,7 +240,7 @@ export default function NuovaAziendaCollegataModal({ isOpen, onClose, onSave }: 
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex items-center justify-end space-x-3">
+        <div className="border-t border-gray-200 px-4 py-3 bg-gray-50 flex items-center justify-end space-x-3">
           <button
             onClick={onClose}
             className="btn-secondary"

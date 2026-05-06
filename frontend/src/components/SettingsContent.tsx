@@ -7,6 +7,8 @@ import GroupsManagement from './GroupsManagement'
 import NotificationSettings from './NotificationSettings'
 import SchedulerManager from './SchedulerManager'
 import GmailSetupNew from './GmailSetupNew'
+import UserGmailConnection from './UserGmailConnection'
+import EmailSignatureEditor from './EmailSignatureEditor'
 import {
   Settings,
   Users,
@@ -61,6 +63,12 @@ export default function SettingsContent() {
       description: 'Configurazione notifiche email e sistema'
     },
     {
+      id: 'my-gmail',
+      label: 'Le Mie API Google',
+      icon: Mail,
+      description: 'Gmail, Calendar e integrazioni Google'
+    },
+    {
       id: 'scheduler',
       label: 'Scheduler',
       icon: Clock,
@@ -100,13 +108,13 @@ export default function SettingsContent() {
 
       case 'groups':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
-                <UserPlus className="w-6 h-6 text-teal-600" />
+              <div className="w-4 h-4 bg-teal-100 rounded-lg flex items-center justify-center">
+                <UserPlus className="w-4 h-4 text-teal-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Gruppi Utenti</h1>
+                <h1 className="text-sm font-semibold text-gray-900">Gruppi Utenti</h1>
                 <p className="text-gray-600">Organizza utenti in gruppi di lavoro per gestire le responsabilità</p>
               </div>
             </div>
@@ -117,20 +125,20 @@ export default function SettingsContent() {
 
       case 'general':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                <Settings className="w-6 h-6 text-gray-600" />
+              <div className="w-4 h-4 bg-gray-100 rounded-lg flex items-center justify-center">
+                <Settings className="w-4 h-4 text-gray-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Impostazioni Generali</h1>
+                <h1 className="text-sm font-semibold text-gray-900">Impostazioni Generali</h1>
                 <p className="text-gray-600">Configurazioni di base del sistema</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Informazioni Sistema</h3>
-              <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">Informazioni Sistema</h3>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nome Applicazione</label>
                   <input
@@ -156,19 +164,19 @@ export default function SettingsContent() {
 
       case 'security':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                <Shield className="w-6 h-6 text-red-600" />
+              <div className="w-4 h-4 bg-red-100 rounded-lg flex items-center justify-center">
+                <Shield className="w-4 h-4 text-red-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Sicurezza</h1>
+                <h1 className="text-sm font-semibold text-gray-900">Sicurezza</h1>
                 <p className="text-gray-600">Gestisci impostazioni di sicurezza</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Autenticazione</h3>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">Autenticazione</h3>
               <p className="text-gray-600">Sezione in sviluppo - Configurazione JWT e politiche password</p>
             </div>
           </div>
@@ -176,13 +184,13 @@ export default function SettingsContent() {
 
       case 'notifications':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Bell className="w-6 h-6 text-blue-600" />
+              <div className="w-4 h-4 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Bell className="w-4 h-4 text-blue-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Notifiche</h1>
+                <h1 className="text-sm font-semibold text-gray-900">Notifiche</h1>
                 <p className="text-gray-600">Configura notifiche email e Google Calendar</p>
               </div>
             </div>
@@ -193,13 +201,13 @@ export default function SettingsContent() {
 
       case 'scheduler':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-6 h-6 text-indigo-600" />
+              <div className="w-4 h-4 bg-indigo-100 rounded-lg flex items-center justify-center">
+                <Clock className="w-4 h-4 text-indigo-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Scheduler Notifiche</h1>
+                <h1 className="text-sm font-semibold text-gray-900">Scheduler Notifiche</h1>
                 <p className="text-gray-600">Gestisci scheduler automatici per notifiche</p>
               </div>
             </div>
@@ -208,16 +216,34 @@ export default function SettingsContent() {
           </div>
         )
 
-      case 'gmail':
+      case 'my-gmail':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                <Mail className="w-6 h-6 text-red-600" />
+              <div className="w-4 h-4 bg-red-100 rounded-lg flex items-center justify-center">
+                <Mail className="w-4 h-4 text-red-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Gmail API</h1>
-                <p className="text-gray-600">Configurazione invio email tramite Gmail</p>
+                <h1 className="text-sm font-semibold text-gray-900">Le Mie API Google</h1>
+                <p className="text-gray-600">Gmail, Calendar e integrazioni Google personali</p>
+              </div>
+            </div>
+
+            <UserGmailConnection />
+            <EmailSignatureEditor />
+          </div>
+        )
+
+      case 'gmail':
+        return (
+          <div className="space-y-3">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-4 h-4 bg-red-100 rounded-lg flex items-center justify-center">
+                <Mail className="w-4 h-4 text-red-600" />
+              </div>
+              <div>
+                <h1 className="text-sm font-semibold text-gray-900">Gmail API (Sistema)</h1>
+                <p className="text-gray-600">Configurazione Gmail di sistema (fallback)</p>
               </div>
             </div>
 
@@ -227,19 +253,19 @@ export default function SettingsContent() {
 
       case 'appearance':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Palette className="w-6 h-6 text-purple-600" />
+              <div className="w-4 h-4 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Palette className="w-4 h-4 text-purple-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Aspetto</h1>
+                <h1 className="text-sm font-semibold text-gray-900">Aspetto</h1>
                 <p className="text-gray-600">Personalizza l'interfaccia</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Tema</h3>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">Tema</h3>
               <p className="text-gray-600">Sezione in sviluppo - Selezione tema chiaro/scuro</p>
             </div>
           </div>
@@ -247,19 +273,19 @@ export default function SettingsContent() {
 
       case 'database':
         return (
-          <div className="space-y-6">
+          <div className="space-y-3">
             <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <Database className="w-6 h-6 text-green-600" />
+              <div className="w-4 h-4 bg-green-100 rounded-lg flex items-center justify-center">
+                <Database className="w-4 h-4 text-green-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Database</h1>
+                <h1 className="text-sm font-semibold text-gray-900">Database</h1>
                 <p className="text-gray-600">Gestisci backup e manutenzione</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Backup</h3>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">Backup</h3>
               <p className="text-gray-600">Sezione in sviluppo - Backup automatici e ripristino</p>
             </div>
           </div>
@@ -274,8 +300,8 @@ export default function SettingsContent() {
     <div className="flex h-full">
       {/* Settings Sidebar */}
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Impostazioni</h2>
+        <div className="p-4 border-b border-gray-200">
+          <h2 className="text-sm font-semibold text-gray-900">Impostazioni</h2>
           <p className="text-sm text-gray-600">Gestisci configurazioni sistema</p>
         </div>
 
@@ -295,7 +321,7 @@ export default function SettingsContent() {
                         : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${
                       isActive
                         ? 'bg-teal-100'
                         : 'bg-gray-100 group-hover:bg-gray-200'
@@ -319,7 +345,7 @@ export default function SettingsContent() {
         {/* User Info */}
         <div className="p-4 border-t border-gray-200 bg-gray-50">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
+            <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center">
               <span className="text-teal-600 font-semibold text-sm">
                 {user?.nome?.[0]?.toUpperCase() || 'U'}
               </span>
@@ -338,7 +364,7 @@ export default function SettingsContent() {
 
       {/* Settings Content */}
       <div className="flex-1 bg-gray-50">
-        <div className="p-6">
+        <div className="p-4">
           {renderSectionContent()}
         </div>
       </div>

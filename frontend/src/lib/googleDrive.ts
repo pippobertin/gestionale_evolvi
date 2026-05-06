@@ -404,14 +404,20 @@ export async function uploadFileToFolder(
   parentFolderId: string,
   fileName: string,
   fileContent: string | Buffer,
-  mimeType: string = 'text/plain'
+  mimeType: string = 'text/plain',
+  convertToGoogleDocs: boolean = false
 ) {
   try {
     const drive = await createDriveClient(accessToken)
 
-    const fileMetadata = {
+    const fileMetadata: Record<string, any> = {
       name: fileName,
       parents: [parentFolderId]
+    }
+
+    // Converti in formato Google Docs nativo per rendering corretto
+    if (convertToGoogleDocs) {
+      fileMetadata.mimeType = 'application/vnd.google-apps.document'
     }
 
     // Gestisce sia string che Buffer

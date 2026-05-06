@@ -52,7 +52,7 @@ export default function DocumentPreviewModal({
         <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-full max-h-[90vh] flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 truncate">
+            <h3 className="text-sm font-semibold text-gray-900 truncate">
               {title}
             </h3>
             <div className="flex items-center gap-2">
@@ -69,7 +69,7 @@ export default function DocumentPreviewModal({
                 className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                 title="Chiudi preview"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
           </div>

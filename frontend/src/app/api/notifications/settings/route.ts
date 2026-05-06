@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         email_scadenze_15_giorni: true,
         email_digest_settimanale: true,
         email_progetti_assegnati: true,
-        calendar_enabled: false,
+        calendar_enabled: true,
         calendar_id: null,
         calendar_sync_scadenze: true,
         calendar_sync_milestones: true,

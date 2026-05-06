@@ -123,8 +123,8 @@ export default function CalendarioSettimana({ scadenze, onDayClick }: Calendario
   return (
     <div className="bg-white rounded-lg shadow">
       {/* Header della settimana */}
-      <div className="flex items-center justify-between p-6 border-b border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-900">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <h2 className="text-sm font-semibold text-gray-900">
           {formatWeekRange()}
         </h2>
         <div className="flex gap-2">
@@ -133,14 +133,14 @@ export default function CalendarioSettimana({ scadenze, onDayClick }: Calendario
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             aria-label="Settimana precedente"
           >
-            <ChevronLeft className="w-5 h-5 text-gray-600" />
+            <ChevronLeft className="w-4 h-4 text-gray-600" />
           </button>
           <button
             onClick={nextWeek}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             aria-label="Settimana successiva"
           >
-            <ChevronRight className="w-5 h-5 text-gray-600" />
+            <ChevronRight className="w-4 h-4 text-gray-600" />
           </button>
         </div>
       </div>
@@ -167,7 +167,7 @@ export default function CalendarioSettimana({ scadenze, onDayClick }: Calendario
                 <div className="text-sm font-medium text-gray-500">
                   {dayNames[index]}
                 </div>
-                <div className={`text-2xl font-bold ${
+                <div className={`text-sm font-semibold ${
                   isTodayDay ? 'text-blue-600' : 'text-gray-900'
                 }`}>
                   {date.getDate()}
@@ -216,7 +216,7 @@ export default function CalendarioSettimana({ scadenze, onDayClick }: Calendario
                 {/* Messaggio quando non ci sono scadenze */}
                 {scadenzeGiorno.length === 0 && (
                   <div className="text-gray-400 text-center py-8">
-                    <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <Calendar className="w-6 h-6 mx-auto mb-1 opacity-50" />
                     <p className="text-sm">Nessuna scadenza</p>
                   </div>
                 )}
@@ -242,7 +242,7 @@ export default function CalendarioSettimana({ scadenze, onDayClick }: Calendario
 
       {/* Footer con statistiche settimanali e legenda */}
       <div className="p-4 border-t border-gray-200 bg-gray-50">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* Statistiche settimanali */}
           <div className="space-y-2">
             <h4 className="text-sm font-semibold text-gray-700">Statistiche Settimana</h4>

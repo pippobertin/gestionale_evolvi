@@ -157,13 +157,13 @@ export default function ClientiImportCSV({ isOpen, onClose, onImportComplete }: 
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Upload className="w-5 h-5 text-blue-600" />
+            <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Upload className="w-4 h-4 text-blue-600" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-sm font-semibold text-gray-900">
                 Importazione Clienti da CSV
               </h3>
               <p className="text-sm text-gray-600">
@@ -180,15 +180,15 @@ export default function ClientiImportCSV({ isOpen, onClose, onImportComplete }: 
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
           {!csvData.length && !results ? (
-            <div className="space-y-6">
+            <div className="space-y-3">
               {/* File Upload */}
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                <div className="flex flex-col items-center space-y-4">
+                <div className="flex flex-col items-center space-y-3">
                   <FileText className="w-12 h-12 text-gray-400" />
                   <div>
-                    <h4 className="text-lg font-medium text-gray-900">
+                    <h4 className="text-sm font-medium text-gray-900">
                       Carica il file CSV
                     </h4>
                     <p className="text-sm text-gray-600 mt-1">
@@ -219,7 +219,7 @@ export default function ClientiImportCSV({ isOpen, onClose, onImportComplete }: 
 
               {/* Mapping Info */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-medium text-blue-900 mb-2">Mapping Automatico</h4>
+                <h4 className="font-medium text-blue-900 mb-1">Mapping Automatico</h4>
                 <p className="text-sm text-blue-700 mb-3">
                   I seguenti campi verranno mappati automaticamente:
                 </p>
@@ -241,9 +241,9 @@ export default function ClientiImportCSV({ isOpen, onClose, onImportComplete }: 
 
           {/* Preview */}
           {preview.length > 0 && !results ? (
-            <div className="space-y-6">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-lg font-semibold text-gray-900">
+                <h4 className="text-sm font-semibold text-gray-900">
                   Anteprima dati ({csvData.length} righe totali)
                 </h4>
                 <button
@@ -291,10 +291,10 @@ export default function ClientiImportCSV({ isOpen, onClose, onImportComplete }: 
 
           {/* Results */}
           {results ? (
-            <div className="space-y-6">
+            <div className="space-y-3">
               <div className="text-center">
                 <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                <h4 className="text-xl font-semibold text-gray-900 mb-2">
+                <h4 className="text-sm font-semibold text-gray-900 mb-1">
                   Importazione Completata!
                 </h4>
                 <p className="text-gray-600">
@@ -302,10 +302,10 @@ export default function ClientiImportCSV({ isOpen, onClose, onImportComplete }: 
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  <div className="flex items-center gap-2 mb-1">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
                     <h5 className="font-medium text-green-900">Successi</h5>
                   </div>
                   <p className="text-2xl font-bold text-green-900">{results.imported}</p>
@@ -313,8 +313,8 @@ export default function ClientiImportCSV({ isOpen, onClose, onImportComplete }: 
                 </div>
 
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertCircle className="w-5 h-5 text-red-600" />
+                  <div className="flex items-center gap-2 mb-1">
+                    <AlertCircle className="w-4 h-4 text-red-600" />
                     <h5 className="font-medium text-red-900">Errori</h5>
                   </div>
                   <p className="text-2xl font-bold text-red-900">{results.errors}</p>
@@ -323,7 +323,7 @@ export default function ClientiImportCSV({ isOpen, onClose, onImportComplete }: 
               </div>
 
               {results.errorDetails.length > 0 && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h5 className="font-medium text-gray-900">Dettagli errori</h5>
                     <button
@@ -353,7 +353,7 @@ export default function ClientiImportCSV({ isOpen, onClose, onImportComplete }: 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-red-600" />
+                <AlertCircle className="w-4 h-4 text-red-600" />
                 <p className="text-red-800">{error}</p>
               </div>
             </div>
@@ -361,7 +361,7 @@ export default function ClientiImportCSV({ isOpen, onClose, onImportComplete }: 
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+        <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200">
           {results ? (
             <button
               onClick={onClose}

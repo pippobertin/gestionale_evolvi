@@ -13,7 +13,7 @@ import {
   ChevronDown
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import ResponsableSelector from './ResponsableSelector'
+import UnifiedResponsableSelector from './UnifiedResponsableSelector'
 
 interface Cliente {
   id: string
@@ -118,7 +118,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
           priorita: 'media'
         })
         setEntitaSelezionata('')
-        setResponsabile(null)
+        setResponsabile(undefined)
       }
   }, [scadenza])
 
@@ -196,62 +196,79 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
     }))
   }
 
+  // Prepara i dati per il calendario (usata sia da create che da update)
+  const buildCalendarData = async (scadenzaId: string, dataScadenza: ScadenzaFormData) => {
+    let clienteNome = 'N/A'
+    let progettoTitolo = 'N/A'
+    let responsabileEmail = dataScadenza.responsabile_email || 'info@blmproject.com'
+
+    if (dataScadenza.cliente_id) {
+      const cliente = clienti.find(c => c.id === dataScadenza.cliente_id)
+      if (cliente) clienteNome = cliente.denominazione
+    }
+
+    if (dataScadenza.progetto_id) {
+      const progetto = progetti.find(p => p.id === dataScadenza.progetto_id)
+      if (progetto) progettoTitolo = progetto.titolo_progetto
+    }
+
+    if (responsabile && responsabile.tipo === 'utente' && responsabile.utente_id) {
+      try {
+        const { data: utente } = await supabase
+          .from('scadenze_bandi_utenti')
+          .select('email')
+          .eq('id', responsabile.utente_id)
+          .single()
+        if (utente?.email) responsabileEmail = utente.email
+      } catch (e) {
+        console.warn('Email responsabile non trovata, uso default')
+      }
+    }
+
+    return {
+      id: scadenzaId,
+      titolo: dataScadenza.titolo,
+      descrizione: dataScadenza.note || '',
+      dataScadenza: dataScadenza.data_scadenza,
+      priorita: dataScadenza.priorita,
+      clienteNome,
+      progettoTitolo,
+      responsabileEmail,
+      note: dataScadenza.note
+    }
+  }
+
   const createCalendarEvent = async (scadenzaId: string, dataScadenza: ScadenzaFormData) => {
     try {
-      // Recupera informazioni aggiuntive per l'evento calendario
-      let clienteNome = 'N/A'
-      let progettoTitolo = 'N/A'
-      let responsabileEmail = dataScadenza.responsabile_email || 'info@blmproject.com'
-
-      // Recupera nome cliente se presente
-      if (dataScadenza.cliente_id) {
-        const cliente = clienti.find(c => c.id === dataScadenza.cliente_id)
-        if (cliente) clienteNome = cliente.denominazione
-      }
-
-      // Recupera titolo progetto se presente
-      if (dataScadenza.progetto_id) {
-        const progetto = progetti.find(p => p.id === dataScadenza.progetto_id)
-        if (progetto) progettoTitolo = progetto.titolo_progetto
-      }
-
-      // Se c'è un responsabile personalizzato, cerca la sua email
-      if (responsabile) {
-        if (responsabile.tipo === 'utente' && responsabile.utente_id) {
-          try {
-            const { data: utente } = await supabase
-              .from('scadenze_bandi_utenti')
-              .select('email')
-              .eq('id', responsabile.utente_id)
-              .single()
-
-            if (utente?.email) responsabileEmail = utente.email
-          } catch (e) {
-            console.warn('Email responsabile non trovata, uso default')
-          }
-        }
-      }
-
-      // Importa dinamicamente CalendarService
+      const calData = await buildCalendarData(scadenzaId, dataScadenza)
       const { CalendarService } = await import('@/lib/notifications/calendarService')
+      const eventId = await CalendarService.createScadenzaEvent(calData)
 
-      await CalendarService.createScadenzaEvent({
-        id: scadenzaId,
-        titolo: dataScadenza.titolo,
-        descrizione: dataScadenza.note || '',
-        dataScadenza: dataScadenza.data_scadenza,
-        priorita: dataScadenza.priorita,
-        clienteNome,
-        progettoTitolo,
-        responsabileEmail,
-        note: dataScadenza.note
-      })
-
-      console.log('✅ Evento calendario creato per scadenza:', scadenzaId)
-
+      if (eventId) {
+        console.log('✅ Evento calendario creato per scadenza:', scadenzaId)
+      } else {
+        console.warn('⚠️ Evento calendario non creato (token non disponibile o permessi mancanti)')
+      }
     } catch (error) {
       console.error('❌ Errore creazione evento calendario:', error)
       throw error
+    }
+  }
+
+  const updateCalendarEvent = async (scadenzaId: string, dataScadenza: ScadenzaFormData) => {
+    try {
+      const calData = await buildCalendarData(scadenzaId, dataScadenza)
+      const { CalendarService } = await import('@/lib/notifications/calendarService')
+      const success = await CalendarService.updateScadenzaEvent(calData)
+
+      if (success) {
+        console.log('✅ Evento calendario aggiornato per scadenza:', scadenzaId)
+      } else {
+        console.warn('⚠️ Evento calendario non aggiornato')
+      }
+    } catch (error) {
+      console.error('❌ Errore aggiornamento evento calendario:', error)
+      // Non blocchiamo il salvataggio se il calendario fallisce
     }
   }
 
@@ -291,6 +308,16 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
           .from('scadenze_bandi_responsabili_scadenze')
           .delete()
           .eq('scadenza_id', scadenzaId)
+
+        // Aggiorna evento calendario (non blocca il salvataggio se fallisce)
+        try {
+          await updateCalendarEvent(scadenzaId, dataToSave)
+        } catch (calError) {
+          console.warn('Evento calendario non aggiornato:', calError)
+          if (calError instanceof Error && calError.message.includes('insufficient_permissions_calendar')) {
+            alert('Scadenza salvata! Per abilitare gli eventi calendario, fare logout e login nuovamente per concedere i permessi del calendario a Google.')
+          }
+        }
       } else {
         // Nuova scadenza - prima crea la scadenza per ottenere l'ID
         const { data: newScadenza, error } = await supabase
@@ -358,13 +385,13 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-primary-600" />
+            <div className="w-6 h-6 bg-primary-100 rounded-lg flex items-center justify-center">
+              <Calendar className="w-4 h-4 text-primary-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-sm font-bold text-gray-900">
                 {scadenza ? 'Modifica Scadenza' : 'Nuova Scadenza'}
               </h2>
               <p className="text-gray-600 text-sm">
@@ -376,12 +403,12 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <X className="w-5 h-5 text-gray-400" />
+            <X className="w-4 h-4 text-gray-400" />
           </button>
         </div>
 
         {/* Form */}
-        <div className="p-6 space-y-6">
+        <div className="p-4 space-y-3">
           {/* Selezione Entità */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -397,7 +424,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <AlertTriangle className="w-6 h-6 mx-auto mb-2 text-gray-600" />
+                <AlertTriangle className="w-4 h-4 mx-auto mb-1 text-gray-600" />
                 <div className="text-sm font-medium">Nessuna</div>
                 <div className="text-xs text-gray-500">Scadenza generica</div>
               </button>
@@ -410,7 +437,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <Building2 className="w-6 h-6 mx-auto mb-2 text-blue-600" />
+                <Building2 className="w-4 h-4 mx-auto mb-1 text-blue-600" />
                 <div className="text-sm font-medium">Cliente</div>
                 <div className="text-xs text-gray-500">Contratti, certificazioni</div>
               </button>
@@ -424,7 +451,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <FileText className="w-6 h-6 mx-auto mb-2 text-green-600" />
+                <FileText className="w-4 h-4 mx-auto mb-1 text-green-600" />
                 <div className="text-sm font-medium">Bando</div>
                 <div className="text-xs text-gray-500">Aperture, graduatorie</div>
               </button>
@@ -438,7 +465,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <Users className="w-6 h-6 mx-auto mb-2 text-purple-600" />
+                <Users className="w-4 h-4 mx-auto mb-1 text-purple-600" />
                 <div className="text-sm font-medium">Progetto</div>
                 <div className="text-xs text-gray-500">SAL, proroghe, milestone</div>
               </button>
@@ -448,7 +475,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
           {/* Selezione specifica dell'entità */}
           {entitaSelezionata && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Seleziona {entitaSelezionata} *
               </label>
 
@@ -503,9 +530,9 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
           )}
 
           {/* Dati scadenza */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Titolo *
               </label>
               <input
@@ -519,7 +546,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Data Scadenza *
               </label>
               <input
@@ -532,7 +559,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Priorità *
               </label>
               <select
@@ -548,7 +575,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Stato
               </label>
               <select
@@ -564,7 +591,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Tipologia
               </label>
               <select
@@ -582,10 +609,10 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Responsabile
               </label>
-              <ResponsableSelector
+              <UnifiedResponsableSelector
                 value={responsabile}
                 onChange={setResponsabile}
                 className="w-full"
@@ -593,7 +620,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Note
               </label>
               <textarea
@@ -608,7 +635,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end space-x-3 px-6 py-4 border-t border-gray-200">
+        <div className="flex items-center justify-end space-x-3 px-4 py-3 border-t border-gray-200">
           <button
             onClick={onClose}
             className="btn-secondary"

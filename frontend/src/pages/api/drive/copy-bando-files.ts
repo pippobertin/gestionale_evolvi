@@ -26,10 +26,13 @@ export default async function handler(
       })
     }
 
+    // Session is guaranteed non-null after the check above
+    const accessToken = session!.accessToken as string
+
     // 1. Trova il Drive Condiviso "Gestionale Evolvi"
     let sharedDriveId: string
     try {
-      sharedDriveId = await findOrCreateSharedDrive(session.accessToken as string, 'Gestionale Evolvi')
+      sharedDriveId = await findOrCreateSharedDrive(accessToken, 'Gestionale Evolvi')
       console.log('📁 Drive Condiviso trovato:', sharedDriveId)
     } catch (error: any) {
       console.error('📁 Errore Drive Condiviso:', error)
@@ -39,12 +42,76 @@ export default async function handler(
       })
     }
 
-    // 2. Trova cartella bando
+    // 2. Trova cartella "BANDI E PROGETTI"
+    let bandiProgettiFolder: string
+    try {
+      const existingBandiProgetti = await listSharedDriveFiles(
+        accessToken,
+        sharedDriveId,
+        "name='BANDI E PROGETTI' and mimeType='application/vnd.google-apps.folder'"
+      )
+
+      if (existingBandiProgetti.length > 0) {
+        bandiProgettiFolder = existingBandiProgetti[0].id!
+        console.log('📁 Cartella BANDI E PROGETTI trovata:', bandiProgettiFolder)
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: 'Cartella "BANDI E PROGETTI" non trovata nel Drive Condiviso'
+        })
+      }
+    } catch (error: any) {
+      console.error('📁 Errore cartella BANDI E PROGETTI:', error)
+      throw error
+    }
+
+    // 3. Cerca cartella anno (prova anno corrente e 2 anni precedenti)
+    const currentYear = new Date().getFullYear()
+    let yearFolderId: string | null = null
+    let foundYear: number | null = null
+
+    try {
+      for (let year = currentYear; year >= currentYear - 2; year--) {
+        const yearFolders = await listSharedDriveFiles(
+          accessToken,
+          bandiProgettiFolder,
+          `name='${year}' and mimeType='application/vnd.google-apps.folder'`
+        )
+
+        if (yearFolders.length > 0) {
+          // Verifica se il bando esiste in questa cartella anno
+          const bandoInYear = await listSharedDriveFiles(
+            accessToken,
+            yearFolders[0].id!,
+            `name='${bandoName}' and mimeType='application/vnd.google-apps.folder'`
+          )
+
+          if (bandoInYear.length > 0) {
+            yearFolderId = yearFolders[0].id!
+            foundYear = year
+            console.log(`📁 Cartella anno ${year} trovata con bando:`, yearFolderId)
+            break
+          }
+        }
+      }
+
+      if (!yearFolderId) {
+        return res.status(404).json({
+          success: false,
+          message: `Cartella anno con bando "${bandoName}" non trovata. Verifica che il bando esista.`
+        })
+      }
+    } catch (error: any) {
+      console.error('📁 Errore ricerca cartella anno:', error)
+      throw error
+    }
+
+    // 4. Trova cartella bando nella cartella anno
     let bandoFolderId: string
     try {
       const existingBandoFolders = await listSharedDriveFiles(
-        session.accessToken as string,
-        sharedDriveId,
+        accessToken,
+        yearFolderId,
         `name='${bandoName}' and mimeType='application/vnd.google-apps.folder'`
       )
 
@@ -54,7 +121,7 @@ export default async function handler(
       } else {
         return res.status(404).json({
           success: false,
-          message: `Cartella bando "${bandoName}" non trovata.`
+          message: `Cartella bando "${bandoName}" non trovata nella cartella anno ${foundYear}.`
         })
       }
     } catch (error: any) {
@@ -62,11 +129,11 @@ export default async function handler(
       throw error
     }
 
-    // 3. Trova cartella ALLEGATI del bando (sorgente)
+    // 5. Trova cartella ALLEGATI del bando (sorgente)
     let bandoAllegatiFolderId: string
     try {
       const bandoAllegatifolders = await listSharedDriveFiles(
-        session.accessToken as string,
+        accessToken,
         bandoFolderId,
         `name='ALLEGATI' and mimeType='application/vnd.google-apps.folder'`
       )
@@ -86,11 +153,11 @@ export default async function handler(
       throw error
     }
 
-    // 4. Trova cartella PROGETTI del bando
+    // 6. Trova cartella PROGETTI del bando
     let progettiFolderId: string
     try {
       const progettifolders = await listSharedDriveFiles(
-        session.accessToken as string,
+        accessToken,
         bandoFolderId,
         `name='PROGETTI' and mimeType='application/vnd.google-apps.folder'`
       )
@@ -109,11 +176,11 @@ export default async function handler(
       throw error
     }
 
-    // 5. Trova cartella progetto
+    // 7. Trova cartella progetto
     let progettoFolderId: string
     try {
       const progettoFolders = await listSharedDriveFiles(
-        session.accessToken as string,
+        accessToken,
         progettiFolderId,
         `name='${progettoName}' and mimeType='application/vnd.google-apps.folder'`
       )
@@ -132,11 +199,11 @@ export default async function handler(
       throw error
     }
 
-    // 6. Trova cartella ALLEGATI del progetto (destinazione)
+    // 8. Trova cartella ALLEGATI del progetto (destinazione)
     let progettoAllegatiFolderId: string
     try {
       const progettoAllegatifolders = await listSharedDriveFiles(
-        session.accessToken as string,
+        accessToken,
         progettoFolderId,
         `name='ALLEGATI' and mimeType='application/vnd.google-apps.folder'`
       )
@@ -155,17 +222,17 @@ export default async function handler(
       throw error
     }
 
-    // 7. Lista tutti i file nella cartella ALLEGATI del bando
+    // 9. Lista tutti i file nella cartella ALLEGATI del bando
     const allegatiFiles = await listSharedDriveFiles(
-      session.accessToken as string,
+      accessToken,
       bandoAllegatiFolderId,
       `mimeType != 'application/vnd.google-apps.folder'`
     )
 
     console.log(`📄 Trovati ${allegatiFiles.length} file da copiare nella cartella ALLEGATI del bando`)
 
-    // 8. Copia ogni file nella cartella ALLEGATI del progetto
-    const drive = await createDriveClient(session.accessToken as string)
+    // 10. Copia ogni file nella cartella ALLEGATI del progetto
+    const drive = await createDriveClient(accessToken)
     const copiedFiles = []
 
     for (const file of allegatiFiles) {

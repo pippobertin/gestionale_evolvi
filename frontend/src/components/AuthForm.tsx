@@ -251,13 +251,13 @@ export default function AuthForm() {
         </div>
 
         {/* Form */}
-        <div key={componentKey} className="bg-white rounded-lg shadow-lg p-8">
+        <div key={componentKey} className="bg-white rounded-lg shadow-lg p-4">
           {console.log('AuthForm render - showPasswordChange:', showPasswordChange, 'loading:', loading, 'componentKey:', componentKey)}
           {showPasswordChange ? (
             /* Password Change Form */
-            <form onSubmit={handlePasswordChange} className="space-y-6">{console.log('Rendering password change form')}
-              <div className="text-center mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Cambio Password Obbligatorio</h2>
+            <form onSubmit={handlePasswordChange} className="space-y-3">{console.log('Rendering password change form')}
+              <div className="text-center mb-3">
+                <h2 className="text-sm font-semibold text-gray-900 mb-1">Cambio Password Obbligatorio</h2>
                 <p className="text-sm text-gray-600">È necessario cambiare la password temporanea per continuare</p>
               </div>
 
@@ -332,10 +332,10 @@ export default function AuthForm() {
             </form>
           ) : (
             /* Normal Login/Signup Form */
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-3">
             {/* Nome e Cognome (solo per signup) */}
             {!isLogin && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="nome" className="block text-sm font-medium text-gray-700 mb-1">
                     Nome
@@ -481,7 +481,7 @@ export default function AuthForm() {
 
           {/* Toggle Mode (only show for normal login/signup) */}
           {!showPasswordChange && (
-          <div className="mt-6 text-center">
+          <div className="mt-3 text-center">
             <button
               type="button"
               onClick={toggleMode}

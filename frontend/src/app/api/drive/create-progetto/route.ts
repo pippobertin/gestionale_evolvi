@@ -15,11 +15,13 @@ export async function POST(req: NextRequest) {
       }, { status: 401 })
     }
 
-    const { bandoName, progettoName } = await req.json()
+    const { bandoName, progettoName, progettoId } = await req.json()
 
     if (!bandoName || !progettoName) {
       return Response.json({ message: 'Nome bando e nome progetto richiesti' }, { status: 400 })
     }
+
+    console.log(`📋 Creazione progetto Drive: ${progettoName} (ID: ${progettoId || 'N/D'})`)
 
     // 1. Trova il Drive Condiviso "Gestionale Evolvi"
     let sharedDriveId: string
@@ -34,12 +36,76 @@ export async function POST(req: NextRequest) {
       }, { status: 404 })
     }
 
-    // 2. Trova cartella bando
+    // 2. Trova cartella "BANDI E PROGETTI"
+    let bandiProgettiFolder: string
+    try {
+      const existingBandiProgetti = await listSharedDriveFiles(
+        googleAccessToken,
+        sharedDriveId,
+        "name='BANDI E PROGETTI' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+      )
+
+      if (existingBandiProgetti.length > 0) {
+        bandiProgettiFolder = existingBandiProgetti[0].id!
+        console.log('📁 Cartella BANDI E PROGETTI trovata:', bandiProgettiFolder)
+      } else {
+        return Response.json({
+          success: false,
+          message: 'Cartella "BANDI E PROGETTI" non trovata nel Drive Condiviso'
+        }, { status: 404 })
+      }
+    } catch (error: any) {
+      console.error('📁 Errore cartella BANDI E PROGETTI:', error)
+      throw error
+    }
+
+    // 3. Cerca cartella anno (prova anno corrente e 2 anni precedenti)
+    const currentYear = new Date().getFullYear()
+    let yearFolderId: string | null = null
+    let foundYear: number | null = null
+
+    try {
+      for (let year = currentYear; year >= currentYear - 2; year--) {
+        const yearFolders = await listSharedDriveFiles(
+          googleAccessToken,
+          bandiProgettiFolder,
+          `name='${year}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+        )
+
+        if (yearFolders.length > 0) {
+          // Verifica se il bando esiste in questa cartella anno
+          const bandoInYear = await listSharedDriveFiles(
+            googleAccessToken,
+            yearFolders[0].id!,
+            `name='${bandoName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+          )
+
+          if (bandoInYear.length > 0) {
+            yearFolderId = yearFolders[0].id!
+            foundYear = year
+            console.log(`📁 Cartella anno ${year} trovata con bando:`, yearFolderId)
+            break
+          }
+        }
+      }
+
+      if (!yearFolderId) {
+        return Response.json({
+          success: false,
+          message: `Cartella anno con bando "${bandoName}" non trovata. Verifica che il bando esista.`
+        }, { status: 404 })
+      }
+    } catch (error: any) {
+      console.error('📁 Errore ricerca cartella anno:', error)
+      throw error
+    }
+
+    // 4. Trova cartella bando nella cartella anno
     let bandoFolderId: string
     try {
       const existingBandoFolders = await listSharedDriveFiles(
         googleAccessToken,
-        sharedDriveId,
+        yearFolderId,
         `name='${bandoName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
       )
 
@@ -49,7 +115,7 @@ export async function POST(req: NextRequest) {
       } else {
         return Response.json({
           success: false,
-          message: `Cartella bando "${bandoName}" non trovata. Crea prima il bando.`
+          message: `Cartella bando "${bandoName}" non trovata nella cartella anno ${foundYear}. Crea prima il bando.`
         }, { status: 404 })
       }
     } catch (error: any) {
@@ -57,7 +123,7 @@ export async function POST(req: NextRequest) {
       throw error
     }
 
-    // 3. Cerca o crea cartella "PROGETTI" dentro il bando
+    // 5. Cerca o crea cartella "PROGETTI" dentro il bando
     let progettiFolderId: string
     try {
       const existingProgettiFolders = await listSharedDriveFiles(
@@ -84,7 +150,7 @@ export async function POST(req: NextRequest) {
       throw error
     }
 
-    // 4. Cerca o crea cartella progetto dentro PROGETTI
+    // 6. Cerca o crea cartella progetto dentro PROGETTI
     let progettoFolderId: string
     try {
       const existingProgettoFolders = await listSharedDriveFiles(
@@ -111,7 +177,7 @@ export async function POST(req: NextRequest) {
       throw error
     }
 
-    // 5. Crea sottocartelle del progetto (inclusa CONTRATTI)
+    // 7. Crea sottocartelle del progetto (inclusa CONTRATTI)
     const subFolders = ['ALLEGATI', 'DOC AMM', 'CONTRATTI']
     const createdSubFolders: any = {}
 
@@ -143,11 +209,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 6. Copia allegati del bando nella cartella ALLEGATI del progetto
+    // 8. Copia allegati del bando nella cartella ALLEGATI del progetto
     const allegatiResult = await copyBandoAllegatiToProgetto(
       googleAccessToken,
       bandoName,
       progettoName,
+      progettoId,
       bandoFolderId,
       createdSubFolders.ALLEGATI
     )
@@ -161,7 +228,7 @@ export async function POST(req: NextRequest) {
         progettoFolderId,
         subFolders: createdSubFolders,
         allegatiCopy: allegatiResult,
-        folderPath: `Drive Condivisi > Gestionale Evolvi > ${bandoName} > PROGETTI > ${progettoName}`
+        folderPath: `Drive Condivisi > Gestionale Evolvi > BANDI E PROGETTI > ${foundYear} > ${bandoName} > PROGETTI > ${progettoName}`
       }
     })
 
@@ -180,6 +247,7 @@ async function copyBandoAllegatiToProgetto(
   googleAccessToken: string,
   bandoName: string,
   progettoName: string,
+  progettoId: string | undefined,
   bandoFolderId: string,
   progettoAllegatiFolderId: string
 ) {
@@ -246,7 +314,7 @@ async function copyBandoAllegatiToProgetto(
     console.log(`📋 Copia completata: ${copiedFiles.length}/${bandoAllegati.length} file copiati`)
 
     // Aggiorna database con i nuovi ID Google Drive
-    await updateProjectDocumentsWithDriveIds(progettoName, bandoName, copiedFiles)
+    await updateProjectDocumentsWithDriveIds(progettoId, progettoName, bandoName, copiedFiles)
 
     return {
       copiedFiles: copiedFiles.length,
@@ -261,37 +329,65 @@ async function copyBandoAllegatiToProgetto(
 
 // Aggiorna database documenti progetto con ID Google Drive
 async function updateProjectDocumentsWithDriveIds(
+  progettoId: string | undefined,
   progettoName: string,
   bandoName: string,
   copiedFiles: any[]
 ) {
   try {
-    console.log(`💾 Aggiornamento database documenti progetto: ${copiedFiles.length} documenti`)
+    console.log(`💾 Aggiornamento database documenti progetto ${progettoId || 'N/D'}: ${copiedFiles.length} documenti`)
 
     for (const file of copiedFiles) {
       // Strategia di matching: cerca documenti che potrebbero corrispondere al file copiato
       // 1. Prima cerca per nome_originale (matching esatto)
-      // 2. Poi cerca per pattern nel nome_file (per template TEMPLATE_*)
+      // 2. Poi cerca per nome_file senza prefisso [NomeProgetto]
+      // 3. Poi cerca per pattern nel nome_file (per template TEMPLATE_*)
 
       let documents = null
       let findError = null
 
-      // Tentativo 1: Match per nome_originale
+      console.log(`🔍 Cercando documento per file: ${file.originalName} (copiato come: ${file.newName})`)
+
+      // Se non abbiamo il progettoId, salta l'aggiornamento per sicurezza
+      if (!progettoId) {
+        console.warn(`⚠️ Nessun progettoId fornito, skip aggiornamento per ${file.originalName}`)
+        continue
+      }
+
+      // Tentativo 1: Match per nome_originale con categoria 'allegato' (documenti ereditati)
       const result1 = await supabase
         .from('scadenze_bandi_documenti_progetto')
         .select('*')
+        .eq('progetto_id', progettoId)  // FILTRO PER PROGETTO SPECIFICO
         .eq('nome_originale', file.originalName)
-        .eq('categoria', 'ereditato')
+        .in('categoria', ['allegato', 'allegati', 'ereditato']) // Supporta varianti categoria
 
       if (!result1.error && result1.data && result1.data.length > 0) {
         documents = result1.data
+        console.log(`✅ Match esatto per nome_originale: ${file.originalName}`)
       } else {
-        // Tentativo 2: Match per pattern nel nome_file (es. TEMPLATE_Modello A...)
+        // Tentativo 1b: Match per nome_file che corrisponde esattamente al nome originale
+        const result1b = await supabase
+          .from('scadenze_bandi_documenti_progetto')
+          .select('*')
+          .eq('progetto_id', progettoId)  // FILTRO PER PROGETTO SPECIFICO
+          .eq('nome_file', file.originalName)
+          .in('categoria', ['allegato', 'allegati', 'ereditato'])
+
+        if (!result1b.error && result1b.data && result1b.data.length > 0) {
+          documents = result1b.data
+          console.log(`✅ Match esatto per nome_file: ${file.originalName}`)
+        }
+      }
+
+      if (!documents) {
+        // Tentativo 2: Match per pattern nel nome_file (es. TEMPLATE_Modello A... o [NomeProgetto] ...)
         const result2 = await supabase
           .from('scadenze_bandi_documenti_progetto')
           .select('*')
+          .eq('progetto_id', progettoId)  // FILTRO PER PROGETTO SPECIFICO
           .ilike('nome_file', `%${file.originalName}%`)
-          .eq('categoria', 'ereditato')
+          .in('categoria', ['allegato', 'allegati', 'ereditato']) // Supporta varianti categoria
 
         if (!result2.error && result2.data && result2.data.length > 0) {
           documents = result2.data
@@ -302,8 +398,9 @@ async function updateProjectDocumentsWithDriveIds(
           const result3 = await supabase
             .from('scadenze_bandi_documenti_progetto')
             .select('*')
+            .eq('progetto_id', progettoId)  // FILTRO PER PROGETTO SPECIFICO
             .ilike('nome_file', `%${cleanName}%`)
-            .eq('categoria', 'ereditato')
+            .in('categoria', ['allegato', 'allegati', 'ereditato']) // Supporta varianti categoria
 
           if (!result3.error && result3.data && result3.data.length > 0) {
             documents = result3.data

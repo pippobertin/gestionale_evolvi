@@ -1,7 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { getServerSession } from 'next-auth/next'
-import { deleteDriveFolder, findOrCreateSharedDrive, findFolderInSharedDrive } from '@/lib/googleDrive'
-import { authOptions } from '@/lib/auth'
+import { getAuthenticatedDriveClient } from '@/lib/googleAuth'
 
 export default async function handler(
   req: NextApiRequest,
@@ -12,44 +10,78 @@ export default async function handler(
   }
 
   try {
-    const session = await getServerSession(req, res, authOptions)
-
-    if (!(session as any)?.accessToken) {
-      return res.status(401).json({ message: 'Non autenticato con Google' })
-    }
-
     const { bandoName, driveFolderId } = req.body
 
     if (!bandoName && !driveFolderId) {
       return res.status(400).json({ message: 'Nome bando o ID cartella Drive richiesto' })
     }
 
+    // Ottieni client Drive autenticato con Service Account
+    const drive = await getAuthenticatedDriveClient()
+
     let folderIdToDelete = driveFolderId
 
     // Se non abbiamo l'ID, cerchiamo la cartella per nome
     if (!folderIdToDelete && bandoName) {
+      console.log(`🔍 Ricerca cartella bando "${bandoName}"`)
+
       // 1. Trova il Drive Condiviso "Gestionale Evolvi"
-      const sharedDriveId = await findOrCreateSharedDrive(session.accessToken as string)
+      const drivesResponse = await drive.drives.list({
+        pageSize: 100,
+        fields: 'drives(id,name)'
+      })
 
-      // 2. Trova la cartella del bando
-      const bandoFolder = await findFolderInSharedDrive(
-        session.accessToken as string,
-        sharedDriveId,
-        bandoName
-      )
+      console.log(`📁 Drives trovati:`, drivesResponse.data.drives?.map(d => d.name))
 
-      if (!bandoFolder) {
+      const gestionaleEvolvi = drivesResponse.data.drives?.find(d => d.name === 'Gestionale Evolvi')
+
+      if (!gestionaleEvolvi?.id) {
+        console.log('❌ Drive Condiviso "Gestionale Evolvi" non trovato')
+        return res.status(404).json({
+          success: false,
+          message: 'Drive Condiviso "Gestionale Evolvi" non trovato'
+        })
+      }
+
+      const sharedDriveId = gestionaleEvolvi.id
+      console.log(`✅ Drive Condiviso trovato: ${sharedDriveId}`)
+
+      // 2. Trova la cartella del bando nel Drive Condiviso (in tutta la gerarchia)
+      console.log(`🔍 Ricerca cartella bando "${bandoName}" in tutto il Drive Condiviso`)
+
+      const foldersResponse = await drive.files.list({
+        driveId: sharedDriveId,
+        includeItemsFromAllDrives: true,
+        supportsAllDrives: true,
+        corpora: 'drive',
+        q: `name='${bandoName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+        fields: 'files(id,name,parents)',
+        pageSize: 10  // Aumentato per gestire eventuali duplicati
+      })
+
+      console.log(`📊 Risultati ricerca:`, foldersResponse.data.files)
+
+      const bandoFolder = foldersResponse.data.files?.[0]
+
+      if (!bandoFolder?.id) {
+        console.log(`❌ Cartella bando "${bandoName}" non trovata in Google Drive`)
         return res.status(404).json({
           success: false,
           message: `Cartella bando "${bandoName}" non trovata in Google Drive`
         })
       }
 
-      folderIdToDelete = bandoFolder.id!
+      console.log(`🎯 Cartella bando trovata: ${bandoFolder.name} (${bandoFolder.id})`)
+      folderIdToDelete = bandoFolder.id
     }
 
-    // 3. Elimina la cartella e tutto il suo contenuto
-    await deleteDriveFolder(session.accessToken as string, folderIdToDelete)
+    // 3. Elimina la cartella e tutto il suo contenuto (ricorsivo)
+    await drive.files.delete({
+      fileId: folderIdToDelete,
+      supportsAllDrives: true
+    })
+
+    console.log(`✅ Cartella bando ${folderIdToDelete} eliminata da Google Drive`)
 
     return res.status(200).json({
       success: true,
@@ -57,11 +89,12 @@ export default async function handler(
       deletedFolderId: folderIdToDelete
     })
 
-  } catch (error) {
-    console.error('Errore eliminazione bando Drive:', error)
+  } catch (error: any) {
+    console.error('❌ Errore eliminazione bando Drive:', error)
     return res.status(500).json({
       success: false,
-      message: 'Errore interno del server'
+      message: 'Errore interno del server',
+      error: error.message
     })
   }
 }

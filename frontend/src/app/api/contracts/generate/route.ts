@@ -171,7 +171,8 @@ export async function POST(req: NextRequest) {
       const processResult = await processWordTemplate(
         googleAccessToken,
         wordTemplateResult.fileId!,
-        contractData
+        contractData,
+        wordTemplateResult.mimeType
       )
 
       if (!processResult.success) {
@@ -336,7 +337,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Trova cartella progetto su Google Drive
+// Trova cartella progetto su Google Drive con nuova struttura gerarchica
 async function findProjectFolder(googleAccessToken: string, bandoName: string, progettoName: string) {
   try {
     // 1. Trova Drive Condiviso
@@ -353,18 +354,69 @@ async function findProjectFolder(googleAccessToken: string, bandoName: string, p
       return { success: false, message: 'Drive Condiviso "Gestionale Evolvi" non trovato' }
     }
 
-    // 2. Trova cartella bando
-    const bandoFolders = await listSharedDriveFiles(
+    console.log('📁 Drive Condiviso trovato:', gestionaleEvolvi.id)
+
+    // 2. Trova cartella "BANDI E PROGETTI"
+    const bandiProgettiFolder = await listSharedDriveFiles(
       googleAccessToken,
       gestionaleEvolvi.id,
+      "name='BANDI E PROGETTI' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+    )
+
+    if (bandiProgettiFolder.length === 0) {
+      return { success: false, message: 'Cartella "BANDI E PROGETTI" non trovata nel Drive Condiviso' }
+    }
+
+    console.log('📁 Cartella BANDI E PROGETTI trovata:', bandiProgettiFolder[0].id)
+
+    // 3. Cerca cartelle anno (prova anno corrente e precedenti)
+    const currentYear = new Date().getFullYear()
+    let yearFolderId: string | null = null
+    let foundYear: number | null = null
+
+    // Prova anno corrente e 2 anni precedenti
+    for (let year = currentYear; year >= currentYear - 2; year--) {
+      const yearFolders = await listSharedDriveFiles(
+        googleAccessToken,
+        bandiProgettiFolder[0].id!,
+        `name='${year}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+      )
+
+      if (yearFolders.length > 0) {
+        // Verifica se il bando esiste in questa cartella anno
+        const bandoInYear = await listSharedDriveFiles(
+          googleAccessToken,
+          yearFolders[0].id!,
+          `name='${bandoName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+        )
+
+        if (bandoInYear.length > 0) {
+          yearFolderId = yearFolders[0].id!
+          foundYear = year
+          console.log(`📁 Cartella anno ${year} trovata con bando:`, yearFolderId)
+          break
+        }
+      }
+    }
+
+    if (!yearFolderId) {
+      return { success: false, message: `Cartella anno con bando "${bandoName}" non trovata. Verifica che il bando esista in una cartella anno.` }
+    }
+
+    // 4. Trova cartella bando dentro la cartella anno
+    const bandoFolders = await listSharedDriveFiles(
+      googleAccessToken,
+      yearFolderId,
       `name='${bandoName.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
     )
 
     if (bandoFolders.length === 0) {
-      return { success: false, message: `Cartella bando "${bandoName}" non trovata` }
+      return { success: false, message: `Cartella bando "${bandoName}" non trovata nella cartella anno ${foundYear}` }
     }
 
-    // 3. Trova cartella PROGETTI
+    console.log('📁 Cartella bando trovata:', bandoFolders[0].id)
+
+    // 5. Trova cartella PROGETTI
     const progettiFolders = await listSharedDriveFiles(
       googleAccessToken,
       bandoFolders[0].id!,
@@ -372,10 +424,12 @@ async function findProjectFolder(googleAccessToken: string, bandoName: string, p
     )
 
     if (progettiFolders.length === 0) {
-      return { success: false, message: 'Cartella PROGETTI non trovata' }
+      return { success: false, message: `Cartella PROGETTI non trovata nel bando "${bandoName}"` }
     }
 
-    // 4. Trova cartella progetto
+    console.log('📁 Cartella PROGETTI trovata:', progettiFolders[0].id)
+
+    // 6. Trova cartella progetto
     const progettoFolders = await listSharedDriveFiles(
       googleAccessToken,
       progettiFolders[0].id!,
@@ -383,20 +437,24 @@ async function findProjectFolder(googleAccessToken: string, bandoName: string, p
     )
 
     if (progettoFolders.length === 0) {
-      return { success: false, message: `Cartella progetto "${progettoName}" non trovata` }
+      return { success: false, message: `Cartella progetto "${progettoName}" non trovata in PROGETTI` }
     }
+
+    console.log('📁 Cartella progetto trovata:', progettoFolders[0].id)
 
     return {
       success: true,
       sharedDriveId: gestionaleEvolvi.id,
+      yearFolderId: yearFolderId,
       bandoFolderId: bandoFolders[0].id,
       progettiFolderId: progettiFolders[0].id,
-      projectFolderId: progettoFolders[0].id
+      projectFolderId: progettoFolders[0].id,
+      foundPath: `Gestionale Evolvi > BANDI E PROGETTI > ${foundYear} > ${bandoName} > PROGETTI > ${progettoName}`
     }
 
   } catch (error) {
     console.error('Errore ricerca cartella progetto:', error)
-    return { success: false, message: 'Errore durante ricerca cartella progetto' }
+    return { success: false, message: 'Errore durante ricerca cartella progetto: ' + (error instanceof Error ? error.message : 'Unknown error') }
   }
 }
 

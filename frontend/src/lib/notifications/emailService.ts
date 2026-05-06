@@ -4,7 +4,7 @@ export interface EmailNotification {
   to: string
   subject: string
   htmlContent: string
-  type: 'scadenza_alert' | 'progetto_assegnato' | 'digest_giornaliero' | 'digest_settimanale'
+  type: 'scadenza_alert' | 'progetto_assegnato' | 'digest_giornaliero' | 'digest_settimanale' | 'fattura_alert' | 'contratto_scadenza' | 'scadenza_contrattuale'
   priority: 'low' | 'normal' | 'high'
   scheduledFor?: string // ISO date string
   metadata?: {
@@ -267,6 +267,113 @@ export class EmailService {
       }
 
       await this.queueEmail(notification)
+    }
+  }
+
+  /**
+   * Crea alert per fattura Evolvi in scadenza
+   */
+  static async createFatturaAlert(fattura: {
+    numero_fattura: string
+    importo_totale: number
+    data_scadenza: string
+    giorni_rimanenti: number
+    cliente_nome: string
+    responsabile_email: string
+  }): Promise<void> {
+    const urgencyText = fattura.giorni_rimanenti <= 0 ? 'SCADUTA' : fattura.giorni_rimanenti <= 3 ? 'URGENTE' : 'PROMEMORIA'
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head><meta charset="utf-8"><title>Fattura ${urgencyText}</title></head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #06b6d4, #059669); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0;">Fattura ${urgencyText}</h1>
+            </div>
+            <div style="background: white; padding: 30px; border: 1px solid #e5e7eb; border-radius: 0 0 12px 12px;">
+              <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h2 style="margin: 0 0 12px 0;">Fattura ${fattura.numero_fattura}</h2>
+                <p><strong>Cliente:</strong> ${fattura.cliente_nome}</p>
+                <p><strong>Importo:</strong> ${fattura.importo_totale.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}</p>
+                <p><strong>Scadenza:</strong> ${new Date(fattura.data_scadenza).toLocaleDateString('it-IT')}</p>
+              </div>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}" style="background: linear-gradient(135deg, #06b6d4, #059669); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                  Apri Gestionale
+                </a>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `
+
+    const additionalRecipients = await this.getAdditionalRecipients()
+    const recipients = [fattura.responsabile_email, ...additionalRecipients].filter((e, i, a) => a.indexOf(e) === i)
+
+    for (const recipient of recipients) {
+      await this.queueEmail({
+        to: recipient,
+        subject: `Fattura ${urgencyText}: ${fattura.numero_fattura} - ${fattura.cliente_nome}`,
+        htmlContent,
+        type: 'fattura_alert',
+        priority: fattura.giorni_rimanenti <= 3 ? 'high' : 'normal',
+        metadata: {}
+      })
+    }
+  }
+
+  /**
+   * Crea alert per scadenza contrattuale generica
+   */
+  static async createScadenzaContrattualeAlert(scadenza: {
+    titolo: string
+    tipo_scadenza: string
+    data_scadenza: string
+    giorni_rimanenti: number
+    responsabile_email: string
+    entity_type?: string
+  }): Promise<void> {
+    const urgencyText = scadenza.giorni_rimanenti <= 1 ? 'URGENTE' : scadenza.giorni_rimanenti <= 7 ? 'IMPORTANTE' : 'PROMEMORIA'
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head><meta charset="utf-8"><title>Scadenza ${urgencyText}</title></head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #06b6d4, #059669); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+              <h1 style="color: white; margin: 0;">Scadenza Contrattuale ${urgencyText}</h1>
+            </div>
+            <div style="background: white; padding: 30px; border: 1px solid #e5e7eb; border-radius: 0 0 12px 12px;">
+              <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h2 style="margin: 0 0 12px 0;">${scadenza.titolo}</h2>
+                <p><strong>Tipo:</strong> ${scadenza.tipo_scadenza}</p>
+                <p><strong>Scadenza:</strong> ${new Date(scadenza.data_scadenza).toLocaleDateString('it-IT')}</p>
+                <p><strong>Giorni rimanenti:</strong> ${scadenza.giorni_rimanenti}</p>
+              </div>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}" style="background: linear-gradient(135deg, #06b6d4, #059669); color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                  Apri Gestionale
+                </a>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `
+
+    if (scadenza.responsabile_email) {
+      await this.queueEmail({
+        to: scadenza.responsabile_email,
+        subject: `${urgencyText}: ${scadenza.titolo} - Scade ${new Date(scadenza.data_scadenza).toLocaleDateString('it-IT')}`,
+        htmlContent,
+        type: 'scadenza_contrattuale',
+        priority: scadenza.giorni_rimanenti <= 3 ? 'high' : 'normal',
+        metadata: {}
+      })
     }
   }
 

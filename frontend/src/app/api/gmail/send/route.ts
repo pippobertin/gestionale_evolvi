@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { google } from 'googleapis'
-import { supabase } from '@/lib/supabase'
+import { getGmailClient } from '@/lib/gmail'
+import { verifyJWT } from '@/lib/jwtAuth'
 
 export async function POST(request: NextRequest) {
   try {
+    // Get logged-in user ID
+    const decoded = await verifyJWT(request)
+    const userId = decoded?.userId
+
     const contentType = request.headers.get('content-type')
     let to: string = ''
     let cc: string = ''
@@ -49,33 +53,8 @@ export async function POST(request: NextRequest) {
       console.log('📧 Email send request (JSON):', { to, cc, bcc, subject, emailBody: emailBody?.substring(0, 100) + '...', bodyLength: emailBody?.length })
     }
 
-    // Get Gmail tokens
-    const { data: refreshTokenData } = await supabase
-      .from('scadenze_bandi_system_settings')
-      .select('value')
-      .eq('key', 'gmail_refresh_token')
-      .single()
-
-    if (!refreshTokenData?.value) {
-      return NextResponse.json({
-        success: false,
-        error: 'Gmail non configurato'
-      }, { status: 401 })
-    }
-
-    // Set up OAuth2 client
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/gmail/callback`
-    )
-
-    oauth2Client.setCredentials({
-      refresh_token: refreshTokenData.value
-    })
-
-    // Get Gmail service
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client })
+    // Get Gmail client with user's tokens (or system fallback)
+    const gmail = await getGmailClient(userId)
 
     let emailMessage: string
 

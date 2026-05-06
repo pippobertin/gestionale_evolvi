@@ -1,4 +1,5 @@
 import { google } from 'googleapis'
+import { createClient } from '@supabase/supabase-js'
 
 export interface GmailConfig {
   clientId: string
@@ -6,6 +7,127 @@ export interface GmailConfig {
   redirectUri: string
   refreshToken?: string
   accessToken?: string
+}
+
+/**
+ * Creates a configured OAuth2 client for Google APIs
+ * @param redirectUri - Optional custom redirect URI, defaults to Gmail callback
+ */
+export function createGoogleAuthClient(redirectUri?: string) {
+  return new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    redirectUri || `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/gmail/callback`
+  )
+}
+
+/**
+ * Retrieves Gmail client with tokens from database
+ * Supports both per-user tokens and system-wide fallback
+ *
+ * @param userId - Optional user ID to use per-user Gmail tokens
+ * @returns Configured Gmail client
+ */
+export async function getGmailClient(userId?: string) {
+  // Create Supabase client
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  let refreshToken: string | null = null
+  let accessToken: string | null = null
+  let gmailEmail: string | null = null
+
+  // If userId provided, try to get user-specific tokens first
+  if (userId) {
+    const { data: userData, error: userError } = await supabase
+      .from('scadenze_bandi_utenti')
+      .select('gmail_refresh_token, gmail_access_token, gmail_email')
+      .eq('id', userId)
+      .single()
+
+    if (!userError && userData?.gmail_refresh_token) {
+      refreshToken = userData.gmail_refresh_token
+      accessToken = userData.gmail_access_token
+      gmailEmail = userData.gmail_email
+      console.log(`✅ Using Gmail tokens for user ${gmailEmail || userId}`)
+    } else {
+      console.log(`⚠️ User ${userId} has no Gmail connected, falling back to system settings`)
+    }
+  }
+
+  // Fallback to system-wide tokens if user tokens not found
+  if (!refreshToken) {
+    const { data: refreshTokenData, error: refreshError } = await supabase
+      .from('scadenze_bandi_system_settings')
+      .select('value')
+      .eq('key', 'gmail_refresh_token')
+      .single()
+
+    if (refreshError || !refreshTokenData) {
+      throw new Error(userId
+        ? `User ${userId} has no Gmail connected and system Gmail is not configured`
+        : 'Gmail refresh token not found in system settings'
+      )
+    }
+
+    const { data: accessTokenData } = await supabase
+      .from('scadenze_bandi_system_settings')
+      .select('value')
+      .eq('key', 'gmail_access_token')
+      .single()
+
+    refreshToken = refreshTokenData.value
+    accessToken = accessTokenData?.value
+    console.log('✅ Using system-wide Gmail tokens')
+  }
+
+  // Create OAuth2 client with tokens
+  const oauth2Client = createGoogleAuthClient()
+  oauth2Client.setCredentials({
+    refresh_token: refreshToken,
+    access_token: accessToken || undefined
+  })
+
+  // Return configured Gmail client
+  return google.gmail({ version: 'v1', auth: oauth2Client })
+}
+
+/**
+ * Checks the delivery status of a Gmail message
+ * @param messageId - The Gmail message ID
+ * @param userId - Optional user ID for per-user tokens
+ */
+export async function getMessageStatus(messageId: string, userId?: string): Promise<{
+  status: 'SENT' | 'DELIVERED' | 'BOUNCED' | 'FAILED' | 'UNKNOWN'
+  error?: string
+}> {
+  try {
+    const gmail = await getGmailClient(userId)
+    const message = await gmail.users.messages.get({
+      userId: 'me',
+      id: messageId,
+      format: 'metadata',
+      metadataHeaders: ['X-Failed-Recipients']
+    })
+
+    if (!message.data) {
+      return { status: 'UNKNOWN' }
+    }
+
+    const labels = message.data.labelIds || []
+    if (labels.includes('SENT')) {
+      return { status: 'DELIVERED' }
+    }
+
+    return { status: 'SENT' }
+  } catch (error: any) {
+    if (error.code === 404) {
+      return { status: 'FAILED', error: 'Message not found' }
+    }
+    return { status: 'UNKNOWN', error: error.message }
+  }
 }
 
 export class GmailService {
@@ -128,6 +250,50 @@ export class GmailService {
       .replace(/=+$/, '')
   }
 
+
+  /**
+   * Controlla lo stato di delivery di un messaggio Gmail
+   */
+  async getMessageStatus(messageId: string): Promise<{
+    status: 'SENT' | 'DELIVERED' | 'BOUNCED' | 'FAILED' | 'UNKNOWN'
+    error?: string
+  }> {
+    try {
+      await this.oauth2Client.getAccessToken()
+      const gmail = google.gmail({ version: 'v1', auth: this.oauth2Client })
+
+      const message = await gmail.users.messages.get({
+        userId: 'me',
+        id: messageId,
+        format: 'metadata',
+        metadataHeaders: ['X-Failed-Recipients', 'X-Mailer-Daemon-Error']
+      })
+
+      if (!message.data) {
+        return { status: 'UNKNOWN' }
+      }
+
+      const labels = message.data.labelIds || []
+
+      // Check for bounce indicators
+      if (labels.includes('BOUNCED') || labels.includes('DRAFT')) {
+        return { status: 'BOUNCED', error: 'Message bounced' }
+      }
+
+      // If message exists in SENT folder, it was at least sent
+      if (labels.includes('SENT')) {
+        return { status: 'DELIVERED' }
+      }
+
+      return { status: 'SENT' }
+    } catch (error: any) {
+      console.error('Error checking message status:', error)
+      if (error.code === 404) {
+        return { status: 'FAILED', error: 'Message not found' }
+      }
+      return { status: 'UNKNOWN', error: error.message }
+    }
+  }
 
   /**
    * Test connessione Gmail

@@ -6,13 +6,6 @@ import {
   Search,
   Filter,
   Building2,
-  Mail,
-  Phone,
-  Calendar,
-  Edit,
-  Users,
-  MapPin,
-  FileText,
   CheckSquare,
   Square,
   Trash2,
@@ -34,16 +27,22 @@ interface Cliente {
   numero_collegamenti?: number // Numero di collegamenti aziendali
   ultimo_fatturato?: number
   numero_dipendenti?: number
-  categoria_evolvi?: 'BASE' | 'PREMIUM' | 'BUSINESS' | 'ENTERPRISE'
+  categoria_evolvi?: 'CLIENTE_SPOT' | 'EVOLVI' | 'FPI' | 'CONSULENTI'
   scadenza_evolvi?: string
   citta_fatturazione?: string
   created_at: string
   legale_rappresentante?: string
   numero_progetti?: number
   creato_da?: string
+  // Proprietà per calcolo dimensione aggregata (Raccomandazione UE 2003/361/CE)
+  ula?: number // Unità Lavorative Annuali
+  attivo_bilancio?: number // Attivo di bilancio
+  tipo_collegamento?: 'AUTONOMA' | 'COLLEGATA' | 'ASSOCIATA' // Tipo di collegamento aziendale
+  impresa_collegata_id?: string // ID dell'impresa collegata
+  percentuale_partecipazione?: number // Percentuale di partecipazione (0-100)
 }
 
-export default function ClientiContent({ onNavigate }: { onNavigate?: (page: string, params?: any) => void }) {
+export default function ClientiContent({ onNavigate, navigationParams }: { onNavigate?: (page: string, params?: any) => void; navigationParams?: any }) {
   const [clienti, setClienti] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -54,7 +53,7 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
   // Modal states
   const [showForm, setShowForm] = useState(false)
   const [showDettaglio, setShowDettaglio] = useState(false)
-  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | undefined>(undefined)
   const [selectedClienteId, setSelectedClienteId] = useState<string>('')
 
   // Bulk selection states
@@ -67,10 +66,21 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
   // CSV Import state
   const [showImportCSV, setShowImportCSV] = useState(false)
 
+  // Collegamenti per calcolo dimensione aggregata
+  const [tuttiCollegamenti, setTuttiCollegamenti] = useState<any[]>([])
+
   // Fetch clienti da Supabase
   useEffect(() => {
     fetchClienti()
   }, [])
+
+  // Auto-open client detail from global search
+  useEffect(() => {
+    if (navigationParams?.openClientId) {
+      setSelectedClienteId(navigationParams.openClientId)
+      setShowDettaglio(true)
+    }
+  }, [navigationParams?.openClientId])
 
   const fetchClienti = async () => {
     try {
@@ -85,7 +95,7 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
         .order('denominazione')
 
       if (clientiError) {
-        console.warn('⚠️ Vista aggregata non disponibile, uso tabella normale:', clientiError.message)
+        console.warn('Vista aggregata non disponibile, uso tabella normale:', clientiError.message)
         // Fallback sulla tabella normale se la view non esiste
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('scadenze_bandi_clienti')
@@ -97,6 +107,17 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
       } else {
         clientiData = data || []
       }
+
+      // Carica tutti i collegamenti aziendali con i dati delle aziende collegate
+      const { data: collegamentiData } = await supabase
+        .from('scadenze_bandi_collegamenti_aziendali')
+        .select(`
+          *,
+          azienda_collegata:scadenze_bandi_clienti!azienda_collegata_id(
+            id, ula, ultimo_fatturato, attivo_bilancio
+          )
+        `)
+      setTuttiCollegamenti(collegamentiData || [])
 
       // Per ogni cliente, ottieni il conteggio progetti e la prossima scadenza
       const clientiConDati = await Promise.all(
@@ -124,7 +145,7 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
 
   // Funzioni per gestire i modali
   const handleNuovoCliente = () => {
-    setSelectedCliente(null)
+    setSelectedCliente(undefined)
     setShowForm(true)
   }
 
@@ -149,7 +170,7 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
 
   const handleCloseForm = () => {
     setShowForm(false)
-    setSelectedCliente(null)
+    setSelectedCliente(undefined)
   }
 
   const handleCloseDettaglio = () => {
@@ -161,36 +182,43 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
     fetchClienti() // Ricarica la lista dopo il salvataggio
   }
 
-  // Calcola dimensione aggregata considerando collegamenti aziendali
+  // Calcola dimensione aggregata considerando collegamenti aziendali (UE 2003/361/CE)
   const calcolaDimensioneAggregata = (cliente: Cliente): string => {
-    // Se la vista DB ha già calcolato la dimensione aggregata, usala
-    if (cliente.dimensione_aggregata) {
-      return cliente.dimensione_aggregata
-    }
-
     if (!cliente.ula && !cliente.ultimo_fatturato && !cliente.attivo_bilancio) {
-      return cliente.dimensione || ''
+      return ''
     }
 
     let ulaTotal = cliente.ula || 0
     let fatturatoTotal = cliente.ultimo_fatturato || 0
     let attivoTotal = cliente.attivo_bilancio || 0
 
-    // Se c'è un collegamento aziendale, cerca i dati dell'azienda collegata
-    if (cliente.tipo_collegamento !== 'AUTONOMA' && cliente.impresa_collegata_id) {
-      // Trova l'azienda collegata nella lista
-      const aziendaCollegata = clienti.find(c => c.id === cliente.impresa_collegata_id)
+    // Somma i collegamenti multipli dalla tabella scadenze_bandi_collegamenti_aziendali
+    const collegamentiCliente = tuttiCollegamenti.filter(c => c.azienda_madre_id === cliente.id)
+    collegamentiCliente.forEach(col => {
+      const az = col.azienda_collegata
+      if (!az) return
+      if (col.tipo_collegamento === 'COLLEGATA') {
+        const perc = (col.percentuale_partecipazione || 0) / 100
+        ulaTotal += (az.ula || 0) * perc
+        fatturatoTotal += (az.ultimo_fatturato || 0) * perc
+        attivoTotal += (az.attivo_bilancio || 0) * perc
+      } else if (col.tipo_collegamento === 'ASSOCIATA') {
+        ulaTotal += az.ula || 0
+        fatturatoTotal += az.ultimo_fatturato || 0
+        attivoTotal += az.attivo_bilancio || 0
+      }
+    })
 
+    // Compatibilità vecchio sistema singolo collegamento (solo se non ci sono multi-collegamenti)
+    if (collegamentiCliente.length === 0 && cliente.tipo_collegamento !== 'AUTONOMA' && cliente.impresa_collegata_id) {
+      const aziendaCollegata = clienti.find(c => c.id === cliente.impresa_collegata_id)
       if (aziendaCollegata) {
         const percentuale = (cliente.percentuale_partecipazione || 0) / 100
-
         if (cliente.tipo_collegamento === 'COLLEGATA') {
-          // Per aziende collegate (25-49.99%): somma proporzionale alla partecipazione
           ulaTotal += (aziendaCollegata.ula || 0) * percentuale
           fatturatoTotal += (aziendaCollegata.ultimo_fatturato || 0) * percentuale
           attivoTotal += (aziendaCollegata.attivo_bilancio || 0) * percentuale
         } else if (cliente.tipo_collegamento === 'ASSOCIATA') {
-          // Per aziende associate (≥50%): somma il 100%
           ulaTotal += aziendaCollegata.ula || 0
           fatturatoTotal += aziendaCollegata.ultimo_fatturato || 0
           attivoTotal += aziendaCollegata.attivo_bilancio || 0
@@ -198,11 +226,36 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
       }
     }
 
-    // Applica i limiti UE 2003/361/CE
-    if (ulaTotal < 10 && (fatturatoTotal <= 2000000 || attivoTotal <= 2000000)) return 'MICRO'
-    if (ulaTotal < 50 && (fatturatoTotal <= 10000000 || attivoTotal <= 10000000)) return 'PICCOLA'
-    if (ulaTotal < 250 && (fatturatoTotal <= 50000000 || attivoTotal <= 43000000)) return 'MEDIA'
-    return 'GRANDE'
+    // Classifica per ciascun parametro e prendi il MAX (UE 2003/361/CE)
+    const dimensioniOrdinate = ['MICRO', 'PICCOLA', 'MEDIA', 'GRANDE']
+    const getPeso = (dim: string) => dimensioniOrdinate.indexOf(dim)
+
+    let dimULA = 'MICRO'
+    if (ulaTotal >= 250) dimULA = 'GRANDE'
+    else if (ulaTotal >= 50) dimULA = 'MEDIA'
+    else if (ulaTotal >= 10) dimULA = 'PICCOLA'
+
+    let dimFatt = ''
+    if (fatturatoTotal > 0) {
+      if (fatturatoTotal > 50000000) dimFatt = 'GRANDE'
+      else if (fatturatoTotal > 10000000) dimFatt = 'MEDIA'
+      else if (fatturatoTotal > 2000000) dimFatt = 'PICCOLA'
+      else dimFatt = 'MICRO'
+    }
+
+    let dimAtt = ''
+    if (attivoTotal > 0) {
+      if (attivoTotal > 43000000) dimAtt = 'GRANDE'
+      else if (attivoTotal > 10000000) dimAtt = 'MEDIA'
+      else if (attivoTotal > 2000000) dimAtt = 'PICCOLA'
+      else dimAtt = 'MICRO'
+    }
+
+    let risultato = dimULA
+    if (dimFatt && getPeso(dimFatt) > getPeso(risultato)) risultato = dimFatt
+    if (dimAtt && getPeso(dimAtt) > getPeso(risultato)) risultato = dimAtt
+
+    return risultato
   }
 
   const handleEditFromDettaglio = (cliente: Cliente) => {
@@ -328,7 +381,7 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
                        cliente.partita_iva?.includes(searchTerm) ||
                        cliente.email?.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchDimensione = selectedDimensione === 'all' || cliente.dimensione === selectedDimensione
+    const matchDimensione = selectedDimensione === 'all' || calcolaDimensioneAggregata(cliente) === selectedDimensione
     const matchCategoria = selectedCategoria === 'all' || cliente.categoria_evolvi === selectedCategoria
 
     return matchSearch && matchDimensione && matchCategoria
@@ -358,16 +411,34 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
     }
   }
 
+  const CATEGORIE_VISIBILI = ['CLIENTE_SPOT', 'EVOLVI', 'FPI', 'CONSULENTI']
+
   const getCategoriaColor = (categoria?: string) => {
     switch (categoria) {
-      case 'BASE': return 'bg-gray-100 text-gray-800'
-      case 'PREMIUM': return 'bg-blue-100 text-blue-800'
-      case 'BUSINESS': return 'bg-green-100 text-green-800'
-      case 'ENTERPRISE': return 'bg-purple-100 text-purple-800'
+      case 'CLIENTE_SPOT': return 'bg-yellow-100 text-yellow-800'
+      case 'EVOLVI': return 'bg-blue-100 text-blue-800'
+      case 'FPI': return 'bg-green-100 text-green-800'
+      case 'CONSULENTI': return 'bg-purple-100 text-purple-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
 
+  const getCategoriaLabel = (categoria?: string) => {
+    switch (categoria) {
+      case 'CLIENTE_SPOT': return 'Spot'
+      case 'EVOLVI': return 'Evolvi'
+      case 'FPI': return 'FPI'
+      case 'CONSULENTI': return 'Consulenti'
+      default: return categoria || ''
+    }
+  }
+
+
+  // Counts for status bar
+  const evolviCount = filteredClienti.filter(c => c.categoria_evolvi === 'EVOLVI').length
+  const spotCount = filteredClienti.filter(c => c.categoria_evolvi === 'CLIENTE_SPOT').length
+  const fpiCount = filteredClienti.filter(c => c.categoria_evolvi === 'FPI').length
+  const consulentiCount = filteredClienti.filter(c => c.categoria_evolvi === 'CONSULENTI').length
 
   if (loading) {
     return (
@@ -378,343 +449,300 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header and Search - Sticky Section */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 pb-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-              <Building2 className="w-6 h-6 text-primary-600" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Gestione Clienti</h2>
-              <p className="text-gray-600">{filteredClienti.length} clienti trovati</p>
-            </div>
+    <div className="flex flex-col h-[calc(100vh-5.5rem)]">
+      {/* Toolbar */}
+      <div className="border-b border-gray-200 px-4 py-1.5 flex items-center gap-3 bg-white">
+        <Building2 className="w-4 h-4 text-primary-600 flex-shrink-0" />
+        <span className="text-sm font-semibold text-gray-900">Clienti</span>
+        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600">
+          {filteredClienti.length}
+        </span>
+        <div className="flex-1" />
+
+        {/* Search */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-2 flex items-center">
+            <Search className="h-3.5 w-3.5 text-gray-400" />
           </div>
-          <div className="flex items-center gap-3">
-            {isSelectMode ? (
-              <>
-                {selectedClientiForDelete.size > 0 && (
-                  <button
-                    onClick={handleBulkDelete}
-                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Elimina ({selectedClientiForDelete.size})
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    setIsSelectMode(false)
-                    setSelectedClientiForDelete(new Set())
-                  }}
-                  className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg"
-                >
-                  Annulla
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => setIsSelectMode(true)}
-                  className="bg-gradient-to-br from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg"
-                >
-                  <CheckSquare className="w-4 h-4" />
-                  Seleziona
-                </button>
-                <button
-                  onClick={handleImportCSV}
-                  className="bg-gradient-to-br from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg"
-                >
-                  <Upload className="w-4 h-4" />
-                  Importa CSV
-                </button>
-                <button
-                  onClick={handleNuovoCliente}
-                  className="btn-primary flex items-center space-x-2"
-                >
-                  <Plus className="w-5 h-5" />
-                  <span>Nuovo Cliente</span>
-                </button>
-              </>
-            )}
-          </div>
+          <input
+            type="text"
+            placeholder="Cerca..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-48 text-[11px] pl-7 pr-2 py-1 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+          />
         </div>
 
-        {/* Filtri e Ricerca */}
-        <div className="card p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-            {/* Ricerca */}
-            <div className="flex-1 relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
-                <Search className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="Cerca per denominazione, P.IVA o email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="input pl-10"
-              />
-            </div>
+        <div className="w-px h-5 bg-gray-200" />
 
-            {/* Toggle Filtri */}
+        {isSelectMode ? (
+          <>
+            {selectedClientiForDelete.size > 0 && (
+              <button
+                onClick={handleBulkDelete}
+                className="text-[11px] bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3 h-3" />
+                Elimina ({selectedClientiForDelete.size})
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setIsSelectMode(false)
+                setSelectedClientiForDelete(new Set())
+              }}
+              className="text-[11px] text-gray-600 hover:text-gray-800 px-2 py-1"
+            >
+              Annulla
+            </button>
+          </>
+        ) : (
+          <>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="btn-secondary flex items-center space-x-2"
+              className={`text-[11px] px-2 py-1 rounded flex items-center gap-1.5 ${
+                showFilters ? 'bg-primary-100 text-primary-700' : 'text-gray-600 hover:bg-gray-100'
+              }`}
             >
-              <Filter className="w-4 h-4" />
-              <span>Filtri</span>
+              <Filter className="w-3 h-3" />
+              Filtri
             </button>
-          </div>
-
-          {/* Filtri Avanzati */}
-          {showFilters && (
-            <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Dimensione</label>
-                <select
-                  value={selectedDimensione}
-                  onChange={(e) => setSelectedDimensione(e.target.value)}
-                  className="input"
-                >
-                  <option value="all">Tutte le dimensioni</option>
-                  <option value="MICRO">Micro</option>
-                  <option value="PICCOLA">Piccola</option>
-                  <option value="MEDIA">Media</option>
-                  <option value="GRANDE">Grande</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Categoria Evolvi</label>
-                <select
-                  value={selectedCategoria}
-                  onChange={(e) => setSelectedCategoria(e.target.value)}
-                  className="input"
-                >
-                  <option value="all">Tutte le categorie</option>
-                  <option value="BASE">Base</option>
-                  <option value="PREMIUM">Premium</option>
-                  <option value="BUSINESS">Business</option>
-                  <option value="ENTERPRISE">Enterprise</option>
-                </select>
-              </div>
-            </div>
-          )}
-
-          {/* Alphabet Navigation */}
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="flex flex-wrap justify-center gap-1">
-              {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map(letter => {
-                const hasClienti = filteredClienti.some(c =>
-                  c.denominazione?.toUpperCase().startsWith(letter)
-                )
-                return (
-                  <button
-                    key={letter}
-                    onClick={() => {
-                      const firstClient = filteredClienti.find(c =>
-                        c.denominazione?.toUpperCase().startsWith(letter)
-                      )
-                      if (firstClient) {
-                        const element = document.getElementById(`client-${firstClient.id}`)
-                        if (element) {
-                          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                        }
-                      }
-                    }}
-                    disabled={!hasClienti}
-                    className={`w-8 h-8 rounded-md text-sm font-medium transition-all ${
-                      hasClienti
-                        ? 'bg-primary-100 text-primary-700 hover:bg-primary-200 cursor-pointer'
-                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    }`}
-                    title={hasClienti ? `Vai alla lettera ${letter}` : `Nessun cliente per la lettera ${letter}`}
-                  >
-                    {letter}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </div>
+            <button
+              onClick={() => setIsSelectMode(true)}
+              className="text-[11px] text-gray-600 hover:bg-gray-100 px-2 py-1 rounded flex items-center gap-1.5"
+            >
+              <CheckSquare className="w-3 h-3" />
+              Seleziona
+            </button>
+            <button
+              onClick={handleImportCSV}
+              className="text-[11px] text-gray-600 hover:bg-gray-100 px-2 py-1 rounded flex items-center gap-1.5"
+            >
+              <Upload className="w-3 h-3" />
+              CSV
+            </button>
+            <button
+              onClick={handleNuovoCliente}
+              className="text-[11px] bg-primary-500 hover:bg-primary-600 text-white px-2.5 py-1 rounded flex items-center gap-1.5"
+            >
+              <Plus className="w-3 h-3" />
+              Nuovo
+            </button>
+          </>
+        )}
       </div>
 
-      {/* Lista Clienti */}
-      <div className="card overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h3 className="text-lg font-semibold text-gray-900">Lista Clienti</h3>
+      {/* Filter row (conditional) */}
+      {showFilters && (
+        <div className="border-b border-gray-200 px-4 py-1.5 bg-gray-50/50 flex items-center gap-3">
+          <select
+            value={selectedDimensione}
+            onChange={(e) => setSelectedDimensione(e.target.value)}
+            className="text-[11px] px-2 py-1 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+          >
+            <option value="all">Tutte le dimensioni</option>
+            <option value="MICRO">Micro</option>
+            <option value="PICCOLA">Piccola</option>
+            <option value="MEDIA">Media</option>
+            <option value="GRANDE">Grande</option>
+          </select>
+          <select
+            value={selectedCategoria}
+            onChange={(e) => setSelectedCategoria(e.target.value)}
+            className="text-[11px] px-2 py-1 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+          >
+            <option value="all">Tutte le categorie</option>
+            <option value="CLIENTE_SPOT">Spot</option>
+            <option value="EVOLVI">Evolvi</option>
+            <option value="FPI">FPI</option>
+            <option value="CONSULENTI">Consulenti</option>
+          </select>
         </div>
+      )}
 
+      {/* Alphabet strip */}
+      <div className="border-b border-gray-200 px-4 py-1 flex items-center gap-0.5 bg-white flex-shrink-0">
+        {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map(letter => {
+          const hasClienti = filteredClienti.some(c =>
+            c.denominazione?.toUpperCase().startsWith(letter)
+          )
+          return (
+            <button
+              key={letter}
+              onClick={() => {
+                const firstClient = filteredClienti.find(c =>
+                  c.denominazione?.toUpperCase().startsWith(letter)
+                )
+                if (firstClient) {
+                  const element = document.getElementById(`client-${firstClient.id}`)
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  }
+                }
+              }}
+              disabled={!hasClienti}
+              className={`w-[22px] h-[20px] rounded-sm text-[10px] font-medium transition-all flex items-center justify-center ${
+                hasClienti
+                  ? 'bg-primary-50 text-primary-700 hover:bg-primary-100 cursor-pointer'
+                  : 'text-gray-300 cursor-not-allowed'
+              }`}
+            >
+              {letter}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Table full-bleed */}
+      <div className="flex-1 overflow-auto">
         {filteredClienti.length === 0 ? (
-          <div className="p-12 text-center">
-            <Building2 className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Nessun cliente trovato</h3>
-            <p className="text-gray-600 mb-6">
+          <div className="p-8 text-center">
+            <p className="text-sm text-gray-500 mb-3">
               {searchTerm || selectedDimensione !== 'all' || selectedCategoria !== 'all'
-                ? 'Prova a modificare i filtri di ricerca'
-                : 'Inizia aggiungendo il primo cliente'
+                ? 'Nessun cliente trovato. Prova a modificare i filtri.'
+                : 'Nessun cliente. Inizia aggiungendo il primo.'
               }
             </p>
-            <button onClick={handleNuovoCliente} className="btn-primary">
-              <Plus className="w-4 h-4 mr-2" />
+            <button onClick={handleNuovoCliente} className="text-xs bg-primary-500 hover:bg-primary-600 text-white px-3 py-1.5 rounded flex items-center gap-1.5 mx-auto">
+              <Plus className="w-3 h-3" />
               Aggiungi Cliente
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table">
-              <thead className="table-header">
-                <tr>
+          <table className="w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50 sticky top-0 z-[1]">
+              <tr>
+                {isSelectMode && (
+                  <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-8">
+                    <button
+                      onClick={toggleSelectAll}
+                      className="text-gray-600 hover:text-gray-800"
+                    >
+                      {selectedClientiForDelete.size === filteredClienti.length ? (
+                        <CheckSquare className="w-3.5 h-3.5" />
+                      ) : (
+                        <Square className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </th>
+                )}
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Denominazione</th>
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">P.IVA</th>
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[120px]">Sede</th>
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[160px]">Email</th>
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dim.</th>
+                <th className="px-4 py-1.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Dip.</th>
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scad. Evolvi</th>
+                <th className="px-4 py-1.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Prog.</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredClienti.map((cliente) => (
+                <tr
+                  key={cliente.id}
+                  id={`client-${cliente.id}`}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => !isSelectMode && handleDettaglioCliente(cliente.id)}
+                >
                   {isSelectMode && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                    <td className="px-1 py-2 w-8">
                       <button
-                        onClick={toggleSelectAll}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleSelectCliente(cliente.id)
+                        }}
                         className="text-gray-600 hover:text-gray-800"
                       >
-                        {selectedClientiForDelete.size === filteredClienti.length ? (
-                          <CheckSquare className="w-4 h-4" />
+                        {selectedClientiForDelete.has(cliente.id) ? (
+                          <CheckSquare className="w-3.5 h-3.5 text-blue-600" />
                         ) : (
-                          <Square className="w-4 h-4" />
+                          <Square className="w-3.5 h-3.5" />
                         )}
                       </button>
-                    </th>
+                    </td>
                   )}
-                  <th className="table-header-cell">Cliente</th>
-                  <th className="table-header-cell">Contatti</th>
-                  <th className="table-header-cell">Dimensione</th>
-                  <th className="table-header-cell">Categoria</th>
-                  <th className="table-header-cell">Progetti</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredClienti.map((cliente) => (
-                  <tr key={cliente.id} id={`client-${cliente.id}`} className="hover:bg-gray-50 cursor-pointer transition-colors duration-150"
-                      onClick={() => !isSelectMode && handleDettaglioCliente(cliente.id)}>
-                    {isSelectMode && (
-                      <td className="px-1 py-2 w-12">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            toggleSelectCliente(cliente.id)
-                          }}
-                          className="text-gray-600 hover:text-gray-800"
-                        >
-                          {selectedClientiForDelete.has(cliente.id) ? (
-                            <CheckSquare className="w-4 h-4 text-blue-600" />
-                          ) : (
-                            <Square className="w-4 h-4" />
-                          )}
-                        </button>
-                      </td>
+                  <td className="px-1 py-2 text-sm font-medium text-gray-900 whitespace-nowrap">
+                    {cliente.denominazione}
+                  </td>
+                  <td className="px-1 py-2 text-sm text-gray-500 font-mono whitespace-nowrap">
+                    {cliente.partita_iva || '-'}
+                  </td>
+                  <td className="px-1 py-2 text-sm text-gray-500 max-w-[120px] truncate" title={cliente.citta_fatturazione || ''}>
+                    {cliente.citta_fatturazione || '-'}
+                  </td>
+                  <td className="px-1 py-2 text-sm text-blue-600 max-w-[160px] truncate" title={cliente.email || ''}>
+                    {cliente.email || '-'}
+                  </td>
+                  <td className="px-1 py-2">
+                    {calcolaDimensioneAggregata(cliente) ? (
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getDimensioneColor(calcolaDimensioneAggregata(cliente))}`}>
+                        {calcolaDimensioneAggregata(cliente)}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-300">-</span>
                     )}
-                    <td className="px-1 py-2">
-                      <div className="flex items-start space-x-3">
-                        <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Building2 className="w-5 h-5 text-primary-600" />
-                        </div>
-                        <div>
-                          <div className="font-semibold text-gray-900">{cliente.denominazione}</div>
-                          {cliente.partita_iva && (
-                            <div className="text-sm text-gray-600">P.IVA: {cliente.partita_iva}</div>
-                          )}
-                          {cliente.citta_fatturazione && (
-                            <div className="text-sm text-gray-500 flex items-center">
-                              <MapPin className="w-3 h-3 mr-1" />
-                              {cliente.citta_fatturazione}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-1 py-2">
-                      <div className="space-y-1">
-                        {cliente.email && (
-                          <div className="text-sm text-blue-600 flex items-center hover:text-blue-800 cursor-pointer"
-                               onClick={(e) => {
-                                 e.stopPropagation();
-                                 // TODO: Implementare apertura email dopo integrazione
-                                 console.log('Email clicked:', cliente.email);
-                               }}>
-                            <Mail className="w-3 h-3 mr-1" />
-                            {cliente.email}
-                          </div>
-                        )}
-                        {cliente.telefono && (
-                          <div className="text-sm text-gray-600 flex items-center">
-                            <Phone className="w-3 h-3 mr-1" />
-                            {cliente.telefono}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-1 py-2">
-                      <div className="space-y-2">
-                        {calcolaDimensioneAggregata(cliente) && (
-                          <span className={`badge ${getDimensioneColor(calcolaDimensioneAggregata(cliente))}`}>
-                            {calcolaDimensioneAggregata(cliente)}
-                          </span>
-                        )}
-                        {cliente.numero_dipendenti !== undefined && (
-                          <div className="text-sm text-gray-600 flex items-center">
-                            <Users className="w-3 h-3 mr-1" />
-                            {cliente.numero_dipendenti} dip.
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-1 py-2">
-                      <div className="space-y-2">
-                        {cliente.categoria_evolvi && (
-                          <span className={`badge ${getCategoriaColor(cliente.categoria_evolvi)}`}>
-                            {cliente.categoria_evolvi}
-                          </span>
-                        )}
-                        {cliente.scadenza_evolvi && (
-                          <div className="text-xs text-gray-600 flex items-center">
-                            <Calendar className="w-3 h-3 mr-1" />
-                            {formatDate(cliente.scadenza_evolvi)}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-1 py-2">
-                      <div
-                        className="flex items-center space-x-1 cursor-pointer hover:text-primary-600 transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleNavigateToProjects(cliente);
-                        }}
-                        title="Visualizza progetti di questo cliente"
-                      >
-                        <FileText className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-600 font-medium">
-                          {cliente.numero_progetti || 0}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  </td>
+                  <td className="px-1 py-2 text-sm text-gray-500 text-center">
+                    {cliente.numero_dipendenti ?? '-'}
+                  </td>
+                  <td className="px-1 py-2">
+                    {cliente.categoria_evolvi && CATEGORIE_VISIBILI.includes(cliente.categoria_evolvi) ? (
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoriaColor(cliente.categoria_evolvi)}`}>
+                        {getCategoriaLabel(cliente.categoria_evolvi)}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-300">-</span>
+                    )}
+                  </td>
+                  <td className="px-1 py-2 text-sm text-gray-500 whitespace-nowrap">
+                    {formatDate(cliente.scadenza_evolvi)}
+                  </td>
+                  <td className="px-1 py-2 text-sm text-center">
+                    <span
+                      className="cursor-pointer hover:text-primary-600 font-medium"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleNavigateToProjects(cliente)
+                      }}
+                      title="Visualizza progetti"
+                    >
+                      {cliente.numero_progetti || 0}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
+      </div>
+
+      {/* Status bar */}
+      <div className="border-t border-gray-200 px-4 py-1 bg-white">
+        <span className="text-[10px] text-gray-400">
+          {filteredClienti.length} clienti{evolviCount > 0 && ` \u00b7 ${evolviCount} Evolvi`}{spotCount > 0 && ` \u00b7 ${spotCount} Spot`}{fpiCount > 0 && ` \u00b7 ${fpiCount} FPI`}{consulentiCount > 0 && ` \u00b7 ${consulentiCount} Consulenti`}
+        </span>
       </div>
 
       {/* Modali */}
       <ClienteForm
-        cliente={selectedCliente}
+        cliente={selectedCliente as any}
         isOpen={showForm}
         onClose={handleCloseForm}
         onSave={handleSaveCliente}
+        onNavigate={onNavigate}
       />
 
       <ClienteDettaglio
         clienteId={selectedClienteId}
         isOpen={showDettaglio}
         onClose={handleCloseDettaglio}
-        onEdit={handleEditFromDettaglio}
+        onEdit={handleEditFromDettaglio as any}
+        onNavigate={onNavigate}
+        onClienteDeleted={() => {
+          handleCloseDettaglio()
+          fetchClienti()
+        }}
       />
 
       <ClientiMappingCSV
@@ -727,16 +755,16 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg max-w-md w-full mx-4">
-            <div className="p-6">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                  <Trash2 className="w-5 h-5 text-red-600" />
+            <div className="p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                  <Trash2 className="w-4 h-4 text-red-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">
+                  <h3 className="text-sm font-medium text-gray-900">
                     Conferma eliminazione
                   </h3>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-xs text-gray-500">
                     {clienteToDelete
                       ? 'Sei sicuro di voler eliminare questo cliente?'
                       : `Sei sicuro di voler eliminare ${selectedClientiForDelete.size} clienti?`
@@ -744,18 +772,18 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
                   </p>
                 </div>
               </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-4">
-                <p className="text-sm text-amber-800">
-                  ⚠️ <strong>Attenzione:</strong> Questa operazione eliminerà anche tutti i progetti e scadenze collegati ai clienti selezionati. L'operazione non può essere annullata.
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-3">
+                <p className="text-xs text-amber-800">
+                  Questa operazione eliminerà anche tutti i progetti e scadenze collegati. Non può essere annullata.
                 </p>
               </div>
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-end gap-2">
                 <button
                   onClick={() => {
                     setShowDeleteConfirm(false)
                     setClienteToDelete(null)
                   }}
-                  className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  className="text-xs px-3 py-1.5 text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50"
                   disabled={deleting}
                 >
                   Annulla
@@ -763,17 +791,17 @@ export default function ClientiContent({ onNavigate }: { onNavigate?: (page: str
                 <button
                   onClick={confirmDelete}
                   disabled={deleting}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+                  className="text-xs px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {deleting ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
                       Eliminando...
                     </>
                   ) : (
                     <>
-                      <Trash2 className="w-4 h-4" />
-                      Conferma eliminazione
+                      <Trash2 className="w-3 h-3" />
+                      Elimina
                     </>
                   )}
                 </button>

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, Calendar, Clock } from 'lucide-react'
 
 interface Scadenza {
@@ -18,10 +18,18 @@ interface CalendarioScadenzeProps {
   scadenze: Scadenza[]
   mesiDaVisualizzare?: number
   onDayClick?: (date: Date) => void
+  initialDate?: Date
 }
 
-export default function CalendarioScadenze({ scadenze, mesiDaVisualizzare = 3, onDayClick }: CalendarioScadenzeProps) {
+export default function CalendarioScadenze({ scadenze, mesiDaVisualizzare = 3, onDayClick, initialDate }: CalendarioScadenzeProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
+
+  // Posiziona il calendario sul mese della data iniziale
+  useEffect(() => {
+    if (initialDate) {
+      setCurrentDate(new Date(initialDate.getFullYear(), initialDate.getMonth(), 1))
+    }
+  }, [initialDate])
 
   // Naviga mese precedente/successivo
   const previousMonth = () => {
@@ -157,7 +165,7 @@ export default function CalendarioScadenze({ scadenze, mesiDaVisualizzare = 3, o
       <div className="bg-white rounded-lg shadow">
         {/* Header globale per vista compatta */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 className="text-sm font-semibold text-gray-900">
             Panoramica {mesiDaVisualizzare === 12 ? 'Annuale' : `${mesiDaVisualizzare} Mesi`}
           </h2>
           <div className="flex gap-2">
@@ -179,7 +187,7 @@ export default function CalendarioScadenze({ scadenze, mesiDaVisualizzare = 3, o
         </div>
 
         {/* Griglia compatta dei mesi */}
-        <div className={`p-4 grid gap-4 ${getGridLayout()}`}>
+        <div className={`p-4 grid gap-3 ${getGridLayout()}`}>
           {calendarData.map((meseData) => (
             <div key={`${meseData.date.getFullYear()}-${meseData.date.getMonth()}`} className="border border-gray-200 rounded-lg">
               {/* Header compatto del mese */}
@@ -326,7 +334,7 @@ export default function CalendarioScadenze({ scadenze, mesiDaVisualizzare = 3, o
 
         {/* Legenda per vista compatta */}
         <div className="p-4 border-t border-gray-200 bg-gray-50">
-          <div className="flex flex-wrap items-center gap-4 text-sm">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-gray-500" />
               <span className="text-gray-600">Legenda:</span>
@@ -355,12 +363,12 @@ export default function CalendarioScadenze({ scadenze, mesiDaVisualizzare = 3, o
 
   // Vista dettagliata per singolo mese
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {calendarData.map((meseData, meseIndex) => (
         <div key={`${meseData.date.getFullYear()}-${meseData.date.getMonth()}`} className="bg-white rounded-lg shadow">
           {/* Header del calendario */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900 capitalize">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <h2 className="text-sm font-semibold text-gray-900 capitalize">
               {formatMonthYear(meseData.date)}
             </h2>
             {meseIndex === 0 && (
@@ -370,14 +378,14 @@ export default function CalendarioScadenze({ scadenze, mesiDaVisualizzare = 3, o
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   aria-label="Periodo precedente"
                 >
-                  <ChevronLeft className="w-5 h-5 text-gray-600" />
+                  <ChevronLeft className="w-4 h-4 text-gray-600" />
                 </button>
                 <button
                   onClick={nextMonth}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   aria-label="Periodo successivo"
                 >
-                  <ChevronRight className="w-5 h-5 text-gray-600" />
+                  <ChevronRight className="w-4 h-4 text-gray-600" />
                 </button>
               </div>
             )}
@@ -410,7 +418,7 @@ export default function CalendarioScadenze({ scadenze, mesiDaVisualizzare = 3, o
                   onClick={scadenzeGiorno.length > 0 && onDayClick ? () => onDayClick(date) : undefined}
                 >
                   {/* Numero del giorno */}
-                  <div className="flex justify-between items-start mb-2">
+                  <div className="flex justify-between items-start mb-1">
                     <span
                       className={`text-sm font-medium ${
                         !isCurrentMonthDay
@@ -472,7 +480,7 @@ export default function CalendarioScadenze({ scadenze, mesiDaVisualizzare = 3, o
 
       {/* Legenda per vista dettagliata */}
       <div className="p-4 border-t border-gray-200 bg-gray-50">
-        <div className="flex flex-wrap items-center gap-4 text-sm">
+        <div className="flex flex-wrap items-center gap-3 text-sm">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-gray-500" />
             <span className="text-gray-600">Legenda:</span>

@@ -50,7 +50,7 @@ export default function DocumentiProgettoPreview({ progettoId, className = '' }:
         .from('scadenze_bandi_documenti_progetto')
         .select('*')
         .eq('progetto_id', progettoId)
-        .eq('categoria', 'allegato') // Solo allegati, come richiesto
+        .in('categoria', ['allegato', 'allegati', 'ereditato', 'allegato_caricato']) // Tutte le varianti di allegati
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -217,7 +217,7 @@ export default function DocumentiProgettoPreview({ progettoId, className = '' }:
 
   if (loading) {
     return (
-      <div className={`bg-white rounded-lg shadow border p-6 ${className}`}>
+      <div className={`bg-white rounded-lg shadow border p-4 ${className}`}>
         <div className="flex items-center justify-center">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500 mr-2"></div>
           <span className="text-gray-600">Caricamento documenti...</span>
@@ -228,9 +228,9 @@ export default function DocumentiProgettoPreview({ progettoId, className = '' }:
 
   if (documenti.length === 0) {
     return (
-      <div className={`bg-white rounded-lg shadow border p-6 ${className}`}>
+      <div className={`bg-white rounded-lg shadow border p-4 ${className}`}>
         <div className="text-center">
-          <FileText className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+          <FileText className="w-6 h-6 mx-auto text-gray-400 mb-1" />
           <p className="text-gray-600">Nessun allegato disponibile per questo progetto</p>
           <p className="text-sm text-gray-500 mt-1">
             Gli allegati vengono ereditati automaticamente dal bando quando si crea il progetto
@@ -242,10 +242,10 @@ export default function DocumentiProgettoPreview({ progettoId, className = '' }:
 
   return (
     <div className={`bg-white rounded-lg shadow border ${className}`}>
-      <div className="px-6 py-4 border-b border-gray-200">
+      <div className="px-3 py-1.5 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <FileText className="w-5 h-5 mr-2" />
+          <h3 className="text-sm font-semibold text-gray-900 flex items-center">
+            <FileText className="w-4 h-4 mr-2" />
             Preview Documenti ({documenti.length})
           </h3>
           <button
@@ -259,12 +259,12 @@ export default function DocumentiProgettoPreview({ progettoId, className = '' }:
         </div>
       </div>
 
-      <div className="p-6 space-y-4">
+      <div className="p-4 space-y-4">
         {documenti.map((documento) => (
           <div key={documento.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center gap-3 mb-1">
                   <h4 className="font-medium text-gray-900">{documento.nome_file}</h4>
                   <div className="flex items-center gap-1">
                     {getStatusIcon(documento)}
