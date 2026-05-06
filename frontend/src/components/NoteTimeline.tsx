@@ -9,6 +9,7 @@ import {
   Sparkles,
   RefreshCw,
   MessageSquare,
+  Trash2,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
@@ -74,6 +75,24 @@ export default function NoteTimeline({ clienteId }: { clienteId: string }) {
     setLoading(false)
   }
 
+  async function handleDelete(notaId: string) {
+    const conferma = window.confirm(
+      'Vuoi eliminare definitivamente questa nota?\n\nL\'azione e\' irreversibile e rimuovera\' anche tutti i collegamenti a bandi e progetti.'
+    )
+    if (!conferma) return
+
+    const { error } = await supabase
+      .from('scadenze_bandi_clienti_note')
+      .delete()
+      .eq('id', notaId)
+
+    if (error) {
+      alert('Errore eliminazione: ' + error.message)
+      return
+    }
+    setNote((prev) => prev.filter((n) => n.id !== notaId))
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
@@ -116,6 +135,7 @@ export default function NoteTimeline({ clienteId }: { clienteId: string }) {
               onToggle={() =>
                 setExpandedId(expandedId === n.id ? null : n.id)
               }
+              onDelete={() => handleDelete(n.id)}
             />
           ))}
         </div>
@@ -128,10 +148,12 @@ function NotaCard({
   nota,
   expanded,
   onToggle,
+  onDelete,
 }: {
   nota: Nota
   expanded: boolean
   onToggle: () => void
+  onDelete: () => void
 }) {
   const dataDisplay = nota.data_riunione
     ? new Date(nota.data_riunione).toLocaleDateString('it-IT', {
@@ -212,8 +234,8 @@ function NotaCard({
         <div className="border-t border-gray-200 p-4 bg-gray-50 space-y-3">
           <MarkdownView content={nota.contenuto_markdown} />
 
-          {nota.drive_file_url && (
-            <div className="pt-2 border-t border-gray-200">
+          <div className="pt-2 border-t border-gray-200 flex items-center justify-between gap-3">
+            {nota.drive_file_url ? (
               <a
                 href={nota.drive_file_url}
                 target="_blank"
@@ -223,8 +245,19 @@ function NotaCard({
                 <ExternalLink className="w-3 h-3" />
                 Apri trascrizione su Drive
               </a>
-            </div>
-          )}
+            ) : (
+              <span />
+            )}
+
+            <button
+              onClick={onDelete}
+              className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded"
+              title="Elimina definitivamente la nota"
+            >
+              <Trash2 className="w-3 h-3" />
+              Elimina nota
+            </button>
+          </div>
         </div>
       )}
     </div>
