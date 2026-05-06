@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
     // Get logged-in user ID
     const decoded = await verifyJWT(request)
     const userEmail = decoded?.email
+    const userId = decoded?.userId
 
     const notifications: Notification[] = []
 
@@ -179,6 +180,47 @@ export async function GET(request: NextRequest) {
           unread: true,
           link: `/bandi/${bando.id}`
         })
+      }
+    }
+
+    // 4. Questionari fabbisogno completati di recente (ultimi 30 giorni)
+    // Mostra solo le rilevazioni inviate dall'utente loggato.
+    if (userId) {
+      const trentaGiorniFa = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
+
+      const { data: fabbisogni, error: fabbErr } = await supabase
+        .from('scadenze_bandi_fabbisogno_rilevazioni')
+        .select(`
+          id,
+          titolo,
+          anno_riferimento,
+          cliente_id,
+          data_completamento,
+          referente_nome,
+          inviata_da_utente_id,
+          scadenze_bandi_clienti(denominazione)
+        `)
+        .eq('stato', 'COMPLETATA')
+        .eq('inviata_da_utente_id', userId)
+        .gte('data_completamento', trentaGiorniFa.toISOString())
+        .order('data_completamento', { ascending: false })
+        .limit(10)
+
+      if (!fabbErr && fabbisogni) {
+        for (const f of fabbisogni) {
+          const denominazione = (f as any).scadenze_bandi_clienti?.denominazione || 'Cliente N/A'
+          const referenteParte = f.referente_nome ? ` (compilato da ${f.referente_nome})` : ''
+
+          notifications.push({
+            id: `fabbisogno-${f.id}`,
+            title: 'Questionario fabbisogni compilato',
+            message: `${denominazione} ha completato la rilevazione "${f.titolo}"${referenteParte}`,
+            time: getRelativeTime(new Date(f.data_completamento as string)),
+            type: 'success',
+            unread: true,
+            link: `/clienti/${f.cliente_id}#formazione/fabbisogno`,
+          })
+        }
       }
     }
 
