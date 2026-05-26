@@ -151,6 +151,7 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearchDropdown, setShowSearchDropdown] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
+  const notificationsRef = useRef<HTMLDivElement>(null)
   const { results, loading: searchLoading, totalCount } = useGlobalSearch(searchQuery)
 
   // Click-outside to close search dropdown
@@ -164,10 +165,27 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Escape to close search dropdown
+  // Click-outside to close notifications dropdown
+  useEffect(() => {
+    if (!showNotifications) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(e.target as Node)) {
+        setShowNotifications(false)
+        setShowAllNotifications(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showNotifications])
+
+  // Escape to close search dropdown and notifications
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowSearchDropdown(false)
+      if (e.key === 'Escape') {
+        setShowSearchDropdown(false)
+        setShowNotifications(false)
+        setShowAllNotifications(false)
+      }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
@@ -346,7 +364,7 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
             </button>
 
             {/* Notifications */}
-            <div className="relative">
+            <div className="relative" ref={notificationsRef}>
               <button
                 onClick={() => {
                   setShowNotifications(!showNotifications)
