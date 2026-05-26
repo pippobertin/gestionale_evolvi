@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import {
   Home,
@@ -21,6 +21,7 @@ import {
   Inbox
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 interface SidebarProps {
   activeItem: string
@@ -32,21 +33,45 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isPinned, setIsPinned] = useState(true)
   const [isHovered, setIsHovered] = useState(false)
+  const [inboxNoteCount, setInboxNoteCount] = useState(0)
   const { isAdmin } = useAuth()
 
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchInboxCount() {
+      const { count, error } = await supabase
+        .from('scadenze_bandi_clienti_note')
+        .select('id', { count: 'exact', head: true })
+        .eq('stato', 'in_inbox')
+
+      if (!cancelled && !error && count !== null) {
+        setInboxNoteCount(count)
+      }
+    }
+
+    fetchInboxCount()
+    const interval = window.setInterval(fetchInboxCount, 30000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+    }
+  }, [activeItem])
+
   const allMenuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home, adminOnly: false },
-    { id: 'scadenze', label: 'Scadenzario', icon: Calendar, adminOnly: false },
-    { id: 'prospect', label: 'Prospect', icon: UserPlus, adminOnly: false },
-    { id: 'clienti', label: 'Clienti', icon: Users, adminOnly: false },
-    { id: 'bandi', label: 'Bandi', icon: FileText, adminOnly: false },
-    { id: 'progetti', label: 'Progetti', icon: Target, adminOnly: false },
-    { id: 'email', label: 'Email', icon: Mail, adminOnly: false },
-    { id: 'note-inbox', label: 'Inbox Note', icon: Inbox, adminOnly: false },
-    { id: 'consulenti', label: 'Consulenti', icon: Building, adminOnly: false },
-    { id: 'reports', label: 'Reports', icon: BarChart3, adminOnly: false },
-    { id: 'settings', label: 'Impostazioni', icon: Settings, adminOnly: false },
-    { id: 'faq', label: 'FAQ', icon: HelpCircle, adminOnly: false }
+    { id: 'dashboard', label: 'Dashboard', icon: Home, adminOnly: false, badge: 0 },
+    { id: 'scadenze', label: 'Scadenzario', icon: Calendar, adminOnly: false, badge: 0 },
+    { id: 'prospect', label: 'Prospect', icon: UserPlus, adminOnly: false, badge: 0 },
+    { id: 'clienti', label: 'Clienti', icon: Users, adminOnly: false, badge: 0 },
+    { id: 'bandi', label: 'Bandi', icon: FileText, adminOnly: false, badge: 0 },
+    { id: 'progetti', label: 'Progetti', icon: Target, adminOnly: false, badge: 0 },
+    { id: 'email', label: 'Email', icon: Mail, adminOnly: false, badge: 0 },
+    { id: 'note-inbox', label: 'Inbox Note', icon: Inbox, adminOnly: false, badge: inboxNoteCount },
+    { id: 'consulenti', label: 'Consulenti', icon: Building, adminOnly: false, badge: 0 },
+    { id: 'reports', label: 'Reports', icon: BarChart3, adminOnly: false, badge: 0 },
+    { id: 'settings', label: 'Impostazioni', icon: Settings, adminOnly: false, badge: 0 },
+    { id: 'faq', label: 'FAQ', icon: HelpCircle, adminOnly: false, badge: 0 }
   ]
 
   const menuItems = allMenuItems.filter(item => !item.adminOnly || isAdmin())
@@ -116,6 +141,7 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
           <ul className="space-y-1">
             {menuItems.map((item) => {
               const Icon = item.icon
+              const hasBadge = item.badge > 0
               return (
                 <li key={item.id}>
                   <button
@@ -123,18 +149,32 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
                     className={`sidebar-item w-full text-left group relative ${
                       activeItem === item.id ? 'active' : ''
                     } ${!shouldShowExpanded ? 'justify-center px-3' : ''}`}
-                    title={!shouldShowExpanded ? item.label : undefined}
+                    title={!shouldShowExpanded ? `${item.label}${hasBadge ? ` (${item.badge})` : ''}` : undefined}
                   >
-                    <Icon className="sidebar-item-icon group-hover:scale-110 transition-transform duration-200 flex-shrink-0" />
+                    <div className="relative flex-shrink-0">
+                      <Icon className="sidebar-item-icon group-hover:scale-110 transition-transform duration-200" />
+                      {hasBadge && !shouldShowExpanded && (
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                          {item.badge > 99 ? '99+' : item.badge}
+                        </span>
+                      )}
+                    </div>
                     {shouldShowExpanded && (
                       <>
                         <span className="font-medium">{item.label}</span>
-                        {activeItem === item.id && (
-                          <div className="ml-auto w-2 h-2 bg-white rounded-full"></div>
-                        )}
+                        <div className="ml-auto flex items-center gap-2">
+                          {hasBadge && (
+                            <span className="min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-xs font-semibold rounded-full flex items-center justify-center leading-none">
+                              {item.badge > 99 ? '99+' : item.badge}
+                            </span>
+                          )}
+                          {activeItem === item.id && (
+                            <div className="w-2 h-2 bg-white rounded-full"></div>
+                          )}
+                        </div>
                       </>
                     )}
-                    {!shouldShowExpanded && activeItem === item.id && (
+                    {!shouldShowExpanded && activeItem === item.id && !hasBadge && (
                       <div className="absolute right-1 w-2 h-2 bg-white rounded-full"></div>
                     )}
                   </button>
