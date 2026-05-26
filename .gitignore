@@ -51,3 +51,5 @@ _dev_archive/
 *.tmp
 *.temp
 .gstack/
+.vercel
+.env*.local
