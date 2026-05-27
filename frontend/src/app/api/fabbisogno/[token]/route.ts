@@ -221,7 +221,10 @@ export async function PATCH(
     }
     for (const campo of CAMPI_SCALARI) {
       if (campo in body) {
-        updates[campo] = body[campo]
+        // Normalizza '' -> null: le colonne enum hanno CHECK (col IS NULL OR col IN (...))
+        // e rifiuterebbero la stringa vuota, facendo fallire l'intera UPDATE.
+        const val = body[campo]
+        updates[campo] = val === '' ? null : val
       }
     }
 
