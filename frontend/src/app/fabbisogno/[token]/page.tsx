@@ -275,6 +275,7 @@ function useFabbisognoForm(token: string) {
   const [error, setError] = useState<string | null>(null)
   const [savedAt, setSavedAt] = useState<Date | null>(null)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
@@ -310,8 +311,8 @@ function useFabbisognoForm(token: string) {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isDirty = useRef(false)
 
-  const autosave = useCallback(async () => {
-    if (submitted || !data) return
+  const autosave = useCallback(async (): Promise<boolean> => {
+    if (submitted || !data) return true
     setSaving(true)
     try {
       const body: Record<string, unknown> = { ...form, ultimo_step_visitato: step }
@@ -324,13 +325,19 @@ function useFabbisognoForm(token: string) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      const j = await res.json()
+      const j = await res.json().catch(() => ({ success: false, error: 'Risposta non valida dal server' }))
       if (j.success) {
         setSavedAt(new Date())
+        setSaveError(null)
         isDirty.current = false
+        return true
       }
+      setSaveError(j.error || 'Errore di salvataggio sconosciuto')
+      return false
     } catch (e) {
       console.error('autosave error', e)
+      setSaveError('Errore di rete: controlla la connessione e riprova')
+      return false
     } finally {
       setSaving(false)
     }
@@ -361,8 +368,10 @@ function useFabbisognoForm(token: string) {
   const submit = useCallback(async () => {
     setSubmitting(true)
     try {
-      // Salva tutto prima
-      await autosave()
+      // Salva tutto prima. Se l'autosave fallisce, blocca l'invio:
+      // il banner mostrera' l'errore e l'utente puo' ritentare.
+      const saved = await autosave()
+      if (!saved) return
       const res = await fetch(`/api/fabbisogno/${token}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -379,7 +388,9 @@ function useFabbisognoForm(token: string) {
 
   return {
     data, form, setForm, step, goToStep,
-    loading, error, savedAt, saving, submitting, submitted, submit,
+    loading, error, savedAt, saving, saveError,
+    retrySave: autosave,
+    submitting, submitted, submit,
   }
 }
 
@@ -563,14 +574,21 @@ interface FbHook {
   goToStep: (n: number) => void
   savedAt: Date | null
   saving: boolean
+  saveError: string | null
+  retrySave: () => Promise<boolean>
   submitting: boolean
   submit: () => Promise<void>
 }
 
 function FabbisognoLayout({ fb }: { fb: FbHook }) {
+  const [retrying, setRetrying] = useState(false)
   if (!fb.data) return null
-  const { data, form, setForm, step, goToStep, savedAt, saving, submitting, submit } = fb
+  const { data, form, setForm, step, goToStep, savedAt, saving, saveError, retrySave, submitting, submit } = fb
   const pct = Math.round(((step + 1) / TOTAL_STEPS) * 100)
+  const handleRetry = async () => {
+    setRetrying(true)
+    try { await retrySave() } finally { setRetrying(false) }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-24">
@@ -595,6 +613,29 @@ function FabbisognoLayout({ fb }: { fb: FbHook }) {
           </div>
         </div>
       </header>
+
+      {saveError && (
+        <div className="sticky top-[72px] z-10 bg-red-50 border-b border-red-200">
+          <div className="max-w-5xl mx-auto px-4 md:px-6 py-2.5 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-red-900">Errore di salvataggio</p>
+              <p className="text-xs text-red-700 mt-0.5">
+                Le tue ultime modifiche potrebbero non essere state salvate. Riprova o ricarica la pagina prima di inviare.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleRetry}
+              disabled={retrying || saving}
+              className="text-xs px-3 py-1.5 bg-white border border-red-300 text-red-700 hover:bg-red-100 rounded-md font-medium inline-flex items-center gap-1.5 disabled:opacity-60 flex-shrink-0"
+            >
+              {retrying || saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              <span>Riprova</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-5xl mx-auto px-4 md:px-6 pt-6">
         <div className="flex gap-6">
@@ -639,17 +680,23 @@ function FabbisognoLayout({ fb }: { fb: FbHook }) {
       {/* Footer */}
       <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-20">
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between gap-2">
-          <div className="flex items-center space-x-2 text-xs text-gray-500 flex-shrink-0">
+          <div className="flex items-center space-x-2 text-xs flex-shrink-0">
             {saving ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                <span className="hidden sm:inline">Salvataggio…</span>
+                <span className="hidden sm:inline text-gray-500">Salvataggio…</span>
+              </>
+            ) : saveError ? (
+              <>
+                <AlertCircle className="w-4 h-4 text-red-600" />
+                <span className="hidden sm:inline text-red-700 font-medium">Non salvato</span>
+                <span className="sm:hidden text-red-700 font-medium">Errore</span>
               </>
             ) : savedAt ? (
               <>
                 <CheckCircle className="w-4 h-4 text-green-600" />
-                <span className="hidden sm:inline">Salvato {savedAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
-                <span className="sm:hidden">Salvato</span>
+                <span className="hidden sm:inline text-gray-500">Salvato {savedAt.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="sm:hidden text-gray-500">Salvato</span>
               </>
             ) : (
               <span className="hidden sm:inline text-gray-400">Pronto</span>
@@ -669,8 +716,9 @@ function FabbisognoLayout({ fb }: { fb: FbHook }) {
               <button
                 type="button"
                 onClick={submit}
-                disabled={submitting}
-                className="text-xs px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-md font-medium inline-flex items-center space-x-1.5 disabled:opacity-60"
+                disabled={submitting || !!saveError}
+                title={saveError ? 'Risolvi prima l\'errore di salvataggio cliccando su Riprova' : undefined}
+                className="text-xs px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-md font-medium inline-flex items-center space-x-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 <span>Invia il questionario</span>
