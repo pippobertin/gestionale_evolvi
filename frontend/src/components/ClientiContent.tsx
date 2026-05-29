@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Plus,
   Search,
@@ -42,19 +42,30 @@ interface Cliente {
   percentuale_partecipazione?: number // Percentuale di partecipazione (0-100)
 }
 
+// True solo quando la pagina è stata ricaricata (F5 / reload), non alla prima apertura.
+function isPageReload(): boolean {
+  if (typeof window === 'undefined') return false
+  const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+  return nav?.type === 'reload'
+}
+
 export default function ClientiContent({ onNavigate, navigationParams }: { onNavigate?: (page: string, params?: any) => void; navigationParams?: any }) {
   const [clienti, setClienti] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedDimensione, setSelectedDimensione] = useState<string>('all')
-  const [selectedCategoria, setSelectedCategoria] = useState<string>('all')
+  const [searchTerm, setSearchTerm] = useState(() => isPageReload() ? (sessionStorage.getItem('clienti_search') || '') : '')
+  const [selectedDimensione, setSelectedDimensione] = useState<string>(() => isPageReload() ? (sessionStorage.getItem('clienti_dim') || 'all') : 'all')
+  const [selectedCategoria, setSelectedCategoria] = useState<string>(() => isPageReload() ? (sessionStorage.getItem('clienti_cat') || 'all') : 'all')
   const [showFilters, setShowFilters] = useState(false)
+  const listScrollRef = useRef<HTMLDivElement>(null)
+  const scrollRestoredRef = useRef(false)
 
   // Modal states
   const [showForm, setShowForm] = useState(false)
   const [showDettaglio, setShowDettaglio] = useState(false)
   const [selectedCliente, setSelectedCliente] = useState<Cliente | undefined>(undefined)
   const [selectedClienteId, setSelectedClienteId] = useState<string>('')
+  const [dettaglioInitialTab, setDettaglioInitialTab] = useState<string | undefined>(undefined)
+  const [dettaglioInitialSubTab, setDettaglioInitialSubTab] = useState<string | undefined>(undefined)
 
   // Bulk selection states
   const [selectedClientiForDelete, setSelectedClientiForDelete] = useState<Set<string>>(new Set())
@@ -74,13 +85,40 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
     fetchClienti()
   }, [])
 
-  // Auto-open client detail from global search
+  // Auto-open client detail from global search / notifications
   useEffect(() => {
     if (navigationParams?.openClientId) {
       setSelectedClienteId(navigationParams.openClientId)
+      setDettaglioInitialTab(navigationParams.tab)
+      setDettaglioInitialSubTab(navigationParams.subTab)
       setShowDettaglio(true)
     }
-  }, [navigationParams?.openClientId])
+  }, [navigationParams?.openClientId, navigationParams?.tab, navigationParams?.subTab])
+
+  // Memorizza ricerca e filtri per ripristinarli in caso di refresh.
+  useEffect(() => {
+    sessionStorage.setItem('clienti_search', searchTerm)
+    sessionStorage.setItem('clienti_dim', selectedDimensione)
+    sessionStorage.setItem('clienti_cat', selectedCategoria)
+  }, [searchTerm, selectedDimensione, selectedCategoria])
+
+  // Ripristina la posizione di scorrimento della lista dopo un refresh.
+  useEffect(() => {
+    if (loading || scrollRestoredRef.current) return
+    scrollRestoredRef.current = true
+    if (isPageReload()) {
+      const saved = sessionStorage.getItem('clienti_scroll')
+      if (saved && listScrollRef.current) {
+        listScrollRef.current.scrollTop = parseInt(saved, 10) || 0
+      }
+    }
+  }, [loading])
+
+  const handleListScroll = () => {
+    if (listScrollRef.current) {
+      sessionStorage.setItem('clienti_scroll', String(listScrollRef.current.scrollTop))
+    }
+  }
 
   const fetchClienti = async () => {
     try {
@@ -164,6 +202,8 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
 
   const handleDettaglioCliente = (clienteId: string) => {
     setSelectedClienteId(clienteId)
+    setDettaglioInitialTab(undefined)
+    setDettaglioInitialSubTab(undefined)
     setShowDettaglio(true)
   }
 
@@ -176,6 +216,8 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
   const handleCloseDettaglio = () => {
     setShowDettaglio(false)
     setSelectedClienteId('')
+    setDettaglioInitialTab(undefined)
+    setDettaglioInitialSubTab(undefined)
   }
 
   const handleSaveCliente = () => {
@@ -594,7 +636,7 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
       </div>
 
       {/* Table full-bleed */}
-      <div className="flex-1 overflow-auto">
+      <div ref={listScrollRef} onScroll={handleListScroll} className="flex-1 overflow-auto">
         {filteredClienti.length === 0 ? (
           <div className="p-8 text-center">
             <p className="text-sm text-gray-500 mb-3">
@@ -736,6 +778,8 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
       <ClienteDettaglio
         clienteId={selectedClienteId}
         isOpen={showDettaglio}
+        initialTab={dettaglioInitialTab}
+        initialSubTab={dettaglioInitialSubTab}
         onClose={handleCloseDettaglio}
         onEdit={handleEditFromDettaglio as any}
         onNavigate={onNavigate}

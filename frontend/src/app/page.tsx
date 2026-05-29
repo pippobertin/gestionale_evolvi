@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import AuthForm from '@/components/AuthForm'
 import Sidebar from '@/components/Sidebar'
@@ -20,11 +20,25 @@ import ChatbotWidget from '@/components/ChatbotWidget'
 import NoteInboxContent from '@/components/NoteInboxContent'
 import { LoadingSpinner } from '@/components/shared'
 
+// True solo quando la pagina è stata ricaricata (F5 / reload), non alla prima apertura.
+function isPageReload(): boolean {
+  if (typeof window === 'undefined') return false
+  const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+  return nav?.type === 'reload'
+}
+
 function AppContent() {
   const { user, loading } = useAuth()
-  const [activeItem, setActiveItem] = useState('dashboard')
+  const [activeItem, setActiveItem] = useState(() =>
+    isPageReload() ? (sessionStorage.getItem('evolvi_active_item') || 'dashboard') : 'dashboard'
+  )
   const [sidebarExpanded, setSidebarExpanded] = useState(true)
   const [navigationParams, setNavigationParams] = useState<any>(null)
+
+  // Memorizza la sezione corrente per ripristinarla in caso di refresh.
+  useEffect(() => {
+    sessionStorage.setItem('evolvi_active_item', activeItem)
+  }, [activeItem])
 
   if (loading) {
     return (
@@ -55,6 +69,37 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
   setSidebarExpanded: (expanded: boolean) => void
 }) {
   const { isAdmin } = useAuth()
+  const mainScrollRef = useRef<HTMLElement>(null)
+
+  // Salva la posizione di scorrimento del contenuto, per sezione.
+  const handleMainScroll = () => {
+    const el = mainScrollRef.current
+    if (el) sessionStorage.setItem(`evolvi_scroll_${activeItem}`, String(el.scrollTop))
+  }
+
+  // Dopo un refresh, ripristina lo scorrimento della sezione una volta che
+  // il contenuto (caricato in modo asincrono) ha raggiunto un'altezza sufficiente.
+  useEffect(() => {
+    if (!isPageReload()) return
+    const el = mainScrollRef.current
+    if (!el) return
+    const saved = parseInt(sessionStorage.getItem(`evolvi_scroll_${activeItem}`) || '0', 10)
+    if (!saved) return
+
+    let rafId = 0
+    const start = Date.now()
+    const tick = () => {
+      if (el.scrollHeight - el.clientHeight >= saved) {
+        el.scrollTop = saved
+        return
+      }
+      if (Date.now() - start < 5000) rafId = requestAnimationFrame(tick)
+    }
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const getPageTitle = () => {
     switch (activeItem) {
       case 'dashboard': return 'Dashboard'
@@ -145,7 +190,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
         <TopBar title={getPageTitle()} breadcrumb={getBreadcrumb()} onNavigate={onNavigate} />
 
         {/* Page Content */}
-        <main className="flex-1 min-h-0 p-4 overflow-auto">
+        <main ref={mainScrollRef} onScroll={handleMainScroll} className="flex-1 min-h-0 p-4 overflow-auto">
           {renderContent()}
         </main>
       </div>

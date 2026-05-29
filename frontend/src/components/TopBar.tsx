@@ -138,6 +138,37 @@ const SEARCH_CATEGORIES: Array<{
   },
 ]
 
+// Converte il link di una notifica (es. "/clienti/{id}#formazione/fabbisogno")
+// nei parametri di navigazione interni dell'app.
+function parseNotificationLink(link: string): { page: string; params?: any } | null {
+  const [pathPart, hashPart] = link.split('#')
+  const segments = pathPart.split('/').filter(Boolean)
+  const section = segments[0]
+  const id = segments[1]
+
+  switch (section) {
+    case 'clienti': {
+      const params: any = {}
+      if (id) params.openClientId = id
+      if (hashPart) {
+        const [tab, subTab] = hashPart.split('/')
+        if (tab) params.tab = tab
+        if (subTab) params.subTab = subTab
+      }
+      return { page: 'clienti', params }
+    }
+    case 'progetti':
+      return { page: 'progetti' }
+    case 'bandi':
+      return { page: 'bandi' }
+    case 'scadenze':
+    case 'scadenze-contrattuali':
+      return { page: 'scadenze' }
+    default:
+      return null
+  }
+}
+
 export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarProps) {
   const { user, logout, isAdmin } = useAuth()
   const { isConnected: isGoogleDriveConnected, loading: googleDriveLoading } = useGoogleDriveStatus()
@@ -424,8 +455,11 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
                               if (notification.unread) {
                                 markAsRead(notification.id)
                               }
-                              if (notification.link) {
-                                console.log('Navigate to:', notification.link)
+                              const target = notification.link ? parseNotificationLink(notification.link) : null
+                              if (target && onNavigate) {
+                                onNavigate(target.page, target.params)
+                                setShowNotifications(false)
+                                setShowAllNotifications(false)
                               }
                             }}
                           >

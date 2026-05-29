@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabase'
 
 interface FormazioneManagerProps {
   clienteId: string
+  initialSubTab?: string
 }
 
 const subTabs = [
@@ -29,13 +30,19 @@ const subTabs = [
   { id: 'fabbisogno', label: 'Rilevazione Fabbisogno', icon: ClipboardList },
 ]
 
-export default function FormazioneManager({ clienteId }: FormazioneManagerProps) {
-  const [activeSubTab, setActiveSubTab] = useState('panoramica')
+export default function FormazioneManager({ clienteId, initialSubTab }: FormazioneManagerProps) {
+  const [activeSubTab, setActiveSubTab] = useState(initialSubTab || 'panoramica')
   const [hasAdesione, setHasAdesione] = useState<boolean | null>(null)
 
   useEffect(() => {
     checkAdesione()
   }, [clienteId])
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveSubTab(initialSubTab)
+    }
+  }, [initialSubTab])
 
   const checkAdesione = async () => {
     const { count } = await supabase

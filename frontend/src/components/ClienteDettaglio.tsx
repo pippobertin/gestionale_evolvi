@@ -107,9 +107,11 @@ interface ClienteDettaglioProps {
   onEdit: (cliente: Cliente) => void
   onNavigate?: (page: string, params?: any) => void
   onClienteDeleted?: () => void
+  initialTab?: string
+  initialSubTab?: string
 }
 
-export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, onNavigate, onClienteDeleted }: ClienteDettaglioProps) {
+export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, onNavigate, onClienteDeleted, initialTab, initialSubTab }: ClienteDettaglioProps) {
   const [cliente, setCliente] = useState<Cliente | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentTab, setCurrentTab] = useState('anagrafica')
@@ -122,6 +124,13 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
       loadCollegamenti()
     }
   }, [isOpen, clienteId])
+
+  // Apertura su un tab specifico (es. da una notifica)
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setCurrentTab(initialTab)
+    }
+  }, [isOpen, initialTab])
 
   const fetchCliente = async () => {
     setLoading(true)
@@ -911,7 +920,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
       case 'formazione':
         return (
           <div className="space-y-3">
-            <FormazioneManager clienteId={cliente.id} />
+            <FormazioneManager clienteId={cliente.id} initialSubTab={currentTab === 'formazione' ? initialSubTab : undefined} />
           </div>
         )
 
