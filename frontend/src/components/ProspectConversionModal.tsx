@@ -73,16 +73,23 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
         cap_fatturazione: prospect.cap || null,
         citta_fatturazione: prospect.citta || null,
         provincia_fatturazione: prospect.provincia || null,
-        dimensione: prospect.dimensione || null,
+        // dimensione: e' una GENERATED column calcolata dal DB in base a
+        // ula, ultimo_fatturato, attivo_bilancio (UE 2003/361/CE).
+        // Per garantire la classificazione MICRO alla conversione (in
+        // assenza di dati reali) impostiamo valori minimi placeholder:
+        // questi vanno verificati e corretti nella scheda cliente.
         numero_dipendenti: prospect.numero_dipendenti || null,
-        ultimo_fatturato: prospect.ultimo_fatturato || null,
+        ula: prospect.numero_dipendenti ?? 1,
+        attivo_bilancio: 100,
+        ultimo_fatturato: prospect.ultimo_fatturato ?? 100,
         ateco_2025: prospect.ateco_2025 || null,
         legale_rappresentante_nome: prospect.legale_rappresentante_nome || null,
         legale_rappresentante_cognome: prospect.legale_rappresentante_cognome || null,
         legale_rappresentante_email: prospect.legale_rappresentante_email || null,
         legale_rappresentante_telefono: prospect.legale_rappresentante_telefono || null,
         categoria_evolvi: decisione === 'SPOT' ? 'CLIENTE_SPOT' : decisione,
-        stato_fatturazione: 'Italia'
+        stato_fatturazione: 'Italia',
+        note: '⚠ Dati di dimensionamento (ULA, fatturato, attivo bilancio) impostati su valori provvisori al momento della conversione. Verificare e aggiornare per ottenere la classificazione UE corretta.',
       }
 
       const { data: newCliente, error: clienteError } = await supabase

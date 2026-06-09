@@ -59,16 +59,26 @@ export async function POST(
       cap_fatturazione: prospect.cap || null,
       citta_fatturazione: prospect.citta || null,
       provincia_fatturazione: prospect.provincia || null,
-      dimensione: prospect.dimensione || null,
+      // dimensione: e' una GENERATED column calcolata dal DB in base a
+      // ula, ultimo_fatturato, attivo_bilancio (UE 2003/361/CE).
+      // Per garantire la classificazione MICRO alla conversione (in
+      // assenza di dati reali) impostiamo valori minimi placeholder:
+      // questi vanno verificati e corretti nella scheda cliente quando
+      // si dispongono dei dati reali (vedi anche nota auto-generata).
       numero_dipendenti: prospect.numero_dipendenti || null,
-      ultimo_fatturato: prospect.ultimo_fatturato || null,
+      ula: prospect.numero_dipendenti ?? 1,
+      attivo_bilancio: 100,
+      ultimo_fatturato: prospect.ultimo_fatturato ?? 100,
       legale_rappresentante_nome: prospect.legale_rappresentante_nome || null,
       legale_rappresentante_cognome: prospect.legale_rappresentante_cognome || null,
       legale_rappresentante_email: prospect.legale_rappresentante_email || null,
       legale_rappresentante_telefono: prospect.legale_rappresentante_telefono || null,
       ateco_2025: prospect.ateco_2025 || null,
       categoria_evolvi: categoriaEvolvi,
-      note: note || prospect.note || null
+      note: [
+        note || prospect.note || null,
+        '⚠ Dati di dimensionamento (ULA, fatturato, attivo bilancio) impostati su valori provvisori al momento della conversione. Verificare e aggiornare per ottenere la classificazione UE corretta.',
+      ].filter(Boolean).join('\n\n'),
     }
 
     // Crea il nuovo cliente
