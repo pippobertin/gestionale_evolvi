@@ -60,6 +60,47 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
     setError(null)
 
     try {
+      // 0a. Pre-check: il prospect e' gia' stato convertito?
+      const { data: prospectAttuale, error: errProspect } = await supabase
+        .from('scadenze_bandi_prospect')
+        .select('stato, cliente_id')
+        .eq('id', prospect.id)
+        .single()
+
+      if (errProspect) throw errProspect
+
+      if (prospectAttuale?.stato === 'convertito') {
+        setError(
+          'Questo prospect e\' gia\' stato convertito in cliente. ' +
+          'Per modificare la categoria, apri direttamente la scheda del cliente esistente.'
+        )
+        setLoading(false)
+        return
+      }
+
+      // 0b. Check P.IVA: esiste gia' un cliente con la stessa partita IVA?
+      if (prospect.partita_iva) {
+        const { data: clientiEsistenti } = await supabase
+          .from('scadenze_bandi_clienti')
+          .select('id, denominazione, categoria_evolvi')
+          .eq('partita_iva', prospect.partita_iva)
+          .limit(1)
+
+        if (clientiEsistenti && clientiEsistenti.length > 0) {
+          const esistente = clientiEsistenti[0]
+          const conferma = window.confirm(
+            `Esiste gia\' un cliente con questa partita IVA:\n\n` +
+            `${esistente.denominazione} (${esistente.categoria_evolvi})\n\n` +
+            `Vuoi creare comunque un nuovo cliente come duplicato?\n` +
+            `(Annulla per interrompere la conversione)`
+          )
+          if (!conferma) {
+            setLoading(false)
+            return
+          }
+        }
+      }
+
       // 1. Create the new cliente
       const clienteData: Record<string, any> = {
         denominazione: prospect.denominazione,
@@ -111,10 +152,18 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
         })
         .eq('id', prospect.id)
 
-      if (prospectError) throw prospectError
+      if (prospectError) {
+        // Rollback manuale: cancella il cliente appena creato
+        // per evitare clienti orfani in caso di failure parziale.
+        await supabase
+          .from('scadenze_bandi_clienti')
+          .delete()
+          .eq('id', newCliente.id)
+        throw prospectError
+      }
 
-      // 3. Add history entry
-      await supabase
+      // 3. Add history entry (best effort: se fallisce non rollback)
+      const { error: historyError } = await supabase
         .from('scadenze_bandi_prospect_history')
         .insert([{
           prospect_id: prospect.id,
@@ -127,6 +176,9 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
             'Consulente'
           })`
         }])
+      if (historyError) {
+        console.warn('Conversione completata, history non scritta:', historyError)
+      }
 
       setConversionResult({
         clienteId: newCliente.id,
@@ -277,9 +329,17 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
         <div className="flex items-center space-x-2 mb-3">
           <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-            decisione === 'EVOLVI' ? 'bg-primary-100 text-primary-700' : 'bg-yellow-100 text-yellow-700'
+            decisione === 'EVOLVI' ? 'bg-primary-100 text-primary-700' :
+            decisione === 'SPOT' ? 'bg-yellow-100 text-yellow-700' :
+            decisione === 'FPI' ? 'bg-green-100 text-green-700' :
+            decisione === 'CONSULENTI' ? 'bg-purple-100 text-purple-700' :
+            'bg-gray-100 text-gray-700'
           }`}>
-            {decisione === 'EVOLVI' ? 'Evolvi Base' : 'Cliente Spot'}
+            {decisione === 'EVOLVI' ? 'Evolvi Base' :
+             decisione === 'SPOT' ? 'Cliente Spot' :
+             decisione === 'FPI' ? 'FPI' :
+             decisione === 'CONSULENTI' ? 'Consulenti' :
+             '—'}
           </span>
         </div>
 

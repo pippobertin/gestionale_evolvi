@@ -12,10 +12,11 @@ export async function POST(
 
     const { decisione, note } = body
 
-    if (!decisione || !['EVOLVI', 'SPOT'].includes(decisione)) {
+    const DECISIONI_AMMESSE = ['EVOLVI', 'SPOT', 'FPI', 'CONSULENTI']
+    if (!decisione || !DECISIONI_AMMESSE.includes(decisione)) {
       return Response.json({
         success: false,
-        error: 'Il campo decisione è obbligatorio e deve essere "EVOLVI" o "SPOT"'
+        error: `Il campo decisione è obbligatorio e deve essere uno tra: ${DECISIONI_AMMESSE.join(', ')}`
       }, { status: 400 })
     }
 
@@ -40,12 +41,40 @@ export async function POST(
     if (prospect.stato === 'convertito') {
       return Response.json({
         success: false,
-        error: 'Questo prospect è già stato convertito in cliente'
+        error: 'Questo prospect è già stato convertito in cliente. Per modificare la categoria, apri direttamente la scheda del cliente esistente.'
       }, { status: 400 })
     }
 
-    // Mappa i campi del prospect ai campi del cliente
-    const categoriaEvolvi = decisione === 'EVOLVI' ? 'EVOLVI' : 'CLIENTE_SPOT'
+    // Verifica esistenza di un cliente con la stessa P.IVA.
+    // Il client puo' forzare il duplicato passando force_duplicate: true nel body.
+    const forceDuplicate = body.force_duplicate === true
+    if (prospect.partita_iva && !forceDuplicate) {
+      const { data: clientiEsistenti } = await supabase
+        .from('scadenze_bandi_clienti')
+        .select('id, denominazione, categoria_evolvi')
+        .eq('partita_iva', prospect.partita_iva)
+        .limit(1)
+
+      if (clientiEsistenti && clientiEsistenti.length > 0) {
+        const esistente = clientiEsistenti[0]
+        return Response.json({
+          success: false,
+          error: 'cliente_duplicato',
+          message: `Esiste già un cliente con questa P.IVA: ${esistente.denominazione} (${esistente.categoria_evolvi}). Per procedere comunque creando un duplicato, rilancia la richiesta con force_duplicate: true.`,
+          cliente_esistente: esistente,
+        }, { status: 409 })
+      }
+    }
+
+    // Mappa la decisione del prospect nella categoria del cliente.
+    // SPOT è l'unico caso che cambia denominazione (CLIENTE_SPOT).
+    const mappaCategoria: Record<string, string> = {
+      EVOLVI: 'EVOLVI',
+      SPOT: 'CLIENTE_SPOT',
+      FPI: 'FPI',
+      CONSULENTI: 'CONSULENTI',
+    }
+    const categoriaEvolvi = mappaCategoria[decisione] || 'CLIENTE_SPOT'
 
     const clienteData: Record<string, any> = {
       denominazione: prospect.denominazione,
@@ -109,10 +138,18 @@ export async function POST(
       .select()
       .single()
 
-    if (updateError) throw updateError
+    if (updateError) {
+      // Rollback manuale: cancella il cliente appena creato per evitare
+      // clienti orfani quando l'UPDATE prospect fallisce.
+      await supabase
+        .from('scadenze_bandi_clienti')
+        .delete()
+        .eq('id', newCliente.id)
+      throw updateError
+    }
 
-    // Inserisci record nella history
-    await supabase
+    // Inserisci record nella history (best effort: non rollback se fallisce)
+    const { error: historyError } = await supabase
       .from('scadenze_bandi_prospect_history')
       .insert([{
         prospect_id: id,
@@ -121,6 +158,9 @@ export async function POST(
         note: `Convertito in cliente (${categoriaEvolvi}). Cliente ID: ${newCliente.id}${note ? '. Note: ' + note : ''}`,
         utente
       }])
+    if (historyError) {
+      console.warn('Conversione completata, history non scritta:', historyError)
+    }
 
     return Response.json({
       success: true,
