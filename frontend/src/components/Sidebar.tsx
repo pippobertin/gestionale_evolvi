@@ -18,7 +18,8 @@ import {
   PinOff,
   Mail,
   HelpCircle,
-  Inbox
+  Inbox,
+  Search
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -68,6 +69,7 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
     { id: 'progetti', label: 'Progetti', icon: Target, adminOnly: false, badge: 0 },
     { id: 'email', label: 'Email', icon: Mail, adminOnly: false, badge: 0 },
     { id: 'note-inbox', label: 'Inbox Note', icon: Inbox, adminOnly: false, badge: inboxNoteCount },
+    { id: 'interrogazioni', label: 'Interrogazioni', icon: Search, adminOnly: false, badge: 0 },
     { id: 'consulenti', label: 'Consulenti', icon: Building, adminOnly: false, badge: 0 },
     { id: 'reports', label: 'Reports', icon: BarChart3, adminOnly: false, badge: 0 },
     { id: 'settings', label: 'Impostazioni', icon: Settings, adminOnly: false, badge: 0 },

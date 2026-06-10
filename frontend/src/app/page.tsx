@@ -18,6 +18,7 @@ import FaqContent from '@/components/FaqContent'
 import ConsulentiContent from '@/components/ConsulentiContent'
 import ChatbotWidget from '@/components/ChatbotWidget'
 import NoteInboxContent from '@/components/NoteInboxContent'
+import InterrogazioniContent from '@/components/InterrogazioniContent'
 import { LoadingSpinner } from '@/components/shared'
 
 // True solo quando la pagina è stata ricaricata (F5 / reload), non alla prima apertura.
@@ -110,6 +111,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'progetti': return 'Progetti'
       case 'email': return 'Centro Email'
       case 'note-inbox': return 'Inbox Note'
+      case 'interrogazioni': return 'Interrogazioni'
       case 'consulenti': return 'Consulenti'
       case 'reports': return 'Reports'
       case 'settings': return 'Impostazioni'
@@ -128,6 +130,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'progetti': return ['Home', 'Gestione', 'Progetti']
       case 'email': return ['Home', 'Comunicazione', 'Email']
       case 'note-inbox': return ['Home', 'Comunicazione', 'Inbox Note']
+      case 'interrogazioni': return ['Home', 'Analytics', 'Interrogazioni']
       case 'consulenti': return ['Home', 'Gestione', 'Consulenti']
       case 'reports': return ['Home', 'Analytics', 'Reports']
       case 'settings': return ['Home', 'Sistema', 'Impostazioni']
@@ -158,6 +161,8 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
         )
       case 'note-inbox':
         return <NoteInboxContent />
+      case 'interrogazioni':
+        return <InterrogazioniContent />
       case 'consulenti':
         return <ConsulentiContent onNavigate={onNavigate} />
       case 'reports':
