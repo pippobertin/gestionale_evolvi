@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import {
   ClipboardList, Plus, RefreshCw, Loader2, X, Send, Copy, Mail,
-  CheckCircle, Clock, AlertTriangle, Archive, ChevronRight, FileText
+  CheckCircle, Clock, AlertTriangle, Archive, ChevronRight, FileText, Download
 } from 'lucide-react'
 
 interface Rilevazione {
@@ -334,9 +334,18 @@ export default function RilevazioneFabbisognoManager({ clienteId }: RilevazioneF
                             </>
                           )}
                           {ril.stato === 'COMPLETATA' && (
-                            <button onClick={() => setOpenedDetail(isOpen ? null : ril.id)} className="text-xs text-teal-700 font-medium hover:underline inline-flex items-center">
-                              {isOpen ? 'Chiudi' : 'Apri'} <ChevronRight className={`w-3 h-3 ml-0.5 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
-                            </button>
+                            <>
+                              <a
+                                href={`/api/clienti/${clienteId}/formazione/fabbisogno/${ril.id}/export-pdf`}
+                                className="text-xs text-gray-700 font-medium hover:underline inline-flex items-center"
+                                title="Scarica PDF del questionario compilato"
+                              >
+                                <Download className="w-3 h-3 mr-1" /> PDF
+                              </a>
+                              <button onClick={() => setOpenedDetail(isOpen ? null : ril.id)} className="text-xs text-teal-700 font-medium hover:underline inline-flex items-center">
+                                {isOpen ? 'Chiudi' : 'Apri'} <ChevronRight className={`w-3 h-3 ml-0.5 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                              </button>
+                            </>
                           )}
                           {ril.stato !== 'ARCHIVIATA' && (
                             <button onClick={() => archivia(ril)} className="text-xs text-gray-400 hover:text-red-500" title="Archivia">
