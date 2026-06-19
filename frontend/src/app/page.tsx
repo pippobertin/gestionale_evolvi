@@ -19,6 +19,7 @@ import ConsulentiContent from '@/components/ConsulentiContent'
 import ChatbotWidget from '@/components/ChatbotWidget'
 import NoteInboxContent from '@/components/NoteInboxContent'
 import InterrogazioniContent from '@/components/InterrogazioniContent'
+import BandiEsterniManager from '@/components/BandiEsterniManager'
 import { LoadingSpinner } from '@/components/shared'
 
 // True solo quando la pagina è stata ricaricata (F5 / reload), non alla prima apertura.
@@ -108,6 +109,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'prospect': return 'Prospect'
       case 'clienti': return 'Clienti'
       case 'bandi': return 'Bandi'
+      case 'bandi-esterni': return 'Bandi esterni'
       case 'progetti': return 'Progetti'
       case 'email': return 'Centro Email'
       case 'note-inbox': return 'Inbox Note'
@@ -127,6 +129,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'prospect': return ['Home', 'Gestione', 'Prospect']
       case 'clienti': return ['Home', 'Gestione', 'Clienti']
       case 'bandi': return ['Home', 'Gestione', 'Bandi']
+      case 'bandi-esterni': return ['Home', 'Gestione', 'Bandi esterni']
       case 'progetti': return ['Home', 'Gestione', 'Progetti']
       case 'email': return ['Home', 'Comunicazione', 'Email']
       case 'note-inbox': return ['Home', 'Comunicazione', 'Inbox Note']
@@ -151,6 +154,8 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
         return <ClientiContent onNavigate={onNavigate} navigationParams={navigationParams} />
       case 'bandi':
         return <BandiContent initialFilter={navigationParams?.filter} />
+      case 'bandi-esterni':
+        return <BandiEsterniManager />
       case 'progetti':
         return <ProgettiContent initialFilter={navigationParams?.clienteFilter} onNavigate={onNavigate} />
       case 'email':

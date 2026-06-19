@@ -27,6 +27,7 @@ import DocumentiAmministrativiManager from './DocumentiAmministrativiManager'
 import ContractTrackingPanel from './ContractTrackingPanel'
 import FormazioneManager from './formazione/FormazioneManager'
 import NoteTimeline from './NoteTimeline'
+import ListaSpesa from './ListaSpesa'
 
 interface CollegamentoAziendale {
   id: string
@@ -906,6 +907,11 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
             {/* Timeline note ingestionate da trascrizioni Plaud / altre fonti */}
             <div className="pt-4 border-t border-gray-200">
               <NoteTimeline clienteId={cliente.id} />
+            </div>
+
+            {/* Lista della spesa (esigenze cliente) + bandi esterni suggeriti */}
+            <div className="pt-4 border-t border-gray-200">
+              <ListaSpesa clienteId={cliente.id} />
             </div>
           </div>
         )

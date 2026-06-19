@@ -19,7 +19,8 @@ import {
   Mail,
   HelpCircle,
   Inbox,
-  Search
+  Search,
+  Landmark
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -66,6 +67,7 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
     { id: 'prospect', label: 'Prospect', icon: UserPlus, adminOnly: false, badge: 0 },
     { id: 'clienti', label: 'Clienti', icon: Users, adminOnly: false, badge: 0 },
     { id: 'bandi', label: 'Bandi', icon: FileText, adminOnly: false, badge: 0 },
+    { id: 'bandi-esterni', label: 'Bandi esterni', icon: Landmark, adminOnly: false, badge: 0 },
     { id: 'progetti', label: 'Progetti', icon: Target, adminOnly: false, badge: 0 },
     { id: 'email', label: 'Email', icon: Mail, adminOnly: false, badge: 0 },
     { id: 'note-inbox', label: 'Inbox Note', icon: Inbox, adminOnly: false, badge: inboxNoteCount },
