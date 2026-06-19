@@ -14,8 +14,11 @@ import {
   X,
   FileText,
   Briefcase,
+  Plus,
+  Pencil,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface Nota {
   id: string
@@ -55,6 +58,7 @@ export default function NoteTimeline({ clienteId }: { clienteId: string }) {
   const [note, setNote] = useState<Nota[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [showNewModal, setShowNewModal] = useState(false)
 
   useEffect(() => {
     fetchNote()
@@ -186,14 +190,24 @@ export default function NoteTimeline({ clienteId }: { clienteId: string }) {
             ({note.length})
           </span>
         </div>
-        <button
-          onClick={fetchNote}
-          className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
-          title="Ricarica"
-        >
-          <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-          Ricarica
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={fetchNote}
+            className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+            title="Ricarica"
+          >
+            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+            Ricarica
+          </button>
+          <button
+            onClick={() => setShowNewModal(true)}
+            className="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 flex items-center gap-1 px-2.5 py-1.5 rounded-lg transition-colors"
+            title="Aggiungi una nota scritta a mano"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Nuova nota
+          </button>
+        </div>
       </div>
 
       {loading && note.length === 0 ? (
@@ -202,9 +216,9 @@ export default function NoteTimeline({ clienteId }: { clienteId: string }) {
         </div>
       ) : note.length === 0 ? (
         <div className="text-sm text-gray-500 italic p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-          Nessuna nota riunione ancora ingestionata per questo cliente.
-          Le note vengono create automaticamente dalle trascrizioni
-          caricate su Google Drive.
+          Nessuna nota riunione per questo cliente. Le note vengono create
+          automaticamente dalle trascrizioni caricate su Google Drive, oppure
+          puoi aggiungerne una a mano con &laquo;Nuova nota&raquo;.
         </div>
       ) : (
         <div className="space-y-2">
@@ -226,6 +240,228 @@ export default function NoteTimeline({ clienteId }: { clienteId: string }) {
           ))}
         </div>
       )}
+
+      {showNewModal && (
+        <NewNoteModal
+          clienteId={clienteId}
+          onClose={() => setShowNewModal(false)}
+          onCreated={() => {
+            setShowNewModal(false)
+            fetchNote()
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function NewNoteModal({
+  clienteId,
+  onClose,
+  onCreated,
+}: {
+  clienteId: string
+  onClose: () => void
+  onCreated: () => void
+}) {
+  const { user } = useAuth()
+  const today = new Date().toISOString().slice(0, 10)
+
+  const [titolo, setTitolo] = useState('')
+  const [dataRiunione, setDataRiunione] = useState(today)
+  const [tipo, setTipo] = useState('riunione_cliente')
+  const [durata, setDurata] = useState('')
+  const [sintesi, setSintesi] = useState('')
+  const [contenuto, setContenuto] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSave() {
+    const titoloTrim = titolo.trim()
+    const contenutoTrim = contenuto.trim()
+    if (!titoloTrim) {
+      setError('Il titolo e\' obbligatorio.')
+      return
+    }
+    if (!contenutoTrim) {
+      setError('Il contenuto della nota e\' obbligatorio.')
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+
+    const durataNum = durata.trim() ? parseInt(durata, 10) : null
+
+    const { error: insertError } = await supabase
+      .from('scadenze_bandi_clienti_note')
+      .insert({
+        cliente_id: clienteId,
+        data_riunione: dataRiunione || null,
+        data_caricamento: today,
+        durata_minuti_stimata:
+          durataNum != null && !Number.isNaN(durataNum) ? durataNum : null,
+        tipo,
+        titolo: titoloTrim,
+        sintesi_one_liner: sintesi.trim() || null,
+        contenuto_markdown: contenutoTrim,
+        entita: {},
+        verifiche_suggerite: [],
+        sorgente: 'manuale',
+        match_method: 'manuale',
+        match_confidence: 1.0,
+        stato: 'pubblicata',
+        created_by: user?.email ?? null,
+      })
+
+    setSaving(false)
+
+    if (insertError) {
+      setError('Errore salvataggio: ' + insertError.message)
+      return
+    }
+    onCreated()
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="gradient-primary text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <Pencil className="w-4 h-4" />
+            <span className="text-sm font-semibold">Nuova nota riunione</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-white/20 rounded transition-colors"
+            title="Chiudi"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4 overflow-y-auto">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
+              Titolo <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={titolo}
+              onChange={(e) => setTitolo(e.target.value)}
+              placeholder="Es. Riunione di allineamento progetto X"
+              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoFocus
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Data riunione
+              </label>
+              <input
+                type="date"
+                value={dataRiunione}
+                onChange={(e) => setDataRiunione(e.target.value)}
+                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Tipo
+              </label>
+              <select
+                value={tipo}
+                onChange={(e) => setTipo(e.target.value)}
+                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="riunione_cliente">Riunione cliente</option>
+                <option value="riunione_interna">Riunione interna</option>
+                <option value="altro">Altro</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Durata (min)
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={durata}
+                onChange={(e) => setDurata(e.target.value)}
+                placeholder="—"
+                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
+              Sintesi (una riga)
+            </label>
+            <input
+              type="text"
+              value={sintesi}
+              onChange={(e) => setSintesi(e.target.value)}
+              placeholder="Riassunto breve, opzionale"
+              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
+              Contenuto <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={contenuto}
+              onChange={(e) => setContenuto(e.target.value)}
+              rows={10}
+              placeholder={
+                'Scrivi qui la nota della riunione.\n\nPuoi usare un formato semplice:\n## Titolo sezione\n- punto elenco\n**testo in grassetto**'
+              }
+              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+            />
+            <p className="text-[11px] text-gray-400 mt-1">
+              Supporta una formattazione markdown leggera: ## sezioni, - liste,
+              **grassetto**.
+            </p>
+          </div>
+
+          {error && (
+            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-gray-200 px-4 py-3 flex items-center justify-end gap-2 flex-shrink-0 bg-gray-50">
+          <button
+            onClick={onClose}
+            disabled={saving}
+            className="text-sm text-gray-600 hover:text-gray-800 px-3 py-2 rounded-lg disabled:opacity-50"
+          >
+            Annulla
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50 transition-colors"
+          >
+            {saving ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Salvataggio...
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4" />
+                Salva nota
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
