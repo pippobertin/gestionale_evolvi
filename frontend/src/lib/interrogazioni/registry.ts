@@ -16,6 +16,7 @@ import { ambitoPiani } from './ambito-piani'
 import { ambitoCorsi } from './ambito-corsi'
 import { ambitoFpi } from './ambito-fpi'
 import { ambitoContratti } from './ambito-contratti'
+import { ambitoMatchBandi } from './ambito-match-bandi'
 
 // ----------------------------------------------------------------
 // Tipi
@@ -104,6 +105,7 @@ export const AMBITI: Record<string, DefinizioneAmbito> = {
   [ambitoCorsi.id]: ambitoCorsi,
   [ambitoFpi.id]: ambitoFpi,
   [ambitoContratti.id]: ambitoContratti,
+  [ambitoMatchBandi.id]: ambitoMatchBandi,
 }
 
 export function getAmbito(id: string): DefinizioneAmbito | null {

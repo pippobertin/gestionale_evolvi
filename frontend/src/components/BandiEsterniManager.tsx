@@ -161,7 +161,19 @@ export default function BandiEsterniManager() {
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="font-medium text-gray-900">{b.titolo}</h4>
+                  {b.url_dettagli ? (
+                    <a
+                      href={`/api/bandi-esterni/agevolando-sso?url=${encodeURIComponent(b.url_dettagli)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-gray-900 hover:text-blue-700 hover:underline"
+                      title="Apri il bando su Agevolando (accesso automatico)"
+                    >
+                      {b.titolo}
+                    </a>
+                  ) : (
+                    <h4 className="font-medium text-gray-900">{b.titolo}</h4>
+                  )}
                   <span
                     className={`text-[11px] px-1.5 py-0.5 rounded border ${
                       STATO_BADGE[b.stato] ?? STATO_BADGE.archiviato

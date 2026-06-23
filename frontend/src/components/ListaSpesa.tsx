@@ -475,7 +475,19 @@ function BandoSuggeritoCard({
     <div className="border border-gray-200 rounded-lg p-3 bg-white hover:border-gray-300 transition-colors">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <h5 className="font-medium text-sm text-gray-900">{bando.titolo}</h5>
+          {bando.url_dettagli ? (
+            <a
+              href={`/api/bandi-esterni/agevolando-sso?url=${encodeURIComponent(bando.url_dettagli)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-sm text-gray-900 hover:text-blue-700 hover:underline"
+              title="Apri il bando su Agevolando (accesso automatico)"
+            >
+              {bando.titolo}
+            </a>
+          ) : (
+            <h5 className="font-medium text-sm text-gray-900">{bando.titolo}</h5>
+          )}
           <div className="flex flex-wrap gap-1.5 mt-1.5">
             {bando.investimenti_spesati.map((c) => {
               const match = categorieAttive.has(c)

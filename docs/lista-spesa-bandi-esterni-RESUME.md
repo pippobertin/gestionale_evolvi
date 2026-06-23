@@ -162,9 +162,44 @@ allargato e RPC `match_bandi_esterni_per_cliente` ora matcha `IN ('attivo','in_a
   `INGEST_SECRET`, `CRON_SECRET`, `ANTHROPIC_API_KEY`, `AGEVOLANDO_FEED_EMAIL` (opz).
   Il backfill grosso resta da fare a lotti manuali (non dal cron, per il timeout 60s).
 
+### Match in "Ricerche" (Interrogazioni) — IMPLEMENTATO (raggruppato per cliente)
+- `docs/sql/add_vista_match_bandi_clienti.sql` (DA APPLICARE in Supabase): due viste
+  live — `vista_match_bandi_clienti` (1 riga per coppia, base) e
+  `vista_match_bandi_per_cliente` (aggregata: n_bandi, categorie_coperte[], titoli[]).
+  GRANT SELECT a anon/authenticated (il queryBuilder usa il client pubblico).
+- Nuovo ambito `frontend/src/lib/interrogazioni/ambito-match-bandi.ts` (id `match_bandi`,
+  "Bandi esterni ↔ Clienti"), registrato in `registry.ts`. Tabella = la vista aggregata.
+  Filtri: azienda/provincia, categorie coperte (&&), n_bandi, n in apertura.
+  Azioni: Excel, PDF, crea_scadenza interna. NIENTE email (vincolo legale).
+- Test: applicare la migrazione, poi pagina Interrogazioni -> ambito
+  "Bandi esterni ↔ Clienti". (La search richiede login: testare dalla UI.)
+
+### Auto-login Agevolando (SSO) — IMPLEMENTATO e testato
+- Endpoint `frontend/src/app/api/bandi-esterni/agevolando-sso/route.ts` (GET,
+  protetto da verifyJWT): restituisce una pagina che si auto-invia alla login
+  aMember di Agevolando (`POST https://dashboard.agevolando.eu/hd/login`,
+  campi `amember_login`/`amember_pass`, redirect = url del bando). Niente CSRF,
+  reCAPTCHA disattivato, e il loro server ACCETTA il POST cross-origin -> funziona.
+- Titolo bando cliccabile -> apre il dettaglio su Agevolando gia' loggato, in
+  catalogo (`BandiEsterniManager`) e nei "Bandi suggeriti" (`ListaSpesa`).
+- Credenziali SOLO da env `AGEVOLANDO_LOGIN` / `AGEVOLANDO_PASSWORD` (mai in codice).
+  Limite accettato: la password transita nel browser (necessario per far ottenere
+  AL browser dell'utente il cookie .agevolando.eu). Account condiviso interno.
+- SICUREZZA: la vecchia password Agevolando era stata esposta -> da RUOTARE; usare
+  la nuova in env.
+
+### Env da impostare su VERCEL (produzione) prima del deploy
+In Vercel: Project -> Settings -> Environment Variables (scope Production + Preview):
+- `ANTHROPIC_API_KEY` (estrazione LLM)
+- `INGEST_SECRET` (auth route ingest per n8n/manuale)
+- `CRON_SECRET` (Vercel inietta `Authorization: Bearer` nel cron; senza questa il
+  cron riceve 401)
+- `AGEVOLANDO_LOGIN` = info@blmproject.com
+- `AGEVOLANDO_PASSWORD` = (password NUOVA)
+- opzionali: `AGEVOLANDO_FEED_EMAIL`, `AGEVOLANDO_SENDER`, `AGEVOLANDO_GMAIL_USER_ID`
+- (Supabase URL/keys: gia' presenti per il resto del gestionale)
+
 ### Ancora da fare (Fase B)
-- Integrare il match bandi↔clienti nella pagina Interrogazioni ("Ricerche") come
-  nuovo ambito su una vista DB (vedi proposta in fondo).
 - Decidere gestione "Bando Aggiornato": oggi dedup SOLO a livello email
   (`email_msg_id`); una ri-segnalazione con nuovo msg id crea un nuovo record.
   Eventuale dedup per titolo/upsert = rifinitura futura.
