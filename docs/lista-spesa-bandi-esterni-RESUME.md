@@ -78,11 +78,98 @@ testo `raw_payload`/verbatim nei template email/PDF verso cliente.
 
 ---
 
-## PROSSIMO: Fase B — alimentare "bandi esterni" dalle email
+## FASE B — SCAFFOLD FATTO (server-side, Forma B). Da tarare su email reali + collegare il trigger.
 
 Obiettivo: invece dell'ingest manuale, leggere automaticamente gli alert Agevolando
 che arrivano su **paladini@blmproject.com** e popolare il catalogo
 `scadenze_bandi_bandi_esterni`.
+
+### Decisione presa: Forma B (job server-side, non la pagina email)
+Scoperta chiave: il token Gmail di Paladini e' GIA' salvato nel gestionale
+(`scadenze_bandi_utenti.gmail_email/gmail_refresh_token`, usato dalla pagina email).
+Quindi NON serve service account / delega domain-wide: il job legge la sua casella
+lato server con `getGmailClient(userId)`, riusando quel token. La pagina email e'
+"pull all'apertura" (nessun listener live), percio' un trigger dentro la pagina
+scatterebbe solo a pagina aperta -> scartato in favore del job server.
+
+### File creati (Fase B)
+- `frontend/src/lib/bandiEsterniExtract.ts` — logica di estrazione condivisa.
+  `extractBandoFromText()` (1 bando) + `extractBandiFromText()` (N bandi da 1 email,
+  approccio "corpo intero -> LLM -> array"). Prompt e normalizzazione (14 voci) in
+  un solo posto. `/api/bandi-esterni/extract` ora importa da qui (niente duplicazione).
+- `frontend/src/app/api/bandi-esterni/ingest-gmail/route.ts` — il job. Auth
+  `x-ingest-secret == INGEST_SECRET` (come le note). Risolve l'utente del feed,
+  lista email `from:bandi@agevolando.eu`, per ciascuna: dedup su `email_msg_id` ->
+  estrai corpo MIME (text/plain, fallback html->testo con link preservati) ->
+  `extractBandiFromText` -> insert multipli. Supporta `{ maxResults, q, dryRun }`.
+  `raw_payload` tiene solo metadati (msg id, oggetto), MAI verbatim (vincolo legale).
+
+### Env da impostare (non ancora in .env.local)
+- `INGEST_SECRET` — secret della route (riusa quello delle note se gia' su Vercel).
+- `AGEVOLANDO_FEED_EMAIL` — opz., default `paladini@blmproject.com`.
+- `AGEVOLANDO_SENDER` — opz., default `bandi@agevolando.eu`.
+- `AGEVOLANDO_GMAIL_USER_ID` — opz., override esplicito dell'utente del feed
+  (altrimenti lookup per `gmail_email`).
+
+### Come testare (dryRun, NON scrive su DB)
+Prerequisito: Paladini ha collegato la sua Gmail dalla pagina email del gestionale.
+```
+curl -X POST http://localhost:3000/api/bandi-esterni/ingest-gmail \
+  -H "x-ingest-secret: $INGEST_SECRET" -H "Content-Type: application/json" \
+  -d '{"dryRun": true, "maxResults": 5}'
+```
+Ritorna i bandi estratti per email (campo `details[].estratti`): serve a tarare il
+parsing sull'HTML reale prima di scrivere. Togli `dryRun` per l'ingest vero.
+
+### Calibrazione su email reali — FATTA (3 .eml forniti)
+Test su 3 alert reali (forniti come Fwd; in prod arrivano diretti da
+bandi@agevolando.eu sulla casella di Paladini). Estrazione multi-bando OK:
+3 / 5 / 1 bandi, titoli corretti, categorie mappate sulle 14 voci, URL "Vedi dettagli"
+catturati. `data_scadenza` sempre null (atteso: non e' negli alert).
+- BUG DI PRODUZIONE TROVATO E CORRETTO: `htmlToText` racchiudeva gli URL in `<...>`
+  e lo strip dei tag li rimuoveva -> `url_dettagli` sarebbe stato sempre null.
+  Ora usa parentesi `(url)`. (route ingest-gmail)
+- Stato 'in_apertura' aggiunto: gli alert includono bandi "Aprira' il <data>".
+  Decisione presa: MOSTRARLI in anticipo nei suggeriti, con etichetta distinta
+  (badge ambra "In apertura"). Vedi sotto la migrazione da applicare.
+
+### Migrazione `in_apertura` — APPLICATA in Supabase
+`docs/sql/add_stato_in_apertura_bandi_esterni.sql` — eseguita. CHECK su `stato`
+allargato e RPC `match_bandi_esterni_per_cliente` ora matcha `IN ('attivo','in_apertura')`.
+
+### Test sul vivo + backfill — FATTI (casella reale di Paladini)
+- `INGEST_SECRET` generato e in `frontend/.env.local` + `.env.local` (gitignorati).
+- dryRun su 9 email/120gg: 19 bandi, 0 errori, stati 10 attivo / 9 in_apertura.
+- Route parallelizzata (mapLimit, CONCURRENCY=4) + isolamento errori per-email.
+- BACKFILL REALE eseguito (120gg): **16 bandi scritti** in
+  `scadenze_bandi_bandi_esterni` con `fonte='agevolando'`, `email_msg_id`, `created_by='agevolando-ingest'`.
+- Idempotenza verificata: re-run = 0.96s, 8 email skipped, 0 doppioni (il dedup
+  su `email_msg_id` gira PRIMA della chiamata LLM).
+- Performance: backfill iniziale ~150s (LLM token/min rate limit; la concorrenza
+  aiuta poco). A regime: giro a vuoto ~1s, +~15s per ogni email nuova. Per Vercel
+  Cron (timeout) fare il primo backfill a lotti; n8n self-hosted non ha il problema.
+
+### TRIGGER — Vercel Cron IMPLEMENTATO
+- `frontend/vercel.json`: cron giornaliero `0 6 * * *` (UTC) -> 8:00 ora legale
+  italiana (in inverno cadra' alle 7:00; se serve preciso, spostare a `0 7 * * *`).
+- La route ora ha un handler `GET` (Vercel Cron fa GET) oltre al `POST`.
+  Auth doppia (`isAuthorized`): `x-ingest-secret: <INGEST_SECRET>` (n8n/manuale)
+  OPPURE `Authorization: Bearer <CRON_SECRET>` (Vercel lo inietta in automatico
+  se la env CRON_SECRET e' impostata sul progetto).
+- GET di default: `newer_than:2d`, `maxResults:10` (finestra stretta -> giro veloce,
+  il dedup salta le gia' viste). `export const maxDuration = 60` (tetto Hobby).
+- DA FARE su Vercel prima del deploy: impostare le env del progetto
+  `INGEST_SECRET`, `CRON_SECRET`, `ANTHROPIC_API_KEY`, `AGEVOLANDO_FEED_EMAIL` (opz).
+  Il backfill grosso resta da fare a lotti manuali (non dal cron, per il timeout 60s).
+
+### Ancora da fare (Fase B)
+- Integrare il match bandi↔clienti nella pagina Interrogazioni ("Ricerche") come
+  nuovo ambito su una vista DB (vedi proposta in fondo).
+- Decidere gestione "Bando Aggiornato": oggi dedup SOLO a livello email
+  (`email_msg_id`); una ri-segnalazione con nuovo msg id crea un nuovo record.
+  Eventuale dedup per titolo/upsert = rifinitura futura.
+
+### Contesto storico (pre-scaffold)
 
 ### Cosa sappiamo già della fonte
 - Mittente: `bandi@agevolando.eu`

@@ -495,6 +495,11 @@ function BandoSuggeritoCard({
             })}
           </div>
           <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500 flex-wrap">
+            {bando.stato === 'in_apertura' && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full border bg-amber-50 border-amber-200 text-amber-700 font-medium">
+                In apertura{bando.data_apertura ? ` · ${bando.data_apertura}` : ''}
+              </span>
+            )}
             <span className="capitalize">{bando.fonte}</span>
             {bando.tipologia_aiuto && (
               <>

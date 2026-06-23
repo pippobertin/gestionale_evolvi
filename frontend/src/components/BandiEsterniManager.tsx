@@ -34,12 +34,14 @@ interface BandoEsterno {
 
 const STATO_LABEL: Record<string, string> = {
   attivo: 'Attivo',
+  in_apertura: 'In apertura',
   scaduto: 'Scaduto',
   archiviato: 'Archiviato',
 }
 
 const STATO_BADGE: Record<string, string> = {
   attivo: 'bg-green-50 border-green-200 text-green-700',
+  in_apertura: 'bg-amber-50 border-amber-200 text-amber-700',
   scaduto: 'bg-gray-100 border-gray-200 text-gray-500',
   archiviato: 'bg-gray-100 border-gray-200 text-gray-500',
 }
@@ -112,6 +114,7 @@ export default function BandiEsterniManager() {
               className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white"
             >
               <option value="attivo">Attivi</option>
+              <option value="in_apertura">In apertura</option>
               <option value="scaduto">Scaduti</option>
               <option value="archiviato">Archiviati</option>
               <option value="tutti">Tutti</option>
@@ -221,6 +224,7 @@ export default function BandiEsterniManager() {
                   title="Cambia stato"
                 >
                   <option value="attivo">Attivo</option>
+                  <option value="in_apertura">In apertura</option>
                   <option value="scaduto">Scaduto</option>
                   <option value="archiviato">Archiviato</option>
                 </select>
@@ -501,6 +505,7 @@ function BandoEsternoModal({
                 className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="attivo">Attivo</option>
+                <option value="in_apertura">In apertura</option>
                 <option value="scaduto">Scaduto</option>
                 <option value="archiviato">Archiviato</option>
               </select>
