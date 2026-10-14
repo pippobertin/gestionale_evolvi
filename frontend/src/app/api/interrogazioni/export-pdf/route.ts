@@ -44,26 +44,40 @@ export async function POST(request: NextRequest) {
       senza_paginazione: true,
     })
 
-    // Larghezze colonne PDF (proporzionali alle larghezze excel ma scalate)
-    const widths = ambito.colonne_risultati.map(c => {
-      const w = c.larghezza_excel || 18
-      return Math.max(40, w * 4)  // px
-    })
+    // Larghezze colonne PDF: lo spazio utile della pagina viene distribuito in
+    // proporzione a larghezza_excel, così la tabella non esce mai dal foglio
+    const LARGHEZZA_UTILE = 842 - 25 - 25          // A4 orizzontale meno margini
+    const PADDING_X = 3                             // padding sinistro e destro di ogni cella
+    const LINEA = 0.5
+    const colonne = ambito.colonne_risultati
+    const n = colonne.length
+    const disponibile = LARGHEZZA_UTILE - n * PADDING_X * 2 - (n + 1) * LINEA
+    const pesi = colonne.map(c => c.larghezza_excel || 18)
+    const sommaPesi = pesi.reduce((a, b) => a + b, 0)
+    const widths = pesi.map(p => Math.floor((p / sommaPesi) * disponibile))
 
-    const headerRow = ambito.colonne_risultati.map(c => ({
+    const molteColonne = n > 10
+    const fontHeader = molteColonne ? 7.5 : 8.5
+    const fontBody = molteColonne ? 6.5 : 7.5
+    const allineamento = (c: DefinizioneColonna) =>
+      c.formato === 'numero' || c.formato === 'valuta' ? 'right' : 'left'
+
+    const headerRow = colonne.map(c => ({
       text: c.label,
       bold: true,
       color: 'white',
       fillColor: '#0d9488',
-      fontSize: 8.5,
-      margin: [3, 4, 3, 4],
+      fontSize: fontHeader,
+      alignment: allineamento(c),
+      margin: [0, 4, 0, 4],
     }))
 
     const bodyRows = righe.map(r =>
-      ambito.colonne_risultati.map(c => ({
+      colonne.map(c => ({
         text: formattaPerPdf(leggiCampo(r, c.campo), c),
-        fontSize: 7.5,
-        margin: [3, 3, 3, 3],
+        fontSize: fontBody,
+        alignment: allineamento(c),
+        margin: [0, 3, 0, 3],
       }))
     )
 
@@ -92,8 +106,10 @@ export async function POST(request: NextRequest) {
           layout: {
             hLineColor: () => '#e5e7eb',
             vLineColor: () => '#e5e7eb',
-            hLineWidth: () => 0.5,
-            vLineWidth: () => 0.5,
+            hLineWidth: () => LINEA,
+            vLineWidth: () => LINEA,
+            paddingLeft: () => PADDING_X,
+            paddingRight: () => PADDING_X,
           },
         },
       ],
@@ -148,9 +164,21 @@ function formattaPerPdf(valore: unknown, col: DefinizioneColonna): string {
     case 'array':
       if (!Array.isArray(valore)) return ''
       return (valore as string[]).map(v => col.enum_labels?.[v] || v).join(', ')
-    case 'numero':
-      if (typeof valore === 'number') return valore.toLocaleString('it-IT')
-      return String(valore)
+    case 'numero': {
+      // NUMERIC può arrivare come stringa da PostgREST
+      const n = typeof valore === 'number' ? valore : Number(valore)
+      if (!Number.isFinite(n)) return String(valore)
+      return n.toLocaleString('it-IT')
+    }
+    case 'valuta': {
+      const n = typeof valore === 'number' ? valore : Number(valore)
+      if (!Number.isFinite(n)) return String(valore)
+      return new Intl.NumberFormat('it-IT', {
+        style: 'currency', currency: 'EUR',
+        minimumFractionDigits: 0, maximumFractionDigits: 2,
+        useGrouping: 'always' as any,   // forza il punto anche su 4 cifre (8.000 €)
+      }).format(n)
+    }
     default:
       return String(valore)
   }

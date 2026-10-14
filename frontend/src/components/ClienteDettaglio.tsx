@@ -17,7 +17,8 @@ import {
   Shield,
   ClipboardCheck,
   GraduationCap,
-  Briefcase
+  Briefcase,
+  Trophy
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import ReferentiManager from './ReferentiManager'
@@ -26,6 +27,7 @@ import EvolviInvoicesContent from './EvolviInvoicesContent'
 import DocumentiAmministrativiManager from './DocumentiAmministrativiManager'
 import ContractTrackingPanel from './ContractTrackingPanel'
 import FormazioneManager from './formazione/FormazioneManager'
+import ContributiOttenutiManager from './ContributiOttenutiManager'
 import NoteTimeline from './NoteTimeline'
 import ListaSpesa from './ListaSpesa'
 
@@ -290,7 +292,8 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
     { id: 'dimensionamento', label: 'Dimensionamento', icon: Users },
     { id: 'gestione', label: 'Gestione', icon: FileText },
     { id: 'doc_amministrativi', label: 'Doc. Amministrativi', icon: Shield },
-    { id: 'formazione', label: 'Formazione', icon: GraduationCap }
+    { id: 'formazione', label: 'Formazione', icon: GraduationCap },
+    { id: 'contributi', label: 'Contributi Ottenuti', icon: Trophy }
   ]
 
   const evolviTabs = isEvolviClient ? [
@@ -927,6 +930,13 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
         return (
           <div className="space-y-3">
             <FormazioneManager clienteId={cliente.id} initialSubTab={currentTab === 'formazione' ? initialSubTab : undefined} />
+          </div>
+        )
+
+      case 'contributi':
+        return (
+          <div className="space-y-3">
+            <ContributiOttenutiManager clienteId={cliente.id} />
           </div>
         )
 

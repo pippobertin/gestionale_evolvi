@@ -49,7 +49,7 @@ export const ambitoContratti: DefinizioneAmbito = {
     { campo: 'stato', label: 'Stato', formato: 'enum', enum_labels: Object.fromEntries(STATO_CONTRATTO_OPTS.map(o => [o.value, o.label])), larghezza_excel: 14 },
     { campo: 'data_inizio', label: 'Inizio', formato: 'data', larghezza_excel: 12 },
     { campo: 'data_fine', label: 'Scadenza', formato: 'data', larghezza_excel: 12 },
-    { campo: 'importo_annuale', label: 'Importo annuale', formato: 'numero', larghezza_excel: 16 },
+    { campo: 'importo_annuale', label: 'Importo annuale', formato: 'valuta', larghezza_excel: 16 },
     { campo: 'inviato_il', label: 'Inviato il', formato: 'data', larghezza_excel: 12 },
     { campo: 'created_at', label: 'Creato il', formato: 'data', larghezza_excel: 12 },
   ],

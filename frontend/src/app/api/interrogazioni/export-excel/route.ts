@@ -44,6 +44,11 @@ export async function POST(request: NextRequest) {
       width: c.larghezza_excel ?? 18,
     }))
 
+    // Formato cella euro sulle colonne valuta (il valore resta numerico)
+    for (const c of ambito.colonne_risultati) {
+      if (c.formato === 'valuta') sheet.getColumn(c.campo).numFmt = '#,##0.00 "€"'
+    }
+
     // Stile riga intestazione
     sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
     sheet.getRow(1).fill = {
@@ -123,6 +128,10 @@ function formattaPerExcel(valore: unknown, col: DefinizioneColonna): any {
     }
     case 'numero':
       return typeof valore === 'number' ? valore : Number(valore)
+    case 'valuta': {
+      const n = typeof valore === 'number' ? valore : Number(valore)
+      return Number.isFinite(n) ? n : String(valore)
+    }
     case 'testo':
     default:
       return String(valore)

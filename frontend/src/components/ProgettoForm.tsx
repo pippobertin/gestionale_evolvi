@@ -19,6 +19,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { syncContributoDaProgetto } from '@/lib/contributi/syncFromProgetto'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import DocumentPreviewModal from './DocumentPreviewModal'
 import ContractModal from './ContractModal'
@@ -1174,6 +1175,16 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
         if (error) throw error
         projectResult = progetto
 
+        // Sincronizza la riga di contributo collegata (best-effort, non blocca)
+        try {
+          const syncRes = await syncContributoDaProgetto(progetto.id)
+          if (syncRes.error) {
+            console.warn('⚠️ Sync contributo (update progetto, non bloccante):', syncRes.error)
+          }
+        } catch (syncErr) {
+          console.warn('⚠️ Sync contributo (update progetto, non bloccante):', syncErr)
+        }
+
         // Salva le date effettive delle scadenze modificate
         try {
           await saveScadenzeEffettive(progetto.id)
@@ -1190,6 +1201,16 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
         if (error) throw error
         projectResult = newProgetto
+
+        // Sincronizza la riga di contributo collegata (best-effort, non blocca)
+        try {
+          const syncRes = await syncContributoDaProgetto(projectResult.id)
+          if (syncRes.error) {
+            console.warn('⚠️ Sync contributo (nuovo progetto, non bloccante):', syncRes.error)
+          }
+        } catch (syncErr) {
+          console.warn('⚠️ Sync contributo (nuovo progetto, non bloccante):', syncErr)
+        }
 
         // Salva i documenti ereditati nel database del progetto
         await saveDocumentiEreditati(projectResult.id)

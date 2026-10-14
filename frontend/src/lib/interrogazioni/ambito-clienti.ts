@@ -91,7 +91,7 @@ export const ambitoClienti: DefinizioneAmbito = {
     { campo: 'dimensione', label: 'Dimensione', formato: 'enum', enum_labels: Object.fromEntries(DIMENSIONE_OPTS.map(o => [o.value, o.label])), larghezza_excel: 12 },
     { campo: 'numero_dipendenti', label: 'Dipendenti', formato: 'numero', larghezza_excel: 12 },
     { campo: 'ula', label: 'ULA', formato: 'numero', larghezza_excel: 10 },
-    { campo: 'ultimo_fatturato', label: 'Ultimo fatturato', formato: 'numero', larghezza_excel: 18 },
+    { campo: 'ultimo_fatturato', label: 'Ultimo fatturato', formato: 'valuta', larghezza_excel: 18 },
     { campo: 'ateco_2025', label: 'ATECO', formato: 'testo', larghezza_excel: 12 },
     { campo: 'provincia_fatturazione', label: 'Prov.', formato: 'testo', larghezza_excel: 8 },
     { campo: 'citta_fatturazione', label: 'Città', formato: 'testo', larghezza_excel: 20 },

@@ -939,6 +939,15 @@ function formattaPerVista(valore: unknown, col: DefinizioneColonna): React.React
       )
     case 'numero':
       return String(valore)
+    case 'valuta': {
+      const n = typeof valore === 'number' ? valore : Number(valore)
+      if (!Number.isFinite(n)) return String(valore)
+      return new Intl.NumberFormat('it-IT', {
+        style: 'currency', currency: 'EUR',
+        minimumFractionDigits: 0, maximumFractionDigits: 2,
+        useGrouping: 'always' as any,   // forza il punto anche su 4 cifre (8.000 €)
+      }).format(n)
+    }
     default:
       return String(valore)
   }

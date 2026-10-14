@@ -53,3 +53,5 @@ _dev_archive/
 .gstack/
 .vercel
 .env*.local
+
+.claude/

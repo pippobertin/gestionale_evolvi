@@ -17,6 +17,7 @@ import { ambitoCorsi } from './ambito-corsi'
 import { ambitoFpi } from './ambito-fpi'
 import { ambitoContratti } from './ambito-contratti'
 import { ambitoMatchBandi } from './ambito-match-bandi'
+import { ambitoContributi } from './ambito-contributi'
 
 // ----------------------------------------------------------------
 // Tipi
@@ -53,7 +54,7 @@ export interface SottoAmbito {
 export interface DefinizioneColonna {
   campo: string                 // chiave da prendere dalla riga (es. 'titolo', 'cliente.denominazione')
   label: string
-  formato?: 'data' | 'data_ora' | 'numero' | 'enum' | 'array' | 'testo'
+  formato?: 'data' | 'data_ora' | 'numero' | 'valuta' | 'enum' | 'array' | 'testo'
   enum_labels?: Record<string, string>  // per 'enum' o 'array' con valori da mappare
   larghezza_excel?: number              // larghezza colonna in Excel (caratteri)
 }
@@ -101,6 +102,7 @@ export const AMBITI: Record<string, DefinizioneAmbito> = {
   [ambitoFabbisogni.id]: ambitoFabbisogni,
   [ambitoBandi.id]: ambitoBandi,
   [ambitoProgetti.id]: ambitoProgetti,
+  [ambitoContributi.id]: ambitoContributi,
   [ambitoPiani.id]: ambitoPiani,
   [ambitoCorsi.id]: ambitoCorsi,
   [ambitoFpi.id]: ambitoFpi,
