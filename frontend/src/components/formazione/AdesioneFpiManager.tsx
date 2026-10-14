@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Award, Plus, RefreshCw, Edit, Trash2, Loader2, X, Search, Check, ChevronRight } from 'lucide-react'
 import { useFondi } from '@/hooks/useFondi'
 import { useCcnl } from '@/hooks/useCcnl'
+import FondiRilevatiRna from './FondiRilevatiRna'
 
 interface Ccnl {
   id: string
@@ -440,6 +441,12 @@ export default function AdesioneFpiManager({ clienteId, onAdesioneChange }: Ades
           </table>
         </div>
       )}
+
+      {/* Fondi interprofessionali rilevati dal Registro Nazionale Aiuti */}
+      <FondiRilevatiRna
+        clienteId={clienteId}
+        adesioni={adesioni.map(a => ({ sigla: a.fondo?.sigla || null, nome: a.fondo?.nome || null, stato: a.stato }))}
+      />
 
       {/* Modal */}
       {showModal && (

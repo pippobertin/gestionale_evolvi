@@ -11,6 +11,7 @@ import {
 } from '@/lib/contributi/types'
 import { escludiDaiTotali, type RiepilogoContributi } from '@/lib/contributi/riepilogo'
 import ContributoFormModal from './ContributoFormModal'
+import AiutiRnaSection from './AiutiRnaSection'
 
 interface ContributiOttenutiManagerProps {
   clienteId: string
@@ -71,6 +72,8 @@ export default function ContributiOttenutiManager({ clienteId }: ContributiOtten
   const [eliminandoId, setEliminandoId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [esportando, setEsportando] = useState(false)
+  // Incrementato a ogni ricarica dei contributi: la sezione RNA si riallinea
+  const [versione, setVersione] = useState(0)
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -96,6 +99,7 @@ export default function ContributiOttenutiManager({ clienteId }: ContributiOtten
 
       setContributi(jsonLista.data || [])
       setRiepilogo(jsonRiep.data)
+      setVersione(v => v + 1)
     } catch (err) {
       if (isCancelled()) return
       console.error('[ContributiOttenutiManager] Error:', err)
@@ -368,6 +372,7 @@ export default function ContributiOttenutiManager({ clienteId }: ContributiOtten
                 <option value="">Tutte le origini</option>
                 <option value="DA_PROGETTO">Da progetto</option>
                 <option value="MANUALE">Manuale</option>
+                <option value="DA_RNA">Da RNA</option>
               </select>
             </div>
           </div>
@@ -469,6 +474,10 @@ export default function ContributiOttenutiManager({ clienteId }: ContributiOtten
                                 <span className="text-[10px] text-gray-500">{c.progetto.codice_progetto}</span>
                               )}
                             </span>
+                          ) : c.origine === 'DA_RNA' ? (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              Da RNA
+                            </span>
                           ) : (
                             <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-50 text-gray-600 border border-gray-200">
                               Manuale
@@ -520,6 +529,9 @@ export default function ContributiOttenutiManager({ clienteId }: ContributiOtten
           )}
         </>
       )}
+
+      {/* Aiuti dal Registro Nazionale Aiuti: altri aiuti, "È nostro", capienza de minimis */}
+      <AiutiRnaSection clienteId={clienteId} versione={versione} onContributiCambiati={() => loadDati()} />
 
       {inModifica !== undefined && (
         <ContributoFormModal

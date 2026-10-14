@@ -18,6 +18,7 @@ import { ambitoFpi } from './ambito-fpi'
 import { ambitoContratti } from './ambito-contratti'
 import { ambitoMatchBandi } from './ambito-match-bandi'
 import { ambitoContributi } from './ambito-contributi'
+import { ambitoRna } from './ambito-rna'
 
 // ----------------------------------------------------------------
 // Tipi
@@ -103,6 +104,7 @@ export const AMBITI: Record<string, DefinizioneAmbito> = {
   [ambitoBandi.id]: ambitoBandi,
   [ambitoProgetti.id]: ambitoProgetti,
   [ambitoContributi.id]: ambitoContributi,
+  [ambitoRna.id]: ambitoRna,
   [ambitoPiani.id]: ambitoPiani,
   [ambitoCorsi.id]: ambitoCorsi,
   [ambitoFpi.id]: ambitoFpi,

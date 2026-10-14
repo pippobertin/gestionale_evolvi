@@ -30,7 +30,7 @@ function getPdfmake(): any {
   return pdfmake
 }
 
-const ORIGINE_LABEL: Record<string, string> = { DA_PROGETTO: 'Da progetto', MANUALE: 'Manuale' }
+const ORIGINE_LABEL: Record<string, string> = { DA_PROGETTO: 'Da progetto', MANUALE: 'Manuale', DA_RNA: 'Da RNA' }
 
 /** Lettere, numeri e trattini; niente accenti, spazi o punti; max 40 caratteri */
 function nomeFileSicuro(s: string): string {
@@ -76,7 +76,7 @@ export async function GET(
     if (stato && !isContributoStato(stato)) {
       return Response.json({ success: false, error: 'Parametro stato non valido' }, { status: 400 })
     }
-    if (origine && origine !== 'DA_PROGETTO' && origine !== 'MANUALE') {
+    if (origine && !(origine in ORIGINE_LABEL)) {
       return Response.json({ success: false, error: 'Parametro origine non valido' }, { status: 400 })
     }
 

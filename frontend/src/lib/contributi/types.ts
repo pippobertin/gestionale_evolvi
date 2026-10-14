@@ -14,7 +14,9 @@ export type ContributoStato =
   | 'REVOCATO'
   | 'RINUNCIATO'
 
-export type ContributoOrigine = 'DA_PROGETTO' | 'MANUALE'
+// DA_RNA = creato portando "tra i nostri" un aiuto del Registro Nazionale Aiuti;
+// si comporta come MANUALE (tutti i campi modificabili).
+export type ContributoOrigine = 'DA_PROGETTO' | 'MANUALE' | 'DA_RNA'
 
 export interface Contributo {
   id: string
