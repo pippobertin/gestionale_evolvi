@@ -18,6 +18,9 @@ import { importaMeseRna, ultimiMesi } from '@/lib/rna/importer'
  */
 
 export const maxDuration = 60
+// rna.gov.it non risponde dalle regioni Vercel statunitensi (connessione in
+// timeout): la funzione gira a Francoforte.
+export const preferredRegion = 'fra1'
 
 function isAuthorized(req: NextRequest): boolean {
   const ingest = req.headers.get('x-ingest-secret')

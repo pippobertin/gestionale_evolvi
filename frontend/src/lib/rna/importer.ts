@@ -241,7 +241,15 @@ async function leggiFile(
   codiciAmmessi: Set<string>,
   onAiuto: (a: AiutoRna) => void
 ): Promise<number> {
-  const res = await fetch(url, { headers: { 'Accept-Encoding': 'gzip' } })
+  let res: Response
+  try {
+    res = await fetch(url, { headers: { 'Accept-Encoding': 'gzip', 'User-Agent': 'GestionaleEvolvi-RNA-OpenData/1.0' } })
+  } catch (err) {
+    // "fetch failed" da solo non dice nulla: riporta la causa di rete (es. timeout, connessione rifiutata)
+    const causa = (err as any)?.cause
+    const dettaglio = causa ? ` (${causa.code || ''} ${causa.message || ''})`.replace(/\s+/g, ' ') : ''
+    throw new Error(`Download ${url.split('/').pop()}: ${err instanceof Error ? err.message : String(err)}${dettaglio}`)
+  }
   if (res.status === 404) return 0 // mese o parte non (ancora) pubblicati
   if (!res.ok || !res.body) throw new Error(`Download ${url.split('/').pop()}: HTTP ${res.status}`)
 
