@@ -7,14 +7,14 @@
 # italiana normale risponde.
 #
 # Cosa fa:
-#   - copia lo script di importazione in ~/Library/Application Support/GestionaleEvolviRNA
+#   - copia l'agente e l'importazione in ~/Library/Application Support/GestionaleEvolviRNA
 #     (fuori da Documenti, che macOS protegge dai processi in background)
 #   - installa lì la sola libreria Supabase
-#   - pianifica l'esecuzione ogni lunedì alle 9:00 con launchd:
-#       * primo lunedì del mese: rilettura completa dal 2020 (recupera lo storico dei clienti nuovi)
-#       * altri lunedì: ultimi 4 mesi
-#     Se il Mac è in stop alle 9:00 parte al risveglio; se è spento salta alla settimana dopo.
-#   - fa subito una prova sul mese corrente
+#   - avvia l'agente con launchd ogni 5 minuti (e all'accensione). L'agente:
+#       * esegue le richieste fatte dal pulsante "Aggiorna da RNA" del gestionale
+#       * ogni 7 giorni rilegge gli ultimi 4 mesi, ogni 30 giorni lo storico dal 2020
+#         (se il Mac era spento o in stop recupera appena si riaccende)
+#   - fa subito un giro dell'agente
 #
 # Uso (dalla cartella frontend):   bash scripts/rna-mac-install.sh
 # Da rilanciare se cambia src/lib/rna/importer.ts o scripts/rna-import.mts.
@@ -48,6 +48,7 @@ echo "→ Copio i file in: $DEST"
 mkdir -p "$DEST/src/lib/rna" "$DEST/scripts" "$HOME/Library/LaunchAgents" "$HOME/Library/Logs"
 cp "$FRONTEND/src/lib/rna/importer.ts" "$DEST/src/lib/rna/importer.ts"
 cp "$FRONTEND/scripts/rna-import.mts" "$DEST/scripts/rna-import.mts"
+cp "$FRONTEND/scripts/rna-agent.mts" "$DEST/scripts/rna-agent.mts"
 grep -E '^NEXT_PUBLIC_SUPABASE_(URL|ANON_KEY)=' "$FRONTEND/.env.local" > "$DEST/.env.local"
 chmod 600 "$DEST/.env.local"
 
@@ -62,14 +63,7 @@ cat > "$DEST/run.sh" <<RUN
 #!/bin/bash
 # Generato da rna-mac-install.sh — non modificare a mano.
 cd "\$(dirname "\$0")"
-A=\$(date -u +%Y_%m)
-if [ "\$(date +%e | tr -d ' ')" -le 7 ]; then
-  DA=2020_01                               # primo lunedì del mese: storico completo
-else
-  DA=\$(date -u -v1d -v-3m +%Y_%m)          # ultimi 4 mesi
-fi
-echo "=== \$(date '+%Y-%m-%d %H:%M') importazione RNA \$DA → \$A"
-"$NODE" --experimental-strip-types scripts/rna-import.mts "\$DA" "\$A" 2>&1 | grep -v -i -E 'experimentalwarning|type stripping|trace-warnings'
+"$NODE" --experimental-strip-types scripts/rna-agent.mts 2>&1 | grep -v -i -E 'experimentalwarning|type stripping|trace-warnings|MODULE_TYPELESS|Reparsing|eliminate this warning'
 RUN
 chmod +x "$DEST/run.sh"
 
@@ -81,25 +75,21 @@ cat > "$PLIST" <<PL
   <key>Label</key><string>$LABEL</string>
   <key>ProgramArguments</key>
   <array><string>/bin/bash</string><string>$DEST/run.sh</string></array>
-  <key>StartCalendarInterval</key>
-  <dict>
-    <key>Weekday</key><integer>1</integer>
-    <key>Hour</key><integer>9</integer>
-    <key>Minute</key><integer>0</integer>
-  </dict>
+  <key>StartInterval</key><integer>300</integer>
+  <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>$LOG</string>
   <key>StandardErrorPath</key><string>$LOG</string>
 </dict>
 </plist>
 PL
 
-echo "→ Attivo la pianificazione (ogni lunedì alle 9:00)"
+echo "→ Attivo l'agente (ogni 5 minuti e all'accensione)"
 launchctl bootout "gui/$(id -u)" "$PLIST" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
 
-echo "→ Prova sul mese corrente"
-( cd "$DEST" && "$NODE" --experimental-strip-types scripts/rna-import.mts "$(date -u +%Y_%m)" 2>&1 \
-  | grep -v -i -E 'experimentalwarning|type stripping|trace-warnings' )
+echo "→ Primo giro dell'agente"
+sleep 3
+tail -n 20 "$LOG" 2>/dev/null || true
 
 echo ""
 echo "Fatto. Log delle esecuzioni: $LOG"

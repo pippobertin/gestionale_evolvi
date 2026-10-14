@@ -5,6 +5,7 @@ import {
   Landmark, ExternalLink, Loader2, AlertCircle, ArrowUpCircle, Undo2,
   ShieldCheck, ChevronDown, ChevronRight, X, AlertTriangle, CheckCircle2
 } from 'lucide-react'
+import AggiornaRnaButton from './AggiornaRnaButton'
 import {
   FORMA_LABEL, STATO_LABEL, FORME_CONTRIBUTO, STATI_CONTRIBUTO,
   type ContributoForma, type ContributoStato
@@ -219,6 +220,7 @@ export default function AiutiRnaSection({ clienteId, versione, onContributiCambi
             {dati?.ultimo_aggiornamento && <> Ultimo aggiornamento: {fmtDataOra(dati.ultimo_aggiornamento)}.</>}
           </p>
         </div>
+        <AggiornaRnaButton onCompletato={() => { load(); onContributiCambiati() }} />
       </div>
 
       {loading && !dati ? (
