@@ -5,6 +5,12 @@ import { importaMeseRna, ultimiMesi } from '@/lib/rna/importer'
 /**
  * /api/rna/sync — aggiornamento degli aiuti RNA dei clienti.
  *
+ * ATTENZIONE: rna.gov.it non accetta connessioni dai server Vercel (timeout),
+ * quindi questa route NON è pianificata in vercel.json. L'aggiornamento
+ * periodico gira su GitHub Actions (.github/workflows/rna-sync.yml) con lo
+ * script scripts/rna-import.mts. La route resta per uso manuale nel caso in
+ * cui RNA tolga il blocco.
+ *
  * RNA pubblica un file per mese di concessione e lo aggiorna ogni settimana;
  * le concessioni arrivano con ritardo, quindi si rileggono gli ultimi 4 mesi.
  * Per restare nei 60 secondi del piano Vercel Hobby si elabora UN mese per

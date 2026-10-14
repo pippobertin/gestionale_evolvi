@@ -54,3 +54,5 @@ for (const mese of elencoMesi(da, a)) {
   )
 }
 console.log('Totale:', totali)
+// Uscita con errore se qualche mese non è andato: GitHub Actions segnala il fallimento
+if (totali.errori > 0) process.exitCode = 1

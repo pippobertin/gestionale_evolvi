@@ -4,10 +4,6 @@
     {
       "path": "/api/bandi-esterni/ingest-gmail",
       "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/rna/sync",
-      "schedule": "0 4 * * *"
     }
   ]
 }
