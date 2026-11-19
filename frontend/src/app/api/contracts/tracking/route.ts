@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 
 // GET - Lista record di tracking contratti con filtri opzionali
 export async function GET(request: NextRequest) {

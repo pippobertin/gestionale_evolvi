@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { deleteFile, BUCKET_CLIENTI } from '@/lib/supabaseStorage'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
+import { deleteFile, BUCKET_CLIENTI } from '@/lib/supabaseStorageServer'
 
 // GET - Recupera singolo documento amministrativo
 export async function GET(

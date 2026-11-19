@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 
 function sum(arr: any[] | null, field: string): number {
   return (arr || []).reduce((s: number, item: any) => s + (Number(item[field]) || 0), 0)

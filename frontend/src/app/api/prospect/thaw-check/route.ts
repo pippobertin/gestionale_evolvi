@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 
 // POST - Auto-thaw: scongela prospect con scongela_il <= oggi
 export async function POST() {

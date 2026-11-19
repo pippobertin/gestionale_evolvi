@@ -534,27 +534,40 @@ export async function collegaAutomaticamente(client: SupabaseClient, clienteIds:
 // Importazione di un mese
 // ----------------------------------------------------------------
 
-export async function importaMeseRna(opts: {
+/**
+ * Salva nel database gli aiuti di un mese già letti dal file RNA
+ * (parte "database" dell'importazione). Usata sia da importaMeseRna sia dalla
+ * route /api/rna/agente, a cui l'agente sul Mac invia gli aiuti letti.
+ */
+export async function salvaAiutiMese(opts: {
   client: SupabaseClient
   mese: string
   origine?: 'CRON' | 'BACKFILL' | 'MANUALE'
-  indice?: Map<string, string>
+  indice: Map<string, string>
+  aiuti: AiutoRna[]
+  aiutiLetti: number
+  logId?: string
+  t0?: number
 }): Promise<EsitoImportMese> {
-  const { client, mese, origine = 'MANUALE' } = opts
-  const t0 = Date.now()
-  const { data: log } = await client.from('scadenze_bandi_rna_import_log')
-    .insert({ mese, origine, esito: 'IN_CORSO' }).select('id').single()
-  const logId: string | undefined = (log as any)?.id
+  const { client, mese, origine = 'MANUALE', indice } = opts
+  const t0 = opts.t0 ?? Date.now()
+  let logId = opts.logId
+  if (!logId) {
+    const { data: log } = await client.from('scadenze_bandi_rna_import_log')
+      .insert({ mese, origine, esito: 'IN_CORSO' }).select('id').single()
+    logId = (log as any)?.id
+  }
 
   const esito: EsitoImportMese = {
-    mese, esito: 'OK', aiuti_letti: 0, aiuti_clienti: 0, nuovi: 0, aggiornati: 0, collegati_auto: 0, durata_ms: 0,
+    mese, esito: 'OK', aiuti_letti: opts.aiutiLetti, aiuti_clienti: 0, nuovi: 0, aggiornati: 0, collegati_auto: 0, durata_ms: 0,
   }
 
   try {
-    const indice = opts.indice ?? await indiceClienti(client)
-    const codici = new Set<string>(Array.from(indice.keys()))
+    // Solo aiuti di beneficiari che sono clienti del gestionale, senza duplicati di COR
     const trovati = new Map<string, AiutoRna>()
-    esito.aiuti_letti = await leggiFileMese(mese, codici, a => { trovati.set(a.cor, a) })
+    for (const a of opts.aiuti) {
+      if (a && a.cor && indice.has(a.codice_fiscale_beneficiario)) trovati.set(a.cor, a)
+    }
     esito.aiuti_clienti = trovati.size
 
     const lista = Array.from(trovati.values())
@@ -599,18 +612,63 @@ export async function importaMeseRna(opts: {
   }
 
   esito.durata_ms = Date.now() - t0
-  if (logId) {
-    await client.from('scadenze_bandi_rna_import_log').update({
-      esito: esito.esito,
-      aiuti_letti: esito.aiuti_letti,
-      aiuti_clienti: esito.aiuti_clienti,
-      nuovi: esito.nuovi,
-      aggiornati: esito.aggiornati,
-      collegati_auto: esito.collegati_auto,
-      durata_ms: esito.durata_ms,
-      errore: esito.errore ?? null,
-      completato_at: new Date().toISOString(),
-    }).eq('id', logId)
-  }
+  await chiudiLogImport(client, logId, esito)
   return esito
+}
+
+async function chiudiLogImport(client: SupabaseClient, logId: string | undefined, esito: EsitoImportMese) {
+  if (!logId) return
+  await client.from('scadenze_bandi_rna_import_log').update({
+    esito: esito.esito,
+    aiuti_letti: esito.aiuti_letti,
+    aiuti_clienti: esito.aiuti_clienti,
+    nuovi: esito.nuovi,
+    aggiornati: esito.aggiornati,
+    collegati_auto: esito.collegati_auto,
+    durata_ms: esito.durata_ms,
+    errore: esito.errore ?? null,
+    completato_at: new Date().toISOString(),
+  }).eq('id', logId)
+}
+
+/** Registra nel log un mese la cui lettura del file RNA è fallita. */
+export async function registraErroreLettura(client: SupabaseClient, mese: string, origine: 'CRON' | 'BACKFILL' | 'MANUALE', errore: string, aiutiLetti = 0): Promise<EsitoImportMese> {
+  const { data: log } = await client.from('scadenze_bandi_rna_import_log')
+    .insert({ mese, origine, esito: 'IN_CORSO' }).select('id').single()
+  const esito: EsitoImportMese = {
+    mese, esito: 'ERRORE', aiuti_letti: aiutiLetti, aiuti_clienti: 0, nuovi: 0, aggiornati: 0, collegati_auto: 0, durata_ms: 0, errore,
+  }
+  await chiudiLogImport(client, (log as any)?.id, esito)
+  return esito
+}
+
+/** Importazione completa di un mese: lettura del file RNA e salvataggio. */
+export async function importaMeseRna(opts: {
+  client: SupabaseClient
+  mese: string
+  origine?: 'CRON' | 'BACKFILL' | 'MANUALE'
+  indice?: Map<string, string>
+}): Promise<EsitoImportMese> {
+  const { client, mese, origine = 'MANUALE' } = opts
+  const t0 = Date.now()
+  const { data: log } = await client.from('scadenze_bandi_rna_import_log')
+    .insert({ mese, origine, esito: 'IN_CORSO' }).select('id').single()
+  const logId: string | undefined = (log as any)?.id
+
+  let indice: Map<string, string>
+  const trovati: AiutoRna[] = []
+  let letti = 0
+  try {
+    indice = opts.indice ?? await indiceClienti(client)
+    const codici = new Set<string>(Array.from(indice.keys()))
+    letti = await leggiFileMese(mese, codici, a => { trovati.push(a) })
+  } catch (err) {
+    const esito: EsitoImportMese = {
+      mese, esito: 'ERRORE', aiuti_letti: letti, aiuti_clienti: 0, nuovi: 0, aggiornati: 0, collegati_auto: 0,
+      durata_ms: Date.now() - t0, errore: err instanceof Error ? err.message : String(err),
+    }
+    await chiudiLogImport(client, logId, esito)
+    return esito
+  }
+  return salvaAiutiMese({ client, mese, origine, indice, aiuti: trovati, aiutiLetti: letti, logId, t0 })
 }

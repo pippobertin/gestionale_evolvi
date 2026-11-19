@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 
 // POST - Process notifications per scadenze contrattuali in scadenza
 export async function POST(request: NextRequest) {

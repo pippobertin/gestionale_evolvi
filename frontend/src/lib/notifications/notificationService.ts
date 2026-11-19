@@ -1,6 +1,6 @@
 import { EmailService, ScadenzaEmailData } from './emailService'
 import { CalendarService, ScadenzaCalendarData } from './calendarService'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 
 export interface NotificationSettings {
   userId: string

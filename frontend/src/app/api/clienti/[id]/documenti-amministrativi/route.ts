@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { uploadFile, BUCKET_CLIENTI } from '@/lib/supabaseStorage'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
+import { uploadFile, BUCKET_CLIENTI } from '@/lib/supabaseStorageServer'
 
 // GET - Lista documenti amministrativi per cliente
 export async function GET(

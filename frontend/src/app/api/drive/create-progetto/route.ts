@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { findOrCreateSharedDrive, createDriveFolderInSharedDrive, listSharedDriveFiles, copyFileToFolder } from '@/lib/googleDrive'
 import { getValidGoogleToken } from '@/lib/googleAuth'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 
 export async function POST(req: NextRequest) {
   try {

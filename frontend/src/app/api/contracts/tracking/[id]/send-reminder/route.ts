@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { getValidGoogleToken } from '@/lib/googleAuth'
 import { google } from 'googleapis'
 

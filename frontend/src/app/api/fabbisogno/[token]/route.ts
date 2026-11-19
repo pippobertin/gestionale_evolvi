@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import {
   CATEGORIE_QUESTIONARIO_C,
   calcolaStatoPrecompilato,

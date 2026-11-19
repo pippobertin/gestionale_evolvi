@@ -9,7 +9,7 @@
 # Cosa fa:
 #   - copia l'agente e l'importazione in ~/Library/Application Support/GestionaleEvolviRNA
 #     (fuori da Documenti, che macOS protegge dai processi in background)
-#   - installa lì la sola libreria Supabase
+#   - non installa dipendenze: l'agente parla solo con il gestionale (/api/rna/agente)
 #   - avvia l'agente con launchd ogni 5 minuti (e all'accensione). L'agente:
 #       * esegue le richieste fatte dal pulsante "Aggiorna da RNA" del gestionale
 #       * ogni 7 giorni rilegge gli ultimi 4 mesi, ogni 30 giorni lo storico dal 2020
@@ -49,15 +49,19 @@ mkdir -p "$DEST/src/lib/rna" "$DEST/scripts" "$HOME/Library/LaunchAgents" "$HOME
 cp "$FRONTEND/src/lib/rna/importer.ts" "$DEST/src/lib/rna/importer.ts"
 cp "$FRONTEND/scripts/rna-import.mts" "$DEST/scripts/rna-import.mts"
 cp "$FRONTEND/scripts/rna-agent.mts" "$DEST/scripts/rna-agent.mts"
-grep -E '^NEXT_PUBLIC_SUPABASE_(URL|ANON_KEY)=' "$FRONTEND/.env.local" > "$DEST/.env.local"
+# L'agente non usa più chiavi del database: solo indirizzo del gestionale e segreto dell'agente
+if ! grep -qE '^RNA_AGENT_SECRET=' "$FRONTEND/.env.local"; then
+  echo "ERRORE: manca RNA_AGENT_SECRET in $FRONTEND/.env.local (stesso valore della variabile su Vercel)" ; exit 1
+fi
+grep -E '^RNA_AGENT_(URL|SECRET)=' "$FRONTEND/.env.local" > "$DEST/.env.local"
 chmod 600 "$DEST/.env.local"
 
 cat > "$DEST/package.json" <<'JSON'
 { "name": "gestionale-rna-sync", "private": true, "type": "module" }
 JSON
-VER="$("$NODE" -p "require('$FRONTEND/package.json').dependencies['@supabase/supabase-js']")"
-echo "→ Installo @supabase/supabase-js@$VER"
-( cd "$DEST" && "$NPM" install --no-audit --no-fund --silent "@supabase/supabase-js@$VER" )
+# Nessuna dipendenza da installare: l'agente usa solo fetch verso il gestionale.
+# Rimuove l'eventuale libreria Supabase e la vecchia chiave delle installazioni precedenti.
+rm -rf "$DEST/node_modules" "$DEST/package-lock.json"
 
 cat > "$DEST/run.sh" <<RUN
 #!/bin/bash

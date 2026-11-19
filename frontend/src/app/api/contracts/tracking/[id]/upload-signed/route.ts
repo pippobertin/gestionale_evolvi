@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { uploadFile, BUCKET_CONTRATTI } from '@/lib/supabaseStorage'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
+import { uploadFile, BUCKET_CONTRATTI } from '@/lib/supabaseStorageServer'
 
 // POST - Upload contratto firmato
 export async function POST(

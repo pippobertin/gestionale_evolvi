@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
-import { getSignedUrl, BUCKET_CLIENTI } from '@/lib/supabaseStorage'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
+import { getSignedUrl, BUCKET_CLIENTI } from '@/lib/supabaseStorageServer'
 
 // GET - Genera URL di download firmato per il documento
 export async function GET(

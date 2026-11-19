@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { verifyJWT } from '@/lib/jwtAuth'
 import { getGmailClient } from '@/lib/gmail'
 import { getAmbito } from '@/lib/interrogazioni/registry'
