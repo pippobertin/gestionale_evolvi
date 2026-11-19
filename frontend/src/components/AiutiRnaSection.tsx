@@ -426,7 +426,7 @@ export default function AiutiRnaSection({ clienteId, versione, onContributiCambi
           )}
 
           <p className="text-[10px] text-gray-400 mt-4">
-            Fonte: Registro Nazionale degli Aiuti di Stato – Open Data (rna.gov.it), licenza CC BY 4.0. Dati filtrati sul codice fiscale/P.IVA del cliente.
+            Fonte: Registro Nazionale degli Aiuti di Stato – Open Data (incentivitalia.gov.it/rna, già rna.gov.it), licenza CC BY 4.0. Dati filtrati sul codice fiscale/P.IVA del cliente.
           </p>
         </>
       ) : null}

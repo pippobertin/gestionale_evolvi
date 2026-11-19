@@ -199,7 +199,7 @@ export function buildContributiDocDefinition(opts: {
   content.push({
     text: 'Riepilogo elaborato da BLM Project sulla base dei dati registrati nel gestionale. '
       + 'Per la verifica dei massimali de minimis e del cumulo degli aiuti fa fede il '
-      + 'Registro Nazionale degli Aiuti di Stato (rna.gov.it).',
+      + 'Registro Nazionale degli Aiuti di Stato (incentivitalia.gov.it/rna).',
     fontSize: 7,
     color: COLORE_ATTENUATO,
     margin: [0, 16, 0, 0],

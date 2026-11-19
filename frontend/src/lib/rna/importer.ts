@@ -2,7 +2,8 @@
 /**
  * Importazione degli Open Data del Registro Nazionale Aiuti (RNA).
  *
- * Fonte: https://www.rna.gov.it/open-data/aiuti — un file XML per mese di
+ * Fonte: https://www.incentivitalia.gov.it/rna/rna-open-data/aiuti (già
+ * www.rna.gov.it/open-data/aiuti fino a novembre 2026) — un file XML per mese di
  * concessione (OpenData_Aiuti_AAAA_MM.xml), aggiornato settimanalmente,
  * licenza CC BY 4.0.
  *
@@ -82,7 +83,10 @@ export interface EsitoImportMese {
 // Utilità
 // ----------------------------------------------------------------
 
-export const RNA_BASE_URL = 'https://www.rna.gov.it/sites/rna.mise.gov.it/files/opendata'
+// Da novembre 2026 il Registro Nazionale Aiuti è pubblicato sul portale Incentivi Italia:
+// il vecchio indirizzo (www.rna.gov.it/sites/rna.mise.gov.it/files/opendata) rimanda a una
+// pagina HTML, che veniva letta come un mese senza aiuti.
+export const RNA_BASE_URL = 'https://www.incentivitalia.gov.it/open-data/aiuti'
 
 /**
  * URL del file del mese. I mesi con più di 500.000 aiuti sono divisi in più
@@ -252,6 +256,12 @@ async function leggiFile(
   }
   if (res.status === 404) return 0 // mese o parte non (ancora) pubblicati
   if (!res.ok || !res.body) throw new Error(`Download ${url.split('/').pop()}: HTTP ${res.status}`)
+  // Se al posto del file XML arriva una pagina web (es. rinvio a un altro sito dopo un
+  // cambio di indirizzo), è un errore: non va registrato come mese senza aiuti.
+  const tipo = (res.headers.get('content-type') || '').toLowerCase()
+  if (tipo.includes('text/html') || (res.redirected && !/\.xml($|\?)/i.test(res.url))) {
+    throw new Error(`Download ${url.split('/').pop()}: ricevuta una pagina web invece del file XML (${res.url}). Possibile cambio di indirizzo degli Open Data RNA`)
+  }
 
   const reader = res.body.getReader()
   const decoder = new TextDecoder('utf-8')
