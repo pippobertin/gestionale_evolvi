@@ -475,8 +475,10 @@ export async function POST(req: NextRequest) {
 
     // 8. Crea record di tracking
     try {
-      await supabase.from('scadenze_bandi_contract_tracking').insert({
-        entity_type: 'CONTRATTO_PROGETTO',
+      // Tipo ammesso dal vincolo della tabella: 'PROGETTO' (prima 'CONTRATTO_PROGETTO',
+      // rifiutato dal database: il tracking dei contratti di progetto non veniva mai salvato)
+      const { error: trackingInsertError } = await supabase.from('scadenze_bandi_contract_tracking').insert({
+        entity_type: 'PROGETTO',
         entity_id: progettoId,
         cliente_id: baseProgetto.cliente_id,
         contract_document_url: pdfUploadResult.webViewLink,
@@ -487,6 +489,7 @@ export async function POST(req: NextRequest) {
         email_delivery_status: 'SENT',
         overall_status: 'SENT'
       })
+      if (trackingInsertError) throw trackingInsertError
       console.log('✅ Record tracking creato')
     } catch (trackingError) {
       console.warn('⚠️ Warning: tracking record non creato:', trackingError)

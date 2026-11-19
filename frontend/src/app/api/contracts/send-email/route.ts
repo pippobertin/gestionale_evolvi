@@ -105,7 +105,10 @@ export async function POST(req: NextRequest) {
 
     // 7. Crea record di tracking contratto
     try {
-      await supabase.from('scadenze_bandi_contract_tracking').upsert({
+      // Inserimento semplice: sulla tabella non esiste un vincolo univoco su
+      // (entity_type, entity_id), quindi l'upsert con onConflict falliva sempre.
+      // Ogni invio è un nuovo record; il riquadro del progetto mostra il più recente.
+      const { error: trackingInsertError } = await supabase.from('scadenze_bandi_contract_tracking').insert({
         entity_type: 'PROGETTO',
         entity_id: progettoId,
         cliente_id: baseProgetto.cliente_id,
@@ -116,7 +119,8 @@ export async function POST(req: NextRequest) {
         email_message_id: emailResult.emailId || null,
         email_delivery_status: 'SENT',
         overall_status: 'SENT'
-      }, { onConflict: 'entity_type,entity_id', ignoreDuplicates: false })
+      })
+      if (trackingInsertError) throw trackingInsertError
     } catch (trackingError) {
       console.warn('Warning: tracking record non creato:', trackingError)
     }
