@@ -1059,6 +1059,8 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
             .insert([{
               progetto_id: progetto.id,
               nome_file: file.name,
+              nome_originale: file.name, // obbligatorio nella tabella
+              tipo_documento: 'allegato', // obbligatorio nella tabella
               categoria: 'proprio', // valori ammessi: ereditato, proprio, compilato
               formato_file: file.type,
               dimensione_bytes: file.size,
