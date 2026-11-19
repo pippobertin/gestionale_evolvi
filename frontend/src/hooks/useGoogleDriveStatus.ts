@@ -46,7 +46,8 @@ export function useGoogleDriveStatus(): GoogleDriveStatus {
     checkGoogleStatus()
 
     // Ricontrolla ogni 30 secondi
-    const interval = setInterval(checkGoogleStatus, 30000)
+    // Indicatore di stato: un controllo ogni 5 minuti basta (prima ogni 30 secondi per ogni scheda aperta)
+    const interval = setInterval(checkGoogleStatus, 5 * 60 * 1000)
     return () => clearInterval(interval)
   }, [])
 

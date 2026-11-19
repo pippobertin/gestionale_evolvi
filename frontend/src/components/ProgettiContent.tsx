@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Search, Plus, Filter, Calendar, Euro, Building, FileText, Clock, CheckCircle, AlertTriangle, Upload, Edit, Trash2, CheckSquare, Square } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { fetchAllRows, countByKey } from '@/lib/supabaseQueries'
 import ProgettoForm from './ProgettoForm'
 
 interface Progetto {
@@ -224,23 +225,27 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
 
       if (progettiError) throw progettiError
 
-      // Poi aggiorna il conteggio scadenze per ogni progetto
+      // Conteggio scadenze per progetto con una sola query (prima: due richieste per progetto)
+      const oggi = new Date().toISOString().split('T')[0]
+      const scadenzeRows = await fetchAllRows<{ progetto_id: string | null; stato: string | null; data_scadenza: string | null }>((from, to) =>
+        supabase
+          .from('scadenze_bandi_scadenze')
+          .select('progetto_id, stato, data_scadenza')
+          .not('progetto_id', 'is', null)
+          .order('id')
+          .range(from, to)
+      )
+      const scadenzePerProgetto = countByKey(scadenzeRows, 'progetto_id')
+      // Attive = non completate e con data oggi o futura (stesso criterio di prima)
+      const scadenzeAttivePerProgetto = countByKey(
+        scadenzeRows.filter(s => s.stato !== null && s.stato !== 'completata' && !!s.data_scadenza && s.data_scadenza >= oggi),
+        'progetto_id'
+      )
+
       const progettiWithScadenze = await Promise.all(
         (progettiData || []).map(async (progetto) => {
-          // Conta scadenze totali per questo progetto
-          const { count: scadenzeTotali, error: errorTotali } = await supabase
-            .from('scadenze_bandi_scadenze')
-            .select('*', { count: 'exact', head: true })
-            .eq('progetto_id', progetto.id)
-
-          // Conta scadenze attive (non completate e con data futura o oggi)
-          const oggi = new Date().toISOString().split('T')[0]
-          const { count: scadenzeAttive, error: errorAttive } = await supabase
-            .from('scadenze_bandi_scadenze')
-            .select('*', { count: 'exact', head: true })
-            .eq('progetto_id', progetto.id)
-            .neq('stato', 'completata')
-            .gte('data_scadenza', oggi)
+          const scadenzeTotali = scadenzePerProgetto.get(String(progetto.id)) || 0
+          const scadenzeAttive = scadenzeAttivePerProgetto.get(String(progetto.id)) || 0
 
           // Per ora disabilitiamo l'auto-generazione fino a quando il database non ha la tabella template
           // if (scadenzeTotali === 0) {

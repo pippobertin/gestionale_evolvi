@@ -12,6 +12,7 @@ import {
   Upload
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { fetchAllRows, countByKey } from '@/lib/supabaseQueries'
 import ClienteForm from './ClienteForm'
 import ClienteDettaglio from './ClienteDettaglio'
 import ClientiMappingCSV from './ClientiMappingCSV'
@@ -127,23 +128,27 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
       // Query per ottenere clienti con conteggio progetti reali e prossima scadenza
       let clientiData: any[] = []
 
-      const { data, error: clientiError } = await supabase
-        .from('scadenze_bandi_clienti_con_dimensione_aggregata')
-        .select('*, creato_da')
-        .order('denominazione')
-
-      if (clientiError) {
-        console.warn('Vista aggregata non disponibile, uso tabella normale:', clientiError.message)
+      // Lettura a blocchi: il database restituisce al massimo 1000 righe per richiesta
+      try {
+        clientiData = await fetchAllRows((from, to) =>
+          supabase
+            .from('scadenze_bandi_clienti_con_dimensione_aggregata')
+            .select('*, creato_da')
+            .order('denominazione')
+            .order('id')
+            .range(from, to)
+        )
+      } catch (clientiError: any) {
+        console.warn('Vista aggregata non disponibile, uso tabella normale:', clientiError?.message)
         // Fallback sulla tabella normale se la view non esiste
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('scadenze_bandi_clienti')
-          .select('*, creato_da')
-          .order('denominazione')
-
-        if (fallbackError) throw fallbackError
-        clientiData = fallbackData || []
-      } else {
-        clientiData = data || []
+        clientiData = await fetchAllRows((from, to) =>
+          supabase
+            .from('scadenze_bandi_clienti')
+            .select('*, creato_da')
+            .order('denominazione')
+            .order('id')
+            .range(from, to)
+        )
       }
 
       // Carica tutti i collegamenti aziendali con i dati delle aziende collegate
@@ -157,21 +162,20 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
         `)
       setTuttiCollegamenti(collegamentiData || [])
 
-      // Per ogni cliente, ottieni il conteggio progetti e la prossima scadenza
-      const clientiConDati = await Promise.all(
-        clientiData.map(async (cliente) => {
-          // Conta progetti reali per cliente_id (tutti i progetti associati al cliente)
-          const { count: numeroProgetti } = await supabase
-            .from('scadenze_bandi_progetti')
-            .select('*', { count: 'exact', head: true })
-            .eq('cliente_id', cliente.id)
-
-          return {
-            ...cliente,
-            numero_progetti: numeroProgetti || 0
-          }
-        })
+      // Conteggio progetti per cliente con una sola query (prima: una richiesta per cliente)
+      const progettiRows = await fetchAllRows<{ cliente_id: string | null }>((from, to) =>
+        supabase
+          .from('scadenze_bandi_progetti')
+          .select('cliente_id')
+          .order('id')
+          .range(from, to)
       )
+      const progettiPerCliente = countByKey(progettiRows, 'cliente_id')
+
+      const clientiConDati = clientiData.map((cliente) => ({
+        ...cliente,
+        numero_progetti: progettiPerCliente.get(String(cliente.id)) || 0
+      }))
 
       setClienti(clientiConDati)
     } catch (error) {

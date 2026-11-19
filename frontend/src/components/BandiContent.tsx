@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Search, Plus, Filter, Calendar, Euro, Building, FileText, ExternalLink, Upload, Edit, Rocket, Trash2, CheckSquare, Square } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { fetchAllRows, countByKey } from '@/lib/supabaseQueries'
 import BandoForm from './BandoForm'
 import ProgettoForm from './ProgettoForm'
 
@@ -81,21 +82,24 @@ export default function BandiContent({ initialFilter }: { initialFilter?: string
 
       if (bandiError) throw bandiError
 
+      // Conteggio progetti per bando con una sola query (prima: una richiesta per bando)
+      const progettiRows = await fetchAllRows<{ bando_id: string | null }>((from, to) =>
+        supabase
+          .from('scadenze_bandi_progetti')
+          .select('bando_id')
+          .order('id')
+          .range(from, to)
+      )
+      const progettiPerBando = countByKey(progettiRows, 'bando_id')
+
       // Poi aggiorna il conteggio progetti e calcola lo stato per ogni bando
       const bandiWithProgetti = await Promise.all(
         (bandiData || []).map(async (bando) => {
-          // Conta progetti totali collegati a questo bando
-          const { count: progettiCollegati, error: errorTotali } = await supabase
-            .from('scadenze_bandi_progetti')
-            .select('*', { count: 'exact', head: true })
-            .eq('bando_id', bando.id)
+          const progettiCollegati = progettiPerBando.get(String(bando.id)) || 0
 
           // Per semplicità, consideriamo tutti i progetti come attivi per ora
           // Finché non implementiamo correttamente la gestione degli stati progetti
           const progettiAttivi = progettiCollegati;
-
-          // Debug: logga i risultati per vedere cosa succede
-          console.log(`Bando ${bando.nome}: Progetti totali: ${progettiCollegati}, Progetti attivi: ${progettiAttivi}`)
 
           // Calcola lo stato automaticamente basato sulle date
           const oggi = new Date()

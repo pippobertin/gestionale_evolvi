@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
       .from('scadenze_bandi_bandi')
       .select(`
         id,
-        titolo_bando,
+        nome,
         ente_erogatore,
         created_at
       `)
@@ -174,7 +174,7 @@ export async function GET(request: NextRequest) {
         notifications.push({
           id: `bando-${bando.id}`,
           title: 'Nuovo bando disponibile',
-          message: `${bando.titolo_bando} - ${bando.ente_erogatore}`,
+          message: `${bando.nome} - ${bando.ente_erogatore}`,
           time: getRelativeTime(new Date(bando.created_at)),
           type: 'info',
           unread: true,
