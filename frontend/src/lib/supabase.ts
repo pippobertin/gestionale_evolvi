@@ -12,6 +12,12 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 let dbToken: { token: string; expiresAt: number } | null = null
 let dbTokenRetryAfter = 0
 let dbTokenInFlight: Promise<string | null> | null = null
+// Cambia a ogni login/logout: l'esito di una richiesta partita prima del cambio
+// (per esempio un rifiuto ricevuto quando l'utente non era ancora collegato)
+// viene scartato invece di lasciare il browser senza badge.
+let dbTokenGeneration = 0
+// Dopo un rifiuto si riprova al massimo ogni 10 secondi.
+const DB_TOKEN_RETRY_SECONDS = 10
 
 async function getBrowserDbToken(): Promise<string | null> {
   if (typeof window === 'undefined') return null
@@ -20,31 +26,40 @@ async function getBrowserDbToken(): Promise<string | null> {
   if (now < dbTokenRetryAfter) return null
   if (dbTokenInFlight) return dbTokenInFlight
 
-  dbTokenInFlight = (async () => {
+  const generation = dbTokenGeneration
+  let request: Promise<string | null> | null = null
+  request = (async () => {
     try {
       const res = await fetch('/api/auth/db-token', { credentials: 'same-origin', cache: 'no-store' })
+      // Login o logout avvenuto nel frattempo: si chiede il badge della nuova sessione
+      if (generation !== dbTokenGeneration) return getBrowserDbToken()
       if (!res.ok) {
         dbToken = null
-        dbTokenRetryAfter = Math.floor(Date.now() / 1000) + 60
+        dbTokenRetryAfter = Math.floor(Date.now() / 1000) + DB_TOKEN_RETRY_SECONDS
         return null
       }
       const data = await res.json()
+      if (generation !== dbTokenGeneration) return getBrowserDbToken()
       dbToken = { token: data.token, expiresAt: data.expiresAt }
       return dbToken.token
     } catch {
-      dbTokenRetryAfter = Math.floor(Date.now() / 1000) + 60
+      if (generation !== dbTokenGeneration) return getBrowserDbToken()
+      dbTokenRetryAfter = Math.floor(Date.now() / 1000) + DB_TOKEN_RETRY_SECONDS
       return null
     } finally {
-      dbTokenInFlight = null
+      if (dbTokenInFlight === request) dbTokenInFlight = null
     }
   })()
-  return dbTokenInFlight
+  dbTokenInFlight = request
+  return request
 }
 
 /** Da chiamare al login e al logout per non riusare il badge di un'altra sessione. */
 export function resetDbToken() {
+  dbTokenGeneration++
   dbToken = null
   dbTokenRetryAfter = 0
+  dbTokenInFlight = null
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
