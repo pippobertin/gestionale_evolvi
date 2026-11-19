@@ -2,7 +2,19 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { RefreshCw, Loader2, X, AlertTriangle, AlertCircle } from 'lucide-react'
-import { ultimiMesi } from '@/lib/rna/importer'
+
+// Copia di ultimiMesi da lib/rna/importer.ts: l'importer usa moduli Node
+// (decompressione ZIP) e non va incluso nel codice del browser.
+function ultimiMesi(n: number, oggi: Date = new Date()): string[] {
+  const out: string[] = []
+  let y = oggi.getUTCFullYear(), m = oggi.getUTCMonth() + 1
+  for (let i = 0; i < n; i++) {
+    out.push(`${y}_${String(m).padStart(2, '0')}`)
+    m -= 1
+    if (m < 1) { m = 12; y -= 1 }
+  }
+  return out
+}
 
 /**
  * Pulsante "Aggiorna da RNA": uguale in ogni scheda cliente, aggiorna gli aiuti

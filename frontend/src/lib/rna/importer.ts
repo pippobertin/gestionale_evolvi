@@ -23,6 +23,8 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { createInflateRaw } from 'node:zlib'
+import { Readable } from 'node:stream'
 
 // ----------------------------------------------------------------
 // Tipi
@@ -90,11 +92,14 @@ export const RNA_BASE_URL = 'https://www.incentivitalia.gov.it/open-data/aiuti'
 
 /**
  * URL del file del mese. I mesi con più di 500.000 aiuti sono divisi in più
- * file: OpenData_Aiuti_AAAA_MM.xml, poi _002, _003… (parte >= 2).
+ * file: OpenData_Aiuti_AAAA_MM, poi _002, _003… (parte >= 2).
+ * Si scarica la versione ZIP: l'XML di un mese arriva a ~600 MB e il portale
+ * Incentivi Italia interrompe i trasferimenti dopo circa 75 secondi, mentre lo
+ * ZIP pesa ~20 MB.
  */
-export function urlFileMese(mese: string, parte = 1): string {
+export function urlFileMese(mese: string, parte = 1, estensione: 'zip' | 'xml' = 'zip'): string {
   const suffisso = parte > 1 ? `_${String(parte).padStart(3, '0')}` : ''
-  return `${RNA_BASE_URL}/OpenData_Aiuti_${mese}${suffisso}.xml`
+  return `${RNA_BASE_URL}/OpenData_Aiuti_${mese}${suffisso}.${estensione}`
 }
 
 /** Numero massimo di aiuti per file: se un file lo raggiunge, esiste la parte successiva. */
@@ -236,34 +241,86 @@ export async function leggiFileMese(
 }
 
 /**
- * Scarica un file Open Data e chiama `onAiuto` per gli aiuti dei beneficiari
- * ammessi. Tollerante ai caratteri non validi presenti negli XML RNA (non usa
- * un parser XML rigoroso). Un file inesistente (404) vale 0 aiuti.
+ * Estrae da un archivio ZIP (letto per intero in memoria, ~20 MB) il primo
+ * file .xml e ne restituisce il contenuto decompresso come flusso di byte.
+ * Supporta i metodi "stored" (0) e "deflate" (8); le dimensioni vengono lette
+ * dalla directory centrale, quindi funziona anche con i data descriptor.
+ */
+function xmlDaZip(zip: Buffer): Readable {
+  const FIRMA_EOCD = 0x06054b50, FIRMA_CD = 0x02014b50, FIRMA_LOCALE = 0x04034b50
+  let eocd = -1
+  for (let i = zip.length - 22; i >= Math.max(0, zip.length - 22 - 65535); i--) {
+    if (zip.readUInt32LE(i) === FIRMA_EOCD) { eocd = i; break }
+  }
+  if (eocd < 0) throw new Error('archivio ZIP non valido (manca la directory centrale)')
+  const voci = zip.readUInt16LE(eocd + 10)
+  let p = zip.readUInt32LE(eocd + 16)
+  for (let k = 0; k < voci; k++) {
+    if (zip.readUInt32LE(p) !== FIRMA_CD) throw new Error('archivio ZIP non valido (directory centrale)')
+    const metodo = zip.readUInt16LE(p + 10)
+    const dimCompressa = zip.readUInt32LE(p + 20)
+    const lungNome = zip.readUInt16LE(p + 28)
+    const lungExtra = zip.readUInt16LE(p + 30)
+    const lungCommento = zip.readUInt16LE(p + 32)
+    const offsetLocale = zip.readUInt32LE(p + 42)
+    const nome = zip.toString('utf8', p + 46, p + 46 + lungNome)
+    p += 46 + lungNome + lungExtra + lungCommento
+    if (!/\.xml$/i.test(nome)) continue
+
+    if (zip.readUInt32LE(offsetLocale) !== FIRMA_LOCALE) throw new Error('archivio ZIP non valido (intestazione locale)')
+    const inizio = offsetLocale + 30 + zip.readUInt16LE(offsetLocale + 26) + zip.readUInt16LE(offsetLocale + 28)
+    const dati = zip.subarray(inizio, inizio + dimCompressa)
+    // Dati passati a blocchi da 1 MB per non tenere tutto il testo decompresso in memoria
+    const blocchiDati = function* () {
+      for (let o = 0; o < dati.length; o += 1 << 20) yield dati.subarray(o, Math.min(o + (1 << 20), dati.length))
+    }
+    if (metodo === 0) return Readable.from(blocchiDati())
+    if (metodo === 8) return Readable.from(blocchiDati()).pipe(createInflateRaw())
+    throw new Error(`archivio ZIP con metodo di compressione non supportato (${metodo})`)
+  }
+  throw new Error('nessun file XML nell\'archivio ZIP')
+}
+
+/**
+ * Scarica il file Open Data (versione ZIP) e chiama `onAiuto` per gli aiuti
+ * dei beneficiari ammessi. Tollerante ai caratteri non validi presenti negli
+ * XML RNA (non usa un parser XML rigoroso). Un file inesistente (404) vale 0 aiuti.
  */
 async function leggiFile(
   url: string,
   codiciAmmessi: Set<string>,
   onAiuto: (a: AiutoRna) => void
 ): Promise<number> {
+  const nomeFile = url.split('/').pop()
   let res: Response
   try {
-    res = await fetch(url, { headers: { 'Accept-Encoding': 'gzip', 'User-Agent': 'GestionaleEvolvi-RNA-OpenData/1.0' } })
+    res = await fetch(url, { headers: { 'User-Agent': 'GestionaleEvolvi-RNA-OpenData/1.0' } })
   } catch (err) {
     // "fetch failed" da solo non dice nulla: riporta la causa di rete (es. timeout, connessione rifiutata)
     const causa = (err as any)?.cause
     const dettaglio = causa ? ` (${causa.code || ''} ${causa.message || ''})`.replace(/\s+/g, ' ') : ''
-    throw new Error(`Download ${url.split('/').pop()}: ${err instanceof Error ? err.message : String(err)}${dettaglio}`)
+    throw new Error(`Download ${nomeFile}: ${err instanceof Error ? err.message : String(err)}${dettaglio}`)
   }
   if (res.status === 404) return 0 // mese o parte non (ancora) pubblicati
-  if (!res.ok || !res.body) throw new Error(`Download ${url.split('/').pop()}: HTTP ${res.status}`)
-  // Se al posto del file XML arriva una pagina web (es. rinvio a un altro sito dopo un
+  if (!res.ok) throw new Error(`Download ${nomeFile}: HTTP ${res.status}`)
+  // Se al posto del file arriva una pagina web (es. rinvio a un altro sito dopo un
   // cambio di indirizzo), è un errore: non va registrato come mese senza aiuti.
   const tipo = (res.headers.get('content-type') || '').toLowerCase()
-  if (tipo.includes('text/html') || (res.redirected && !/\.xml($|\?)/i.test(res.url))) {
-    throw new Error(`Download ${url.split('/').pop()}: ricevuta una pagina web invece del file XML (${res.url}). Possibile cambio di indirizzo degli Open Data RNA`)
+  if (tipo.includes('text/html') || (res.redirected && !/\.(zip|xml)($|\?)/i.test(res.url))) {
+    throw new Error(`Download ${nomeFile}: ricevuta una pagina web invece del file (${res.url}). Possibile cambio di indirizzo degli Open Data RNA`)
   }
 
-  const reader = res.body.getReader()
+  let zip: Buffer
+  try {
+    zip = Buffer.from(await res.arrayBuffer())
+  } catch (err) {
+    throw new Error(`Download ${nomeFile}: ${err instanceof Error ? err.message : String(err)}`)
+  }
+  const atteso = Number(res.headers.get('content-length') || 0)
+  if (atteso && zip.length !== atteso) {
+    throw new Error(`Download ${nomeFile}: file incompleto (${zip.length} di ${atteso} byte)`)
+  }
+
   const decoder = new TextDecoder('utf-8')
   const AP = '<AIUTO>', CH = '</AIUTO>'
   let buf = ''
@@ -287,11 +344,13 @@ async function leggiFile(
     }
   }
 
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buf += decoder.decode(value, { stream: true })
-    consuma()
+  try {
+    for await (const blocco of xmlDaZip(zip)) {
+      buf += decoder.decode(blocco as Buffer, { stream: true })
+      consuma()
+    }
+  } catch (err) {
+    throw new Error(`Lettura ${nomeFile}: ${err instanceof Error ? err.message : String(err)}`)
   }
   buf += decoder.decode()
   consuma()
