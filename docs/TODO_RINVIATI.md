@@ -54,6 +54,9 @@ Ruoli applicati dal server sulle operazioni critiche, registro delle operazioni 
 10. **Eventi di calendario.** Il trigger su `updated_at` della tabella `calendar_events` potrebbe riferirsi a una colonna mancante: da verificare prima di modificare eventi da codice.
 11. **Tracking dei contratti di progetto ricostruito.** Le 12 righe ricostruite il 19/11/2026 dai PDF approvati su Drive hanno come destinatario l'email attuale del cliente e come data d'invio la creazione del PDF; se un invio di allora era fallito, il dato va corretto a mano.
 
+12. **Firma email nella sezione Email.** La firma impostata nelle Impostazioni viene aggiunta solo alle email di approvazione contratto, contratto Evolvi, questionario fabbisogno e invio massivo da Interrogazioni; non a quelle scritte nella sezione Email (inviate come testo semplice), né all'invio del contratto di progetto e ai solleciti.
+13. **File orfani nell'archivio progetti.** I caricamenti manuali nei progetti fallivano dopo aver salvato il file (vincolo sulla categoria): eventuali file senza riga nel database, per esempio la prova del 19/11/2026 nel progetto MILLENERGIE, si possono eliminare.
+
 ## Nuove funzioni (materiale di Stefano, 19/11/2026)
 
 Da progettare dopo le fasi 3 e 4, partendo dal disegno dei processi: strutture di cartelle Drive per tipo di processo, controllo dei documenti richiesti, rilevazione dei file caricati direttamente su Drive con richiesta di abbinamento, registrazione di email, deroghe e accordi telefonici come documenti tracciati, esposizione dei dati per il cervello aziendale (Obsidian o Claude).

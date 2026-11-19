@@ -115,7 +115,7 @@ export default function DocumentiProgettoPreview({ progettoId, className = '' }:
     try {
       // Prima prova a scaricare da Supabase
       const { data, error } = await supabase.storage
-        .from('progetti-documenti')
+        .from((documento.categoria as string) === 'ereditato' ? 'bandi-documenti' : 'progetti-documenti')
         .download(documento.url_file)
 
       if (error) {

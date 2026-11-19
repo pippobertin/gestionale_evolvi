@@ -75,6 +75,12 @@ interface ProgettoFormProps {
 
 type TabType = 'generale' | 'importi' | 'scadenze' | 'documenti' | 'avanzate'
 
+// I documenti ereditati dal bando puntano al file originale nell'archivio dei
+// bandi; quelli caricati nel progetto stanno nell'archivio dei progetti.
+function bucketDocumentoProgetto(doc: { categoria?: string; inherited_from_bando?: boolean }) {
+  return doc.categoria === 'ereditato' || doc.inherited_from_bando ? 'bandi-documenti' : 'progetti-documenti'
+}
+
 export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, bando, cliente, progetto }: ProgettoFormProps) {
   const [activeTab, setActiveTab] = useState<TabType>('generale')
   const [loading, setLoading] = useState(false)
@@ -677,7 +683,10 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                 ...allegato,
                 id: `template_${allegato.id}_${Date.now()}`, // Nuovo ID temporaneo
                 progetto_id: null, // Sarà impostato quando si salva il progetto
-                url_file: `${progettoId}/placeholder_${allegato.nome_file}`, // Placeholder - il file vero è su Drive
+                // Il file resta quello del bando (archivio bandi-documenti): prima veniva
+                // salvato un percorso "placeholder" inesistente e anteprima e download fallivano
+                url_file: allegato.url_file,
+                bando_documento_origine_id: allegato.id,
                 inherited_from_bando: true,
                 status: 'to_compile',
                 nome_file: allegato.nome_file, // Mantiene il nome originale per l'utente
@@ -1050,7 +1059,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
             .insert([{
               progetto_id: progetto.id,
               nome_file: file.name,
-              categoria: 'allegato_caricato',
+              categoria: 'proprio', // valori ammessi: ereditato, proprio, compilato
               formato_file: file.type,
               dimensione_bytes: file.size,
               url_file: `${progettoId}/${fileName}`,
@@ -1121,7 +1130,8 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
           categoria: 'ereditato', // Categoria per documenti ereditati dal bando
           formato_file: doc.formato_file,
           dimensione_bytes: doc.dimensione_bytes,
-          url_file: doc.url_file, // Ora punta al bucket progetti-documenti
+          url_file: doc.url_file, // File del bando, nell'archivio bandi-documenti
+          bando_documento_origine_id: doc.bando_documento_origine_id || null,
           descrizione: doc.descrizione,
           tipo_documento: doc.tipo_documento || 'template',
           caricato_da: 'SISTEMA_EREDITA'
@@ -1989,7 +1999,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                                       console.log('📄 Creando URL pubblico temporaneo per viewer...')
 
                                       const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-                                        .from('progetti-documenti')
+                                        .from(bucketDocumentoProgetto(doc))
                                         .createSignedUrl(doc.url_file, 3600) // 1 ora
 
                                       if (signedUrlError) {
@@ -2015,7 +2025,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                                     } else {
                                       // Per altri file, usa blob come prima
                                       const { data, error } = await supabase.storage
-                                        .from('progetti-documenti')
+                                        .from(bucketDocumentoProgetto(doc))
                                         .download(doc.url_file)
 
                                       if (error) {
@@ -2058,7 +2068,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                                     console.log(`💾 Download documento: ${doc.nome_file}`)
 
                                     const { data, error } = await supabase.storage
-                                      .from('progetti-documenti')
+                                      .from(bucketDocumentoProgetto(doc))
                                       .download(doc.url_file)
 
                                     if (error) {
