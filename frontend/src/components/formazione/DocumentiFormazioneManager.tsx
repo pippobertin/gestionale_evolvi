@@ -43,6 +43,11 @@ function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
+// Archivio dei file: i documenti della formazione stanno tra i documenti del
+// cliente, nella cartella formazione/<cliente>. Prima il codice usava un
+// archivio "documenti" che non è mai esistito e ogni caricamento falliva.
+const BUCKET_FORMAZIONE = 'clienti-documenti'
+
 export default function DocumentiFormazioneManager({ clienteId }: DocumentiFormazioneManagerProps) {
   const [documenti, setDocumenti] = useState<DocumentoFormazione[]>([])
   const [loading, setLoading] = useState(true)
@@ -98,7 +103,7 @@ export default function DocumentiFormazioneManager({ clienteId }: DocumentiForma
 
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
-        .from('documenti')
+        .from(BUCKET_FORMAZIONE)
         .upload(storagePath, file)
 
       if (uploadError) throw uploadError
@@ -132,7 +137,7 @@ export default function DocumentiFormazioneManager({ clienteId }: DocumentiForma
   const handleDownload = async (doc: DocumentoFormazione) => {
     try {
       const { data, error } = await supabase.storage
-        .from('documenti')
+        .from(BUCKET_FORMAZIONE)
         .download(doc.storage_path)
 
       if (error) throw error
@@ -155,7 +160,7 @@ export default function DocumentiFormazioneManager({ clienteId }: DocumentiForma
     if (!confirm(`Eliminare "${doc.nome_file}"?`)) return
     try {
       // Delete from storage
-      await supabase.storage.from('documenti').remove([doc.storage_path])
+      await supabase.storage.from(BUCKET_FORMAZIONE).remove([doc.storage_path])
 
       // Delete DB record
       const { error } = await supabase
