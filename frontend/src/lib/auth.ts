@@ -1,5 +1,6 @@
 import { AuthOptions } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
+import { supabaseAdmin } from "@/lib/supabaseAdmin"
 
 async function refreshAccessToken(token: any) {
   try {
@@ -64,6 +65,23 @@ export const authOptions: AuthOptions = {
     })
   ],
   callbacks: {
+    // Accesso con Google consentito solo a utenti già censiti e attivi nel gestionale.
+    // Nessun utente viene creato automaticamente: lo crea un amministratore.
+    async signIn({ user }) {
+      const email = user?.email?.toLowerCase()
+      if (!email) return false
+      const { data, error } = await supabaseAdmin
+        .from('scadenze_bandi_utenti')
+        .select('id')
+        .eq('email', email)
+        .eq('attivo', true)
+        .maybeSingle()
+      if (error || !data) {
+        console.warn('[auth] Accesso Google rifiutato: utente non censito o non attivo')
+        return false
+      }
+      return true
+    },
     async jwt({ token, account }) {
       if (account) {
         token.accessToken = account.access_token
@@ -87,5 +105,6 @@ export const authOptions: AuthOptions = {
   },
   pages: {
     signIn: '/',
+    error: '/',
   }
 }

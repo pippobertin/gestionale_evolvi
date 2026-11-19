@@ -1,11 +1,15 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedDriveClient } from '@/lib/googleAuth'
+import { verifyJWT, requireAdmin } from '@/lib/jwtAuth'
 import { google } from 'googleapis'
 import path from 'path'
 import fs from 'fs'
 
 export async function GET(req: NextRequest) {
   try {
+    if (!(await requireAdmin(req))) {
+      return Response.json({ success: false, error: 'Riservato agli amministratori' }, { status: 403 })
+    }
     console.log('🔍 Debug Google Drive - Inizio verifica...')
 
     // Diagnostica env var e parsing service account

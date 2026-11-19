@@ -463,9 +463,9 @@ export class EmailService {
     try {
       // Importa dinamicamente per evitare errori server-side
       const { GmailService } = await import('@/lib/gmail')
-      const { supabase } = await import('@/lib/supabase')
+      const { supabaseAdmin: supabase } = await import('@/lib/supabaseAdmin')
 
-      // Recupera tokens dal database
+      // Recupera tokens dal database (solo server, chiave riservata)
       const { data: refreshTokenData } = await supabase
         .from('scadenze_bandi_system_settings')
         .select('value')

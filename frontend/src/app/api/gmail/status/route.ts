@@ -1,8 +1,12 @@
-import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { NextRequest, NextResponse } from 'next/server'
+import { verifyJWT, requireAdmin } from '@/lib/jwtAuth'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    if (!(await verifyJWT(request))) {
+      return NextResponse.json({ success: false, error: 'Non autenticato' }, { status: 401 })
+    }
     // Controlla se esistono tokens Gmail
     const { data: refreshTokenData } = await supabase
       .from('scadenze_bandi_system_settings')

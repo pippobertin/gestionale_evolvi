@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GmailService } from '@/lib/gmail'
-import { supabase } from '@/lib/supabase'
+import { verifyJWT, requireAdmin } from '@/lib/jwtAuth'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 
 export async function GET(request: NextRequest) {
   try {
+    if (!(await requireAdmin(request))) {
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_APP_URL}/?gmail_error=admin_required`
+      )
+    }
     const { searchParams } = new URL(request.url)
     const code = searchParams.get('code')
     const error = searchParams.get('error')

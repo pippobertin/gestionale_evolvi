@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GmailService } from '@/lib/gmail'
+import { verifyJWT, requireAdmin } from '@/lib/jwtAuth'
 
 export async function GET(request: NextRequest) {
   try {
+    if (!(await requireAdmin(request))) {
+      return NextResponse.json({ success: false, error: 'Riservato agli amministratori' }, { status: 403 })
+    }
     const gmailService = new GmailService({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,

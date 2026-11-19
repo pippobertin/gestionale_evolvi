@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
+import { getJwtSecret } from '@/lib/jwtAuth'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-in-production'
 const JWT_EXPIRES_IN = '7d'
 
 export async function POST(request: NextRequest) {
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         email: utente.email,
         livello_permessi: utente.livello_permessi
       },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: JWT_EXPIRES_IN }
     )
 
@@ -77,14 +77,6 @@ export async function POST(request: NextRequest) {
         ip_address: clientIp
       })
 
-    // Debug: logga i dati dell'utente
-    console.log('User data from DB:', {
-      id: utente.id,
-      email: utente.email,
-      first_login_password_change: utente.first_login_password_change,
-      hasField: 'first_login_password_change' in utente
-    })
-
     // Prepara dati utente (senza password_hash)
     const userData = {
       id: utente.id,
@@ -97,7 +89,6 @@ export async function POST(request: NextRequest) {
     }
 
     const requiresPasswordChange = utente.first_login_password_change || false
-    console.log('Sending requiresPasswordChange:', requiresPasswordChange)
 
     // Create response with cookie
     const response = NextResponse.json({

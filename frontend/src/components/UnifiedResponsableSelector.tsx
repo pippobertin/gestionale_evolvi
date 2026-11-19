@@ -9,7 +9,7 @@ interface Utente {
   nome: string
   cognome: string
   email: string
-  ruolo: string
+  ruolo?: string // colonna non presente nel DB: resta indefinita
   gruppo_id?: string
 }
 
@@ -72,7 +72,7 @@ export default function UnifiedResponsableSelector({
       // Carica utenti
       const { data: utentiData, error: utentiError } = await supabase
         .from('scadenze_bandi_utenti')
-        .select('*')
+        .select('id, email, nome, cognome, livello_permessi, attivo, gruppo_id')
         .order('nome')
 
       if (utentiError) {

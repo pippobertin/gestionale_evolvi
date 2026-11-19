@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { EmailService } from '@/lib/notifications/emailService'
+import { verifyJWT, requireAdmin } from '@/lib/jwtAuth'
 
 export async function POST(request: NextRequest) {
   try {
+    if (!(await requireAdmin(request))) {
+      return NextResponse.json({ success: false, error: 'Riservato agli amministratori' }, { status: 403 })
+    }
     const { userEmail } = await request.json()
 
     if (!userEmail) {

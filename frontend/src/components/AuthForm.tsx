@@ -14,6 +14,14 @@ export default function AuthForm() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('error') === 'AccessDenied') {
+      setError('Account Google non autorizzato. Usa l\'account aziendale censito nel gestionale o contatta un amministratore.')
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+  }, [])
+
   // Check sessionStorage for password change state
   const [showPasswordChange, setShowPasswordChange] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -105,7 +113,7 @@ export default function AuthForm() {
     cognome: ''
   })
 
-  const { login, signup, changePassword } = useAuth()
+  const { login, changePassword } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -119,9 +127,6 @@ export default function AuthForm() {
 
       if (isLogin) {
         result = await login(formData.email, formData.password)
-
-        // Debug: logga il risultato del login
-        console.log('Login result:', result)
 
         // Se il login è riuscito ma richiede cambio password
         if (result.success && result.requiresPasswordChange) {
@@ -138,7 +143,8 @@ export default function AuthForm() {
           return
         }
       } else {
-        result = await signup(formData.email, formData.password, formData.nome, formData.cognome)
+        // La registrazione libera è disattivata: gli utenti li crea un amministratore
+        result = { success: false, error: 'Registrazione non disponibile. Contatta un amministratore.' }
       }
 
       if (!result.success) {
@@ -479,18 +485,6 @@ export default function AuthForm() {
           </form>
           )}
 
-          {/* Toggle Mode (only show for normal login/signup) */}
-          {!showPasswordChange && (
-          <div className="mt-3 text-center">
-            <button
-              type="button"
-              onClick={toggleMode}
-              className="text-teal-600 hover:text-teal-500 text-sm font-medium"
-            >
-              {isLogin ? 'Non hai un account? Registrati' : 'Hai già un account? Accedi'}
-            </button>
-          </div>
-          )}
         </div>
 
         {/* Footer */}

@@ -1,8 +1,12 @@
 import { NextRequest } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { verifyJWT, requireAdmin } from '@/lib/jwtAuth'
 
 export async function GET(req: NextRequest) {
   try {
+    if (!(await verifyJWT(req))) {
+      return Response.json({ success: false, error: 'Non autenticato' }, { status: 401 })
+    }
     // Query per ottenere la struttura della tabella scadenze_bandi_clienti
     const { data, error } = await supabase
       .rpc('get_table_columns', {

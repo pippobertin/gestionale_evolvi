@@ -1,5 +1,5 @@
 import { google } from 'googleapis'
-import { supabase } from './supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import path from 'path'
 import fs from 'fs'
 

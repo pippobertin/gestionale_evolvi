@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
+import crypto from 'crypto'
 import bcrypt from 'bcrypt'
 import { requireAdmin } from '@/lib/jwtAuth'
 
@@ -53,15 +54,15 @@ export async function POST(request: NextRequest) {
     const { data: existingUser, error: checkError } = await supabase
       .from('scadenze_bandi_utenti')
       .select('id')
-      .eq('email', email)
-      .single()
+      .eq('email', email.toLowerCase().trim())
+      .maybeSingle()
 
     if (existingUser) {
       return NextResponse.json({ error: 'Un utente con questa email esiste già' }, { status: 409 })
     }
 
-    // Genera password temporanea: cognome + ! (tutto minuscolo)
-    const temporaryPassword = cognome.toLowerCase().trim() + '!'
+    // Password temporanea casuale (va cambiata al primo accesso)
+    const temporaryPassword = crypto.randomBytes(9).toString('base64url')
     const passwordHash = await bcrypt.hash(temporaryPassword, 10)
 
     // Crea nuovo utente
@@ -74,11 +75,12 @@ export async function POST(request: NextRequest) {
         livello_permessi,
         password_hash: passwordHash,
         first_login_password_change: true, // Deve cambiare password al primo accesso
+        created_by: admin.userId,
         attivo: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }])
-      .select()
+      .select('id, email, nome, cognome, livello_permessi, attivo, created_at, updated_at, ultimo_accesso')
       .single()
 
     if (createError) throw createError

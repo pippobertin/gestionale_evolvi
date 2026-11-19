@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { verifyJWT, requireAdmin } from '@/lib/jwtAuth'
 
 // GET - Ottieni tutti i destinatari aggiuntivi attivi
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    if (!(await verifyJWT(request))) {
+      return NextResponse.json({ success: false, error: 'Non autenticato' }, { status: 401 })
+    }
     const { data: recipients, error } = await supabase
       .from('scadenze_bandi_additional_recipients')
       .select('email')
@@ -31,6 +35,9 @@ export async function GET() {
 // POST - Aggiungi nuovo destinatario
 export async function POST(request: NextRequest) {
   try {
+    if (!(await requireAdmin(request))) {
+      return NextResponse.json({ success: false, error: 'Riservato agli amministratori' }, { status: 403 })
+    }
     const body = await request.json()
     const { email, createdBy } = body
 
@@ -89,6 +96,9 @@ export async function POST(request: NextRequest) {
 // DELETE - Rimuovi destinatario
 export async function DELETE(request: NextRequest) {
   try {
+    if (!(await requireAdmin(request))) {
+      return NextResponse.json({ success: false, error: 'Riservato agli amministratori' }, { status: 403 })
+    }
     const { searchParams } = new URL(request.url)
     const email = searchParams.get('email')
 

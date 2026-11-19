@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import jwt from 'jsonwebtoken'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
+import { getJwtSecret } from '@/lib/jwtAuth'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-in-production'
 
 /**
  * GET /api/auth/google-jwt
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
         email: utente.email,
         livello_permessi: utente.livello_permessi
       },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: '7d' }
     )
 

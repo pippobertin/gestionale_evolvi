@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { GmailService } from '@/lib/gmail'
-import { supabase } from '@/lib/supabase'
+import { verifyJWT, requireAdmin } from '@/lib/jwtAuth'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    if (!(await requireAdmin(request))) {
+      return NextResponse.json({ success: false, error: 'Riservato agli amministratori' }, { status: 403 })
+    }
     // Recupera tokens dal database
     const { data: refreshTokenData } = await supabase
       .from('scadenze_bandi_system_settings')

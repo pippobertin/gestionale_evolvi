@@ -1,8 +1,19 @@
 import { NextRequest } from 'next/server'
 import jwt from 'jsonwebtoken'
-import { supabase } from './supabase'
+import { supabaseAdmin } from './supabaseAdmin'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-in-production'
+/**
+ * Segreto per firmare e verificare i JWT dell'applicazione.
+ * Nessun valore di ripiego: se la variabile manca, l'operazione fallisce
+ * invece di usare una chiave nota a chiunque legga il codice.
+ */
+export function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET
+  if (!secret) {
+    throw new Error('JWT_SECRET non configurata')
+  }
+  return secret
+}
 
 export interface JWTPayload {
   userId: string
@@ -18,38 +29,23 @@ export async function verifyJWT(request: NextRequest): Promise<JWTPayload | null
     const tokenFromHeader = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null
 
     const token = tokenFromCookie || tokenFromHeader
-
-    console.log('[verifyJWT] Token from cookie:', tokenFromCookie ? 'Present' : 'Missing')
-    console.log('[verifyJWT] Token from header:', tokenFromHeader ? 'Present' : 'Missing')
-
     if (!token) {
-      console.log('[verifyJWT] No token found')
       return null
     }
 
-    // Verifica il token JWT
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload
-    console.log('[verifyJWT] JWT decoded successfully:', decoded.userId)
+    const decoded = jwt.verify(token, getJwtSecret()) as JWTPayload
 
-    // Verifica che l'utente esista ancora e sia attivo
-    const { data: user, error } = await supabase
+    // Verifica che l'utente esista ancora e sia attivo (ruolo sempre letto dal DB)
+    const { data: user, error } = await supabaseAdmin
       .from('scadenze_bandi_utenti')
       .select('id, email, livello_permessi, attivo')
       .eq('id', decoded.userId)
       .eq('attivo', true)
       .single()
 
-    if (error) {
-      console.error('[verifyJWT] Supabase error:', error)
+    if (error || !user) {
       return null
     }
-
-    if (!user) {
-      console.log('[verifyJWT] User not found or inactive')
-      return null
-    }
-
-    console.log('[verifyJWT] User verified:', user.email)
 
     return {
       userId: user.id,
@@ -57,7 +53,7 @@ export async function verifyJWT(request: NextRequest): Promise<JWTPayload | null
       livello_permessi: user.livello_permessi
     }
   } catch (error) {
-    console.error('[verifyJWT] Error:', error)
+    console.error('[verifyJWT] Token non valido o errore di verifica')
     return null
   }
 }

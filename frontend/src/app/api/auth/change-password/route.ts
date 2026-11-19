@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
+import { getJwtSecret } from '@/lib/jwtAuth'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-in-production'
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     const token = authHeader.substring(7)
     let decoded: any
     try {
-      decoded = jwt.verify(token, JWT_SECRET)
+      decoded = jwt.verify(token, getJwtSecret())
     } catch (error) {
       return NextResponse.json(
         { error: 'Token non valido' },

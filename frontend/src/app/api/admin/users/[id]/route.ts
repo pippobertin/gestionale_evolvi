@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { requireAdmin } from '@/lib/jwtAuth'
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -32,7 +32,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         .from('scadenze_bandi_utenti')
         .update(updates)
         .eq('id', id)
-        .select()
+        .select('id, email, nome, cognome, livello_permessi, attivo, created_at, updated_at, ultimo_accesso')
         .single()
 
       if (error) throw error

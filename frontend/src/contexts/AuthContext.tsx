@@ -1,7 +1,6 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useSession } from 'next-auth/react'
 
 interface User {
@@ -17,7 +16,6 @@ interface AuthContextType {
   user: User | null
   loading: boolean
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string; requiresPasswordChange?: boolean }>
-  signup: (email: string, password: string, nome: string, cognome: string) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
   isAdmin: () => boolean
   canEdit: (createdBy?: string) => boolean
@@ -74,70 +72,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const handleGoogleUser = async (googleUser: any) => {
+  // Utente entrato con Google: il server verifica che sia censito e attivo,
+  // rilascia il JWT dell'applicazione e restituisce i suoi dati.
+  // Nessuna lettura o creazione di utenti dal browser.
+  const handleGoogleUser = async (_googleUser: any) => {
     try {
-      // Cerca utente esistente per email
-      const { data: existingUser, error } = await supabase
-        .from('scadenze_bandi_utenti')
-        .select('*')
-        .eq('email', googleUser.email)
-        .single()
-
-      let userData: User | null = null
-
-      if (existingUser) {
-        userData = {
-          id: existingUser.id,
-          email: existingUser.email,
-          nome: existingUser.nome,
-          cognome: existingUser.cognome,
-          livello_permessi: existingUser.livello_permessi,
-          nome_completo: `${existingUser.nome} ${existingUser.cognome}`
-        }
-      } else {
-        // Nuovo utente Google, crealo nel database
-        const [nome, cognome] = (googleUser.name || '').split(' ')
-        const { data: newUser, error: insertError } = await supabase
-          .from('scadenze_bandi_utenti')
-          .insert({
-            email: googleUser.email,
-            nome: nome || googleUser.given_name || 'Nome',
-            cognome: cognome || googleUser.family_name || 'Cognome',
-            livello_permessi: 'collaboratore',
-            password_hash: null
-          })
-          .select()
-          .single()
-
-        if (newUser) {
-          userData = {
-            id: newUser.id,
-            email: newUser.email,
-            nome: newUser.nome,
-            cognome: newUser.cognome,
-            livello_permessi: newUser.livello_permessi,
-            nome_completo: `${newUser.nome} ${newUser.cognome}`
-          }
-        }
+      const jwtResponse = await fetch('/api/auth/google-jwt')
+      if (!jwtResponse.ok) {
+        // Account non censito o disattivato: chiudi la sessione Google
+        const { signOut } = await import('next-auth/react')
+        await signOut({ redirect: false })
+        localStorage.removeItem('auth_token')
+        setUser(null)
+        return
       }
-
-      if (userData) {
-        setUser(userData)
-
-        // Generate JWT for API route authentication
-        // Google OAuth users need this for routes that check auth_token cookie/header
-        try {
-          const jwtResponse = await fetch('/api/auth/google-jwt')
-          if (jwtResponse.ok) {
-            const jwtData = await jwtResponse.json()
-            if (jwtData.token) {
-              localStorage.setItem('auth_token', jwtData.token)
-              console.log('✅ JWT created for Google OAuth user')
-            }
-          }
-        } catch (jwtError) {
-          console.error('⚠️ Failed to create JWT for Google user:', jwtError)
-        }
+      const jwtData = await jwtResponse.json()
+      if (jwtData.token) {
+        localStorage.setItem('auth_token', jwtData.token)
+      }
+      if (jwtData.user) {
+        setUser(jwtData.user)
       }
     } catch (error) {
       console.error('Errore gestione utente Google:', error)
@@ -156,18 +110,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json()
 
-      console.log('AuthContext login response:', data)
-
       if (response.ok) {
         localStorage.setItem('auth_token', data.token)
 
         // Only set user if password change is NOT required
         const requiresPasswordChange = data.requiresPasswordChange || false
         if (!requiresPasswordChange) {
-          console.log('✅ No password change required, setting user')
           setUser(data.user)
         } else {
-          console.log('🔄 Password change required, NOT setting user yet')
           // Store user data temporarily for after password change
           localStorage.setItem('pending_user_data', JSON.stringify(data.user))
         }
@@ -176,34 +126,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           success: true,
           requiresPasswordChange
         }
-        console.log('AuthContext returning:', result)
         return result
       } else {
         return { success: false, error: data.error || 'Errore durante il login' }
-      }
-    } catch (error) {
-      return { success: false, error: 'Errore di connessione' }
-    }
-  }
-
-  const signup = async (email: string, password: string, nome: string, cognome: string) => {
-    try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email, password, nome, cognome })
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        localStorage.setItem('auth_token', data.token)
-        setUser(data.user)
-        return { success: true }
-      } else {
-        return { success: false, error: data.error || 'Errore durante la registrazione' }
       }
     } catch (error) {
       return { success: false, error: 'Errore di connessione' }
@@ -218,20 +143,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await signOut({ redirect: false })
       }
 
-      // Logout tradizionale
-      const token = localStorage.getItem('auth_token')
-      if (token) {
-        await fetch('/api/auth/logout', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-      }
+      // Cancella il cookie di sessione lato server
+      await fetch('/api/auth/logout', { method: 'POST' })
     } catch (error) {
       console.error('Errore logout:', error)
     } finally {
       localStorage.removeItem('auth_token')
+      localStorage.removeItem('chatbot_history')
       setUser(null)
     }
   }
@@ -309,7 +227,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       login,
-      signup,
       logout,
       isAdmin,
       canEdit,

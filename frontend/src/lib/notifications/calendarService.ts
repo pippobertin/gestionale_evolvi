@@ -235,108 +235,49 @@ export class CalendarService {
   }
 
   /**
-   * Elimina tutti gli eventi calendario che contengono un ID scadenza specifico
-   * Utile per eventi "orfani" non tracciati nel database
+   * Pulizia di eventi "orfani" (non tracciati in scadenze_bandi_calendar_events).
+   *
+   * In passato cercava gli eventi anche per titolo, o cancellava l'unico evento
+   * del gestionale presente: con titoli uguali tra progetti diversi (es. "Primo SAL")
+   * rischiava di eliminare eventi di altre scadenze sul calendario aziendale condiviso.
+   * Ora elimina solo eventi che contengono esplicitamente l'ID della scadenza;
+   * se non ne trova, lascia il calendario invariato (meglio un evento orfano
+   * che la cancellazione di eventi altrui).
    */
-  static async deleteOrphanCalendarEvents(scadenzaId: string, scadenzaTitolo?: string): Promise<boolean> {
+  static async deleteOrphanCalendarEvents(scadenzaId: string, _scadenzaTitolo?: string): Promise<boolean> {
     try {
-      console.log('🧹 Pulizia eventi orfani per scadenza:', scadenzaId, 'titolo:', scadenzaTitolo)
+      if (!scadenzaId) return false
 
       const accessToken = await this.getAccessToken()
       if (!accessToken) {
-        console.error('❌ Access token non disponibile per pulizia eventi orfani')
         return false
       }
 
-      // Prima cerca per ID scadenza
-      let response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID_ENCODED}/events?q=${scadenzaId}`, {
+      const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID_ENCODED}/events?q=${encodeURIComponent(scadenzaId)}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
       })
 
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('❌ Errore ricerca eventi Calendar per ID:', response.status, errorText)
         return false
       }
 
-      let data = await response.json()
-      let events = data.items || []
+      const data = await response.json()
+      const events = (data.items || []).filter((event: any) =>
+        (event.description && event.description.includes(scadenzaId)) ||
+        JSON.stringify(event.extendedProperties || {}).includes(scadenzaId)
+      )
 
-      console.log(`🔍 Trovati ${events.length} eventi cercando per ID scadenza`)
-
-      // Se non trova eventi per ID e abbiamo il titolo, cerca per titolo
-      if (events.length === 0 && scadenzaTitolo) {
-        console.log('🔍 Ricerca per titolo scadenza:', scadenzaTitolo)
-
-        const encodedTitle = encodeURIComponent(scadenzaTitolo)
-        response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID_ENCODED}/events?q=${encodedTitle}`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        })
-
-        if (response.ok) {
-          data = await response.json()
-          events = data.items || []
-          console.log(`🔍 Trovati ${events.length} eventi cercando per titolo`)
-        }
-      }
-
-      // Se ancora non trova, cerca eventi del Gestionale Evolvi
       if (events.length === 0) {
-        console.log('🔍 Ricerca eventi Gestionale Evolvi generici...')
-
-        response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID_ENCODED}/events?q=Gestionale+Evolvi`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        })
-
-        if (response.ok) {
-          data = await response.json()
-          events = data.items || []
-          console.log(`🔍 Trovati ${events.length} eventi del Gestionale Evolvi`)
-
-          // Filtra solo quelli che potrebbero essere della scadenza
-          if (scadenzaTitolo) {
-            events = events.filter((event: any) =>
-              event.summary?.includes(scadenzaTitolo) ||
-              event.description?.includes(scadenzaTitolo) ||
-              (event.description && event.description.includes(scadenzaId))
-            )
-            console.log(`🎯 Filtrati a ${events.length} eventi potenzialmente collegati`)
-          }
-        }
+        console.warn('⚠️ Nessun evento calendario riconducibile con certezza alla scadenza: calendario non modificato')
+        return false
       }
 
-      let deletedCount = 0
       for (const event of events) {
-        console.log('🔍 Controllo evento:', {
-          id: event.id,
-          summary: event.summary,
-          description: event.description?.substring(0, 100) + '...'
-        })
-
-        // Controlla se l'evento è collegato alla scadenza
-        const isRelated = (
-          (event.description && event.description.includes(scadenzaId)) ||
-          (scadenzaTitolo && event.summary && event.summary.includes(scadenzaTitolo)) ||
-          (scadenzaTitolo && event.description && event.description.includes(scadenzaTitolo)) ||
-          (event.location === 'Gestionale Evolvi' && events.length === 1) // Se è l'unico del gestionale
-        )
-
-        if (isRelated) {
-          console.log('🗑️ Eliminazione evento collegato:', event.id)
-          await this.deleteCalendarEvent(event.id)
-          deletedCount++
-        }
+        await this.deleteCalendarEvent(event.id)
       }
-
-      console.log(`✅ Eliminati ${deletedCount} eventi orfani`)
-      return deletedCount > 0
-
+      return true
     } catch (error) {
       console.error('❌ Errore pulizia eventi orfani:', error)
       return false
