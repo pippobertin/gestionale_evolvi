@@ -31,7 +31,10 @@ Ultimo aggiornamento: 19/11/2026.
 
 ## Fase 3: chiusura del database
 
-Oggi le tabelle diverse da utenti, sessioni e impostazioni di sistema (clienti, progetti, contratti, fatture, documenti, formazione, contributi e così via) sono ancora leggibili e modificabili con la chiave pubblica. Decisione presa: il database resta nel progetto "TEST". Da decidere: la strada tecnica (consigliata la B, in cui il database riconosce l'utente collegato tramite un token firmato dal gestionale). Comprende anche un controllo centrale sulle API (`middleware.ts`), la correzione delle route che chiamano `verifyJWT` ma ne ignorano l'esito, le regole sui bucket di archiviazione e la cifratura dei token Google.
+Stato al 19/11/2026: passaggi A, B, C e D completati. Tutte le tabelle e le viste del gestionale (`scadenze_bandi_*`, `vista_*`, `scadenze_enhanced_simple`), compresi utenti e sessioni, rispondono solo al badge rilasciato dal gestionale ai suoi utenti attivi; la chiave pubblica da sola non legge e non scrive nulla. Restano:
+
+- **E. Archivi dei file.** `progetti-documenti` è pubblico, `clienti-documenti` ha regole aperte a tutti, il bucket `documenti` (usato dai documenti della formazione) è da verificare: tutti privati con regole basate sul badge e link temporanei.
+- **F. Pulizia finale.** Token di sessione solo nel cookie protetto e non più nel `localStorage`, logout con revoca effettiva, prova conclusiva con la sola chiave pubblica anche sui file, cifratura dei token Google.
 
 ## Fase 4: ruoli e tracciabilità per la 231
 
