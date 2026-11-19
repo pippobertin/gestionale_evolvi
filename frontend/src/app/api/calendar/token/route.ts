@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyJWT } from '@/lib/jwtAuth'
 import { createGoogleAuthClient } from '@/lib/gmail'
-import { createClient } from '@supabase/supabase-js'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,14 +17,9 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. Recupera token OAuth utente dal database
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    const { data: userData, error: userError } = await supabase
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('scadenze_bandi_utenti')
-      .select('gmail_refresh_token, gmail_access_token, gmail_email')
+      .select('gmail_refresh_token, gmail_email')
       .eq('id', userId)
       .single()
 
@@ -39,12 +34,15 @@ export async function GET(request: NextRequest) {
     const oauth2Client = createGoogleAuthClient(
       `${process.env.NEXT_PUBLIC_APP_URL}/api/user/gmail/callback`
     )
+    // Solo il refresh token: l'access token salvato nel database è quello del
+    // momento del collegamento (scade dopo un'ora) e, senza data di scadenza,
+    // la libreria lo restituirebbe così com'è invece di rinnovarlo. Google lo
+    // rifiutava con 401 e nessun evento veniva creato nel calendario.
     oauth2Client.setCredentials({
-      refresh_token: userData.gmail_refresh_token,
-      access_token: userData.gmail_access_token || undefined
+      refresh_token: userData.gmail_refresh_token
     })
 
-    // 4. Ottieni access token valido (refresh automatico se scaduto)
+    // 4. Ottieni un access token nuovo dal refresh token
     const tokenResponse = await oauth2Client.getAccessToken()
 
     if (!tokenResponse.token) {
