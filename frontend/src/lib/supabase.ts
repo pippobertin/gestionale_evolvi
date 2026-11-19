@@ -3,7 +3,53 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// --- Badge per il database (fase 3) ---------------------------------------
+// Nel browser ogni richiesta al database porta il badge dell'utente collegato,
+// ottenuto da /api/auth/db-token e rinnovato prima della scadenza.
+// Se il badge non è disponibile (utente non collegato, badge non ancora attivo)
+// la libreria usa la chiave pubblica, cioè il comportamento precedente.
+// Sul server (route API) non viene allegato nessun badge.
+let dbToken: { token: string; expiresAt: number } | null = null
+let dbTokenRetryAfter = 0
+let dbTokenInFlight: Promise<string | null> | null = null
+
+async function getBrowserDbToken(): Promise<string | null> {
+  if (typeof window === 'undefined') return null
+  const now = Math.floor(Date.now() / 1000)
+  if (dbToken && dbToken.expiresAt - now > 300) return dbToken.token
+  if (now < dbTokenRetryAfter) return null
+  if (dbTokenInFlight) return dbTokenInFlight
+
+  dbTokenInFlight = (async () => {
+    try {
+      const res = await fetch('/api/auth/db-token', { credentials: 'same-origin', cache: 'no-store' })
+      if (!res.ok) {
+        dbToken = null
+        dbTokenRetryAfter = Math.floor(Date.now() / 1000) + 60
+        return null
+      }
+      const data = await res.json()
+      dbToken = { token: data.token, expiresAt: data.expiresAt }
+      return dbToken.token
+    } catch {
+      dbTokenRetryAfter = Math.floor(Date.now() / 1000) + 60
+      return null
+    } finally {
+      dbTokenInFlight = null
+    }
+  })()
+  return dbTokenInFlight
+}
+
+/** Da chiamare al login e al logout per non riusare il badge di un'altra sessione. */
+export function resetDbToken() {
+  dbToken = null
+  dbTokenRetryAfter = 0
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  accessToken: getBrowserDbToken
+})
 
 // Types per il database
 export interface Bando {

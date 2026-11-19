@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
+import { resetDbToken } from '@/lib/supabase'
 
 interface User {
   id: string
@@ -87,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
       const jwtData = await jwtResponse.json()
+      resetDbToken()
       if (jwtData.token) {
         localStorage.setItem('auth_token', jwtData.token)
       }
@@ -111,6 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json()
 
       if (response.ok) {
+        resetDbToken()
         localStorage.setItem('auth_token', data.token)
 
         // Only set user if password change is NOT required
@@ -150,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       localStorage.removeItem('auth_token')
       localStorage.removeItem('chatbot_history')
+      resetDbToken()
       setUser(null)
     }
   }
