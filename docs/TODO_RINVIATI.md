@@ -47,6 +47,9 @@ Ruoli applicati dal server sulle operazioni critiche, registro delle operazioni 
 6. **Contratto firmato.** Il pannello per caricarlo esiste ma non è mostrato in nessuna schermata, e salverebbe il file su Supabase invece che su Drive.
 7. **Riconversione cliente in prospect.** Cancella fisicamente fatture, contratti, documenti, progetti e formazione del cliente; pulsante visibile a tutti.
 8. **Caricamento su Drive dei documenti dei bandi.** Cerca la cartella del bando nel posto sbagliato e quindi non funziona.
+9. **Prospect: stato predefinito.** Il valore predefinito della colonna `stato` ("nuovo") non è ammesso dal suo stesso vincolo: un inserimento che non indica lo stato viene rifiutato.
+10. **Eventi di calendario.** Il trigger su `updated_at` della tabella `calendar_events` potrebbe riferirsi a una colonna mancante: da verificare prima di modificare eventi da codice.
+11. **Tracking dei contratti di progetto ricostruito.** Le 12 righe ricostruite il 19/11/2026 dai PDF approvati su Drive hanno come destinatario l'email attuale del cliente e come data d'invio la creazione del PDF; se un invio di allora era fallito, il dato va corretto a mano.
 
 ## Nuove funzioni (materiale di Stefano, 19/11/2026)
 
