@@ -292,6 +292,17 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
       if (!dataToSave.responsabile_email) delete dataToSave.responsabile_email
       if (!dataToSave.note) delete dataToSave.note
 
+      // Il responsabile scelto diventa anche l'email della scadenza: è il campo
+      // mostrato nello scadenzario e usato da notifiche e calendario.
+      if (responsabile?.tipo === 'utente' && responsabile.utente_id) {
+        const { data: utenteResp } = await supabase
+          .from('scadenze_bandi_utenti')
+          .select('email')
+          .eq('id', responsabile.utente_id)
+          .single()
+        if (utenteResp?.email) dataToSave.responsabile_email = utenteResp.email
+      }
+
       let scadenzaId = scadenza?.id
 
       if (scadenzaId) {
