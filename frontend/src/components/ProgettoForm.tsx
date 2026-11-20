@@ -16,7 +16,8 @@ import {
   Eye,
   Trash2,
   Download,
-  AlertCircle
+  AlertCircle,
+  ListChecks,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { syncContributoDaProgetto } from '@/lib/contributi/syncFromProgetto'
@@ -24,6 +25,7 @@ import { useSession, signIn, signOut } from 'next-auth/react'
 import DocumentPreviewModal from './DocumentPreviewModal'
 import ContractModal from './ContractModal'
 import ContractTrackingWidget from './ContractTrackingWidget'
+import PraticaPercorso from './PraticaPercorso'
 import NoteCollegateBox from './NoteCollegateBox'
 import { spostaNelCestino } from '@/lib/cestinoArchivi'
 
@@ -74,7 +76,7 @@ interface ProgettoFormProps {
   progetto?: any // Per modifica esistente
 }
 
-type TabType = 'generale' | 'importi' | 'scadenze' | 'documenti' | 'avanzate'
+type TabType = 'pratica' | 'generale' | 'importi' | 'scadenze' | 'documenti' | 'avanzate'
 
 // I documenti ereditati dal bando puntano al file originale nell'archivio dei
 // bandi; quelli caricati nel progetto stanno nell'archivio dei progetti.
@@ -83,7 +85,10 @@ function bucketDocumentoProgetto(doc: { categoria?: string; inherited_from_bando
 }
 
 export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, bando, cliente, progetto }: ProgettoFormProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('generale')
+  // Pratica non ancora inviata: si apre sul percorso della pratica
+  const [activeTab, setActiveTab] = useState<TabType>(progetto?.fase && progetto.fase !== 'inviata' ? 'pratica' : 'generale')
+  // Nuova pratica registrata dopo l'invio della domanda (parte dalla fase "inviata")
+  const [giaInviata, setGiaInviata] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showContractModal, setShowContractModal] = useState(false)
   // Approvazione di una bozza di contratto già generata (Modello 231)
@@ -1225,7 +1230,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
         // Crea nuovo progetto
         const { data: newProgetto, error } = await supabase
           .from('scadenze_bandi_progetti')
-          .insert([dataToSave])
+          .insert([{ ...dataToSave, ...(giaInviata ? { fase: 'inviata' } : {}) }])
           .select()
           .single()
 
@@ -1413,6 +1418,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
   }
 
   const tabs = [
+    ...(progetto ? [{ id: 'pratica', label: 'Percorso pratica', icon: ListChecks }] : []),
     { id: 'generale', label: 'Informazioni Generali', icon: Building2 },
     { id: 'importi', label: 'Importi e Contributi', icon: Euro },
     { id: 'scadenze', label: 'Scadenze e Date', icon: Calendar },
@@ -1462,8 +1468,21 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
           {/* Form Content */}
           <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto p-4">
+              {activeTab === 'pratica' && progetto && (
+                <PraticaPercorso progettoId={progetto.id} />
+              )}
+
               {activeTab === 'generale' && (
                 <div className="space-y-3">
+                  {!progetto && (
+                    <label className="flex items-start gap-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-2">
+                      <input type="checkbox" className="mt-0.5" checked={giaInviata} onChange={e => setGiaInviata(e.target.checked)} />
+                      <span>
+                        La domanda è già stata inviata (pratica registrata dopo l&apos;invio).
+                        <span className="block text-xs text-gray-500">Altrimenti la pratica parte dalla fase di incarico e segue il percorso con i controlli del Modello 231.</span>
+                      </span>
+                    </label>
+                  )}
                   {/* Selezione Bando e Cliente */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>

@@ -74,6 +74,16 @@ Una pagina riservata agli admin, di facile lettura e con filtri (persona, period
 
 15. **Resti del vecchio client di posta IMAP: da decidere.** Le tabelle scadenze_bandi_email_messages, _folders, _accounts, _attachments, _links e _sync_logs contengono una copia di 9.274 email della casella bertin@ sincronizzate tra il 26 e il 28/11/2025 (1,6 GB nel database), non usate da nessuna parte del codice. Sono escluse dal backup mensile. Eliminarle libererebbe spazio nel progetto Supabase condiviso; serve una migrazione con conferma esplicita.
 
+## Pratica di finanza agevolata guidata (21/11/2026)
+
+**Passaggio A: fatto** (in anteprima). Fasi incarico, progettazione, controllo pre-invio, conferma e invio, inviata; RP e REV diversi; blocco della progettazione senza contratto firmato o ordine di lavoro confermato (modello MODELLO ORDINE DI LAVORO.docx nella cartella MODELLI del Drive condiviso, sorgente in docs/modelli); checklist pre-invio del solo REV (tre voci); conferma scritta del cliente, delega se trasmette BLM, ricevuta; avviso sulle pratiche concorrenti sullo stesso bando con motivazione se il REV è coinvolto; registro dei contatti con la PA; domande di BLM in proprio con RP e REV diversi dall'AU e segnalazione all'OdV; deroghe solo degli amministratori, motivate e in cronologia. I 12 progetti esistenti sono nella fase "inviata": vanno indicati RP e REV.
+
+**Da portare al consulente.**
+- Su decisione di BLM non ci sono la scheda primo contatto e la checklist dei requisiti approvata da RAP o AU (PR.01 §4.1.1 e §4.1.2): il protocollo va allineato, oppure va indicato un presidio alternativo.
+- La conferma scritta del cliente sulla versione finale è richiesta sempre (PR.01 §4.2.3); la delega solo quando trasmette BLM (§4.2.4). Una sola email del cliente può valere per entrambe.
+
+**Passaggio B: da fare.** Richieste di integrazione con scadenza e controllo del REV, rendicontazione (dichiarazione del cliente sul cumulo, checklist di RP e REV), registro delle rettifiche dopo l'invio con informativa ad AU e OdV.
+
 ## Nuove funzioni (materiale di Stefano, 19/11/2026)
 
 Da progettare dopo le fasi 3 e 4, partendo dal disegno dei processi: strutture di cartelle Drive per tipo di processo, controllo dei documenti richiesti, rilevazione dei file caricati direttamente su Drive con richiesta di abbinamento, registrazione di email, deroghe e accordi telefonici come documenti tracciati, esposizione dei dati per il cervello aziendale (Obsidian o Claude).

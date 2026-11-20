@@ -27,6 +27,8 @@ export default function RuoliPermessi() {
   const [caricamento, setCaricamento] = useState(true)
   const [inSalvataggio, setInSalvataggio] = useState<string | null>(null)
   const [errore, setErrore] = useState('')
+  const [auId, setAuId] = useState<string>('')
+  const [utenti, setUtenti] = useState<{ id: string; nome: string }[]>([])
 
   useEffect(() => {
     (async () => {
@@ -37,6 +39,8 @@ export default function RuoliPermessi() {
         setCatalogo(d.catalogo)
         setRuoli(d.ruoli)
         setMatrice(d.matrice)
+        setAuId(d.au_id || '')
+        setUtenti(d.utenti || [])
       } catch (e) {
         setErrore(e instanceof Error ? e.message : 'Errore')
       } finally {
@@ -128,6 +132,28 @@ export default function RuoliPermessi() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h3 className="text-sm font-semibold text-gray-900 mb-1">Amministratrice Unica della società</h3>
+        <p className="text-xs text-gray-500 mb-2">
+          Per le domande presentate da BLMProject in proprio, responsabile di pratica e revisore devono essere persone diverse dall&apos;AU.
+        </p>
+        <select value={auId} disabled={inSalvataggio === 'au'}
+          onChange={async e => {
+            const valore = e.target.value
+            setInSalvataggio('au'); setErrore('')
+            try {
+              const r = await fetch('/api/admin/permessi', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ au_id: valore || null }) })
+              const d = await r.json()
+              if (!r.ok) throw new Error(d.error || 'Salvataggio non riuscito')
+              setAuId(valore)
+            } catch (err) { setErrore(err instanceof Error ? err.message : 'Errore') } finally { setInSalvataggio(null) }
+          }}
+          className="px-2 py-1.5 border border-gray-300 rounded text-sm">
+          <option value="">Non indicata</option>
+          {utenti.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
+        </select>
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 p-4">

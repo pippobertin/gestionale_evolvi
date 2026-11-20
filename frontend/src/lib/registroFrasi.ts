@@ -70,7 +70,11 @@ const OGGETTI: Record<string, string> = {
   scadenze_bandi_clienti_esigenze: "l'esigenza del cliente",
   scadenze_bandi_consulenti_clienti: 'il collegamento con il consulente',
   scadenze_bandi_responsabili_scadenze: 'il responsabile della scadenza',
-  scadenze_bandi_backup_registro: 'la registrazione di backup'
+  scadenze_bandi_backup_registro: 'la registrazione di backup',
+  scadenze_bandi_ordini_lavoro: "l'ordine di lavoro",
+  scadenze_bandi_contatti_pa: 'il contatto con la PA',
+  scadenze_bandi_pratica_verifiche: 'la verifica della pratica',
+  scadenze_bandi_pratica_passaggi: 'il passaggio di fase della pratica'
 }
 
 const CAMPI: Record<string, string> = {
@@ -84,7 +88,9 @@ const CAMPI: Record<string, string> = {
   attivo_utente: 'attivo', accesso_fino_al: 'fine dell\'accesso', password_hash: 'password',
   responsabile_id: 'responsabile', referente_interno: 'referente interno', ateco: 'codice ATECO',
   codice_ateco: 'codice ATECO', contenuto_markdown: 'testo', cliente_id: 'cliente collegato',
-  overall_status: 'stato del contratto', signed_contract_received: 'contratto firmato ricevuto'
+  overall_status: 'stato del contratto', signed_contract_received: 'contratto firmato ricevuto',
+  fase: 'fase della pratica', rp_id: 'responsabile di pratica', rev_id: 'revisore', pratica_propria: 'domanda di BLM in proprio',
+  trasmissione: 'chi trasmette', confermato: 'confermato dal cliente', rendicontazione: 'rendicontazione'
 }
 
 function chi(r: RigaRegistro): string {
@@ -161,6 +167,8 @@ function fraseEvento(r: RigaRegistro): { frase: string; categoria: Gruppo['categ
       return { frase: `${autore}: operazione non consentita dal ruolo (${(r.descrizione || '').replace(/^Permesso negato: /, '')})`, categoria: 'sicurezza' }
     case 'deroga_approvazione':
       return { frase: `${autore} ha approvato in deroga: ${r.descrizione || ''}`, categoria: 'contratti' }
+    case 'segnalazione_odv':
+      return { frase: `Segnalazione all'OdV: ${r.descrizione || ''}`, categoria: 'contratti' }
     case 'permessi_modificati':
       return { frase: `${autore} ha modificato i permessi. ${r.descrizione || ''}`, categoria: 'sicurezza' }
     default:

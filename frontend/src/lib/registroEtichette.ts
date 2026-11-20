@@ -14,7 +14,8 @@ export const ETICHETTE_EVENTO: Record<string, string> = {
   esportazione_registro: 'Esportazione del registro',
   permesso_negato: 'Operazione negata',
   deroga_approvazione: 'Approvazione in deroga',
-  permessi_modificati: 'Permessi modificati'
+  permessi_modificati: 'Permessi modificati',
+  segnalazione_odv: 'Segnalazione all\'OdV'
 }
 
 /** Gruppi di eventi per il filtro. */
@@ -26,7 +27,7 @@ export const GRUPPI_EVENTO: Record<string, { etichetta: string; eventi: string[]
   negati: { etichetta: 'Accessi negati', eventi: ['accesso_negato'] },
   password: { etichetta: 'Password', eventi: ['cambio_password', 'reimpostazione_password'] },
   email: { etichetta: 'Email inviate', eventi: ['email_inviata'] },
-  permessi: { etichetta: 'Permessi, operazioni negate e deroghe', eventi: ['permesso_negato', 'deroga_approvazione', 'permessi_modificati'] }
+  permessi: { etichetta: 'Permessi, operazioni negate e deroghe', eventi: ['permesso_negato', 'deroga_approvazione', 'permessi_modificati', 'segnalazione_odv'] }
 }
 
 export const ETICHETTE_CANALE: Record<string, string> = {
@@ -90,7 +91,12 @@ const ETICHETTE_TABELLA: Record<string, string> = {
   scadenze_bandi_fabbisogno_inserimenti_previsti: 'Fabbisogno: inserimenti',
   scadenze_bandi_profiling_template: 'Modelli di profilazione',
   scadenze_bandi_backup_registro: 'Backup',
-  scadenze_bandi_sessioni: 'Sessioni'
+  scadenze_bandi_sessioni: 'Sessioni',
+  scadenze_bandi_ordini_lavoro: 'Ordini di lavoro',
+  scadenze_bandi_contatti_pa: 'Contatti con la PA',
+  scadenze_bandi_pratica_verifiche: 'Verifiche della pratica',
+  scadenze_bandi_pratica_passaggi: 'Fasi della pratica',
+  scadenze_bandi_checklist_voci: 'Voci delle checklist'
 }
 
 export function etichettaTabella(tabella: string | null | undefined): string {

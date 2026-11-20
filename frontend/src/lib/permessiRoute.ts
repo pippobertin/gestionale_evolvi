@@ -28,6 +28,9 @@ const REGOLE: Regola[] = [
   // Contratti firmati
   { metodo: 'POST', schema: new RegExp(`^/api/contracts/tracking/${ID}/register-signed$`), permesso: 'contratti.registra_firmato' },
   { metodo: 'POST', schema: new RegExp(`^/api/contracts/tracking/${ID}/upload-signed$`), permesso: 'contratti.registra_firmato' },
+  // Pratica: ordine di lavoro (generazione e conferma del cliente)
+  { metodo: 'POST', schema: new RegExp(`^/api/pratiche/${ID}/ordine-lavoro$`), permesso: 'contratti.genera' },
+  { metodo: 'POST', schema: new RegExp(`^/api/pratiche/${ID}/ordine-lavoro/${ID}/conferma$`), permesso: 'contratti.registra_firmato' },
   // Email
   { metodo: 'POST', schema: /^\/api\/gmail\/send$/, permesso: 'email.invia' },
   { metodo: 'POST', schema: /^\/api\/interrogazioni\/email-bulk$/, permesso: 'email.invia' },

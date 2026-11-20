@@ -760,9 +760,17 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
                     </div>
                   </td>
                   <td className="px-1 py-2">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getStatoColor(progetto.stato_calcolato)}`}>
-                      {progetto.stato_calcolato.replace('_', ' ')}
-                    </span>
+                    {(progetto as any).fase && (progetto as any).fase !== 'inviata' ? (
+                      // Pratica non ancora inviata: si mostra la fase del percorso (Modello 231)
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full border bg-blue-50 text-blue-800 border-blue-200"
+                        title="Fase della pratica prima dell'invio">
+                        {({ incarico: 'INCARICO', progettazione: 'PROGETTAZIONE', controllo_preinvio: 'CONTROLLO PRE-INVIO', invio: 'CONFERMA E INVIO' } as Record<string, string>)[(progetto as any).fase] || (progetto as any).fase}
+                      </span>
+                    ) : (
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getStatoColor(progetto.stato_calcolato)}`}>
+                        {progetto.stato_calcolato.replace('_', ' ')}
+                      </span>
+                    )}
                   </td>
                   <td className="px-1 py-2 text-center">
                     <div className="text-sm">
