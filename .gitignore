@@ -45,6 +45,8 @@ logs
 # Development archives
 _dev_archive/
 **/backup/
+# eccezione: route API del backup del gestionale (codice, non dati)
+!frontend/src/app/api/backup/
 **/*_docs_archive/
 
 # Temporary files
