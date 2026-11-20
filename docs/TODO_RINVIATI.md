@@ -43,7 +43,7 @@ Una pagina riservata agli admin, di facile lettura e con filtri (persona, period
 
 ## Correzioni funzionali
 
-1. **Dimensione d'impresa.** Associate e collegate sono invertite rispetto alla Raccomandazione 2003/361/CE; la classificazione usa il parametro peggiore invece della regola "ULA e (fatturato oppure attivo)"; manca la regola dei due esercizi consecutivi.
+1. **Dimensione d'impresa: corretta il 20/11/2026** (regola ULA e fatturato oppure attivo, associate/collegate, dati mancanti, storico per esercizio con regola dei due esercizi e registro delle modifiche). Resta: i filtri di Interrogazioni usano la dimensione dell'ultimo esercizio, non quella riconosciuta con la regola dei due esercizi. Testo originale: Associate e collegate sono invertite rispetto alla Raccomandazione 2003/361/CE; la classificazione usa il parametro peggiore invece della regola "ULA e (fatturato oppure attivo)"; manca la regola dei due esercizi consecutivi.
 2. **Perimetro de minimis.** L'impresa unica è calcolata includendo le partecipazioni di minoranza ed escludendo le controllate, per effetto dell'errore precedente.
 3. **Notifiche delle scadenze.** Lo scheduler parte solo se un browser è aperto nella finestra giusta; la coda email si svuota solo a mano; le scadenze contrattuali non generano email; i responsabili per gruppo o per bando sono ignorati. Richiede un'attività pianificata vera (vedi Vercel Pro).
 4. **Conversione prospect FPI e Consulenti: già a posto (verificato il 20/11/2026).** Il vincolo ammette EVOLVI, SPOT, FPI, CONSULENTI e RIFIUTATO.

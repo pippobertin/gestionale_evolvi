@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { dimensioneAggregata } from '@/lib/dimensioneImpresa'
+import { dimensioneAggregata, dimensioniPerEsercizio, applicaDueEsercizi, type DatiEsercizio } from '@/lib/dimensioneImpresa'
 import {
   Plus,
   Search,
@@ -81,6 +81,7 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
 
   // Collegamenti per calcolo dimensione aggregata
   const [tuttiCollegamenti, setTuttiCollegamenti] = useState<any[]>([])
+  const [eserciziPerCliente, setEserciziPerCliente] = useState<Record<string, DatiEsercizio[]>>({})
 
   // Fetch clienti da Supabase
   useEffect(() => {
@@ -162,6 +163,23 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
           )
         `)
       setTuttiCollegamenti(collegamentiData || [])
+
+      // Storico per esercizio (regola dei due esercizi consecutivi)
+      try {
+        const esercizi = await fetchAllRows<any>((from, to) =>
+          supabase.from('scadenze_bandi_clienti_esercizi')
+            .select('cliente_id, esercizio, ula, fatturato, attivo')
+            .order('id')
+            .range(from, to)
+        )
+        const mappa: Record<string, DatiEsercizio[]> = {}
+        esercizi.forEach(r => {
+          (mappa[r.cliente_id] = mappa[r.cliente_id] || []).push({ esercizio: r.esercizio, ula: r.ula, fatturato: r.fatturato, attivo: r.attivo })
+        })
+        setEserciziPerCliente(mappa)
+      } catch (e) {
+        console.warn('Storico esercizi non disponibile:', e)
+      }
 
       // Conteggio progetti per cliente con una sola query (prima: una richiesta per cliente)
       const progettiRows = await fetchAllRows<{ cliente_id: string | null }>((from, to) =>
@@ -251,6 +269,19 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
         fatturato: az.ultimo_fatturato,
         attivo: az.attivo_bilancio
       })
+    }
+
+    // Con lo storico: dimensione riconosciuta secondo la regola dei due esercizi consecutivi
+    const storico = eserciziPerCliente[cliente.id]
+    if (storico && storico.length > 0) {
+      const legamiConStorico = tuttiCollegamenti
+        .filter(c => c.azienda_madre_id === cliente.id && c.azienda_collegata_id)
+        .map(c => ({
+          tipo: c.tipo_collegamento,
+          percentuale: c.percentuale_partecipazione,
+          esercizi: eserciziPerCliente[c.azienda_collegata_id] || []
+        }))
+      return applicaDueEsercizi(dimensioniPerEsercizio(storico, legamiConStorico)).dimensione || ''
     }
 
     return dimensioneAggregata(

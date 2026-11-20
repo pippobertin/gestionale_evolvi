@@ -103,3 +103,113 @@ export const ETICHETTE_COLLEGAMENTO: Record<TipoCollegamento, { breve: string; d
   ASSOCIATA: { breve: 'Associata', descrizione: 'dal 25% al 50%, somma in proporzione alla quota' },
   COLLEGATA: { breve: 'Collegata', descrizione: 'oltre il 50% o influenza dominante, somma al 100%' },
 }
+
+// ---------------------------------------------------------------------------
+// Storico per esercizio e regola dei due esercizi consecutivi (art. 4)
+// ---------------------------------------------------------------------------
+
+const ORDINE_DIMENSIONI: Dimensione[] = ['MICRO', 'PICCOLA', 'MEDIA', 'GRANDE']
+
+export interface DatiEsercizio extends DatiImpresa {
+  esercizio: number
+}
+
+export interface LegameConStorico {
+  tipo: string | null | undefined
+  percentuale?: Numero
+  denominazione?: string
+  esercizi: DatiEsercizio[]
+}
+
+export interface DimensioneEsercizio {
+  esercizio: number
+  dimensione: Dimensione | null
+  datiIncompleti: boolean
+  /** Imprese associate/collegate di cui si sono usati i dati di un altro esercizio */
+  legamiAltroEsercizio: string[]
+}
+
+/**
+ * Dimensione di ogni esercizio, sommando le imprese associate e collegate.
+ * Per ciascuna si usano i dati dello stesso esercizio; se mancano, l'ultimo
+ * esercizio disponibile (segnalato in legamiAltroEsercizio).
+ */
+export function dimensioniPerEsercizio(base: DatiEsercizio[], legami: LegameConStorico[] = []): DimensioneEsercizio[] {
+  return [...base]
+    .sort((a, b) => a.esercizio - b.esercizio)
+    .map(e => {
+      const legamiAltroEsercizio: string[] = []
+      const legamiAnno: LegameImpresa[] = legami.map(l => {
+        const stesso = l.esercizi.find(x => x.esercizio === e.esercizio)
+        const scelto = stesso || [...l.esercizi].sort((a, b) => b.esercizio - a.esercizio)[0]
+        if (!stesso && scelto) legamiAltroEsercizio.push(`${l.denominazione || 'impresa legata'} (${scelto.esercizio})`)
+        return { tipo: l.tipo, percentuale: l.percentuale, ula: scelto?.ula, fatturato: scelto?.fatturato, attivo: scelto?.attivo }
+      })
+      const r = dimensioneAggregata(e, legamiAnno)
+      return { esercizio: e.esercizio, dimensione: r.dimensione, datiIncompleti: r.datiIncompleti, legamiAltroEsercizio }
+    })
+}
+
+export interface PassoDimensione {
+  esercizio: number
+  calcolata: Dimensione | null
+  riconosciuta: Dimensione | null
+}
+
+export interface DimensioneRiconosciuta {
+  /** Dimensione da usare: cambia solo se le soglie sono superate (o rientrate) per due esercizi consecutivi */
+  dimensione: Dimensione | null
+  /** Dimensione calcolata sull'ultimo esercizio disponibile */
+  ultimaCalcolata: Dimensione | null
+  ultimoEsercizio: number | null
+  /** true se l'ultimo esercizio indica una categoria diversa, non ancora confermata */
+  inAttesaDiConferma: boolean
+  messaggio: string | null
+  passi: PassoDimensione[]
+}
+
+/**
+ * Regola dei due esercizi consecutivi (Racc. 2003/361/CE, allegato, art. 4):
+ * la categoria cambia solo se le soglie risultano superate, o non più
+ * raggiunte, per due esercizi consecutivi. Al primo esercizio disponibile si
+ * usa la categoria calcolata (per le imprese nuove l'art. 4, par. 3 ammette
+ * anche stime). Se tra due esercizi manca un anno, il cambio non è confermato.
+ * Quando i due esercizi indicano categorie diverse nella stessa direzione si
+ * passa alla più vicina a quella attuale (esempio: MICRO, poi PICCOLA e MEDIA
+ * -> PICCOLA, perché solo le soglie della micro sono superate due volte).
+ */
+export function applicaDueEsercizi(esercizi: Array<{ esercizio: number; dimensione: Dimensione | null }>): DimensioneRiconosciuta {
+  const validi = esercizi.filter(e => e.dimensione !== null).sort((a, b) => a.esercizio - b.esercizio)
+  if (validi.length === 0) {
+    return { dimensione: null, ultimaCalcolata: null, ultimoEsercizio: null, inAttesaDiConferma: false, messaggio: null, passi: [] }
+  }
+  const peso = (d: Dimensione) => ORDINE_DIMENSIONI.indexOf(d)
+  let riconosciuta = validi[0].dimensione as Dimensione
+  const passi: PassoDimensione[] = [{ esercizio: validi[0].esercizio, calcolata: riconosciuta, riconosciuta }]
+
+  for (let i = 1; i < validi.length; i++) {
+    const prec = validi[i - 1]
+    const corr = validi[i]
+    const dCorr = corr.dimensione as Dimensione
+    const dPrec = prec.dimensione as Dimensione
+    const consecutivi = corr.esercizio === prec.esercizio + 1
+    if (dCorr !== riconosciuta && consecutivi && dPrec !== riconosciuta) {
+      const versoCorr = Math.sign(peso(dCorr) - peso(riconosciuta))
+      const versoPrec = Math.sign(peso(dPrec) - peso(riconosciuta))
+      if (versoCorr === versoPrec) {
+        riconosciuta = Math.abs(peso(dCorr) - peso(riconosciuta)) <= Math.abs(peso(dPrec) - peso(riconosciuta)) ? dCorr : dPrec
+      }
+    }
+    passi.push({ esercizio: corr.esercizio, calcolata: dCorr, riconosciuta })
+  }
+
+  const ultimo = validi[validi.length - 1]
+  const ultimaCalcolata = ultimo.dimensione as Dimensione
+  const inAttesaDiConferma = ultimaCalcolata !== riconosciuta
+  const etichetta = (d: Dimensione) => d.toLowerCase()
+  const messaggio = inAttesaDiConferma
+    ? `Nell'esercizio ${ultimo.esercizio} i dati indicano un'impresa ${etichetta(ultimaCalcolata)}: resta ${etichetta(riconosciuta)} finché il dato non si conferma per due esercizi consecutivi.`
+    : null
+
+  return { dimensione: riconosciuta, ultimaCalcolata, ultimoEsercizio: ultimo.esercizio, inAttesaDiConferma, messaggio, passi }
+}

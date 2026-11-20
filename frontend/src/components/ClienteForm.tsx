@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { dimensioneAggregata } from '@/lib/dimensioneImpresa'
+import StoricoDimensione from './StoricoDimensione'
 import {
   X,
   Save,
@@ -58,6 +59,7 @@ interface Cliente {
   ultimo_fatturato?: number
   attivo_bilancio?: number
   dimensione?: 'MICRO' | 'PICCOLA' | 'MEDIA' | 'GRANDE' // Campo calcolato automaticamente
+  esercizio_riferimento?: number | null // Esercizio (anno di bilancio) a cui si riferiscono ULA, fatturato e attivo
   matricola_inps?: string
   pat_inail?: string
   numero_dipendenti?: number
@@ -661,6 +663,15 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
         }
       })
 
+      const haDatiDimensionali = [dataToSave.ula, dataToSave.ultimo_fatturato, dataToSave.attivo_bilancio]
+        .some(v => v !== null && v !== undefined && v !== '')
+      if (haDatiDimensionali && !dataToSave.esercizio_riferimento) {
+        alert('Indica l\'esercizio di riferimento (anno di bilancio) di ULA, fatturato e attivo, nella sezione Dimensionamento.')
+        setSaving(false)
+        return
+      }
+
+      let clienteIdSalvato: string | undefined = cliente?.id
       if (cliente?.id) {
         // Update existing client
         const { error } = await supabase
@@ -676,11 +687,29 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
           creato_da: user?.id
         }
 
-        const { error } = await supabase
+        const { data: nuovo, error } = await supabase
           .from('scadenze_bandi_clienti')
           .insert([clienteData])
+          .select('id')
+          .single()
 
         if (error) throw error
+        clienteIdSalvato = nuovo?.id
+      }
+
+      // Storico per esercizio: i dati dimensionali vanno nella riga dell'esercizio indicato
+      if (clienteIdSalvato && haDatiDimensionali && dataToSave.esercizio_riferimento) {
+        const { error: eseErr } = await supabase
+          .from('scadenze_bandi_clienti_esercizi')
+          .upsert({
+            cliente_id: clienteIdSalvato,
+            esercizio: dataToSave.esercizio_riferimento,
+            ula: dataToSave.ula ?? null,
+            fatturato: dataToSave.ultimo_fatturato ?? null,
+            attivo: dataToSave.attivo_bilancio ?? null,
+            aggiornato_da: user?.id
+          }, { onConflict: 'cliente_id,esercizio' })
+        if (eseErr) console.warn('Storico esercizi non aggiornato:', eseErr)
       }
 
       onSave()
@@ -1339,6 +1368,31 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
 
         return (
           <div className="space-y-3">
+            <div className="max-w-xs">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Esercizio di riferimento
+              </label>
+              <input
+                type="number"
+                min={1990}
+                max={2100}
+                value={formData.esercizio_riferimento || ''}
+                onChange={(e) => handleInputChange('esercizio_riferimento', e.target.value === '' ? null : parseInt(e.target.value, 10))}
+                className="input"
+                placeholder={String(new Date().getFullYear() - 1)}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Anno di bilancio a cui si riferiscono ULA, fatturato e attivo. Salvando, i dati vanno nello storico di quell'esercizio.
+              </p>
+            </div>
+
+            {cliente?.id && (
+              <StoricoDimensione
+                clienteId={cliente.id}
+                collegamenti={collegamenti.filter(c => c.azienda_collegata_id) as any}
+                modificabile={false}
+              />
+            )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

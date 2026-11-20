@@ -30,6 +30,7 @@ import FormazioneManager from './formazione/FormazioneManager'
 import ContributiOttenutiManager from './ContributiOttenutiManager'
 import NoteTimeline from './NoteTimeline'
 import ListaSpesa from './ListaSpesa'
+import StoricoDimensione from './StoricoDimensione'
 
 interface CollegamentoAziendale {
   id: string
@@ -575,6 +576,8 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
         const dimensioneCalc = calcolaDimensioneAggregata()
         return (
           <div className="space-y-3">
+            <StoricoDimensione clienteId={cliente.id} collegamenti={collegamenti} />
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">ULA (Unità Lavorative Annue)</label>
