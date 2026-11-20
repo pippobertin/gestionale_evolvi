@@ -51,8 +51,8 @@ Ruoli applicati dal server sulle operazioni critiche, registro delle operazioni 
 10. **Eventi di calendario.** Il trigger su `updated_at` della tabella `calendar_events` potrebbe riferirsi a una colonna mancante: da verificare prima di modificare eventi da codice.
 11. **Tracking dei contratti di progetto ricostruito.** Le 12 righe ricostruite il 19/11/2026 dai PDF approvati su Drive hanno come destinatario l'email attuale del cliente e come data d'invio la creazione del PDF; se un invio di allora era fallito, il dato va corretto a mano.
 
-12. **Firma email nella sezione Email.** La firma impostata nelle Impostazioni viene aggiunta solo alle email di approvazione contratto, contratto Evolvi, questionario fabbisogno e invio massivo da Interrogazioni; non a quelle scritte nella sezione Email (inviate come testo semplice), né all'invio del contratto di progetto e ai solleciti.
-13. **File orfani nell'archivio progetti.** I caricamenti manuali nei progetti fallivano dopo aver salvato il file (vincolo sulla categoria): eventuali file senza riga nel database, per esempio la prova del 19/11/2026 nel progetto MILLENERGIE, si possono eliminare.
+12. **Firma email nella sezione Email: risolto il 20/11/2026.** Le email della sezione Email partono in testo e HTML con la firma dell'utente. Restano senza firma l'invio del contratto di progetto da "Invia email" e i solleciti.
+13. **File orfani nell'archivio progetti: risolto il 20/11/2026.** Caricamento ed eliminazione dei documenti di progetto corretti; il Modul_C.pdf di TRE GELSI è stato ricollegato. Restano quattro file di progetti eliminati, eliminabili dalla dashboard.
 
 ## Nuove funzioni (materiale di Stefano, 19/11/2026)
 
