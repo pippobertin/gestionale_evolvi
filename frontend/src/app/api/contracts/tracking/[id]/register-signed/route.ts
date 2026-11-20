@@ -70,7 +70,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const { data: tracking, error: trackingError } = await supabase
       .from('scadenze_bandi_contract_tracking')
-      .select('id, entity_type, entity_id, cliente_id, contract_document_url, signed_contract_received, signed_contract_drive_url')
+      .select('id, entity_type, entity_id, cliente_id, contract_document_url, signed_contract_received, signed_contract_drive_url, signed_contract_notes')
       .eq('id', id)
       .single()
     if (trackingError || !tracking) {
@@ -125,7 +125,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         signed_contract_drive_url: caricato.webViewLink,
         signed_contract_file_name: nomeFile,
         signed_contract_canale: canale,
-        signed_contract_notes: note,
+        // Le note esistenti (per esempio quella della ricostruzione da Drive) si conservano
+        signed_contract_notes: [tracking.signed_contract_notes, note].filter(Boolean).join('\n') || null,
         signed_contract_registrato_da: utente.userId,
         signed_contract_registrato_at: adesso,
         overall_status: 'SIGNED_RECEIVED',

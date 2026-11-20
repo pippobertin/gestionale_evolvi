@@ -97,6 +97,7 @@ export async function POST(request: NextRequest) {
 
         // 1. Scadenza contratto (data_fine, priorità ALTA)
         const scadenzaContratto = {
+          cliente_id: data.cliente_id,
           entity_type: 'CONTRATTO_EVOLVI',
           entity_id: data.id,
           titolo: `Scadenza contratto Evolvi - ${denominazione}`,
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
         // 2. Reminder rinnovo (data_fine - 30 giorni, priorità MEDIA)
         const dataRinnovo = new Date(dataFine.getTime() - 30 * 24 * 60 * 60 * 1000)
         const scadenzaRinnovo = {
+          cliente_id: data.cliente_id,
           entity_type: 'CONTRATTO_EVOLVI',
           entity_id: data.id,
           titolo: `Rinnovo contratto Evolvi - ${denominazione}`,

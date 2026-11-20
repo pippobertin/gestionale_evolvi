@@ -46,17 +46,19 @@ Una pagina riservata agli admin, di facile lettura e con filtri (persona, period
 1. **Dimensione d'impresa.** Associate e collegate sono invertite rispetto alla Raccomandazione 2003/361/CE; la classificazione usa il parametro peggiore invece della regola "ULA e (fatturato oppure attivo)"; manca la regola dei due esercizi consecutivi.
 2. **Perimetro de minimis.** L'impresa unica è calcolata includendo le partecipazioni di minoranza ed escludendo le controllate, per effetto dell'errore precedente.
 3. **Notifiche delle scadenze.** Lo scheduler parte solo se un browser è aperto nella finestra giusta; la coda email si svuota solo a mano; le scadenze contrattuali non generano email; i responsabili per gruppo o per bando sono ignorati. Richiede un'attività pianificata vera (vedi Vercel Pro).
-4. **Conversione prospect FPI e Consulenti.** Il vincolo sul campo `decisione` della tabella prospect ammette solo EVOLVI, SPOT e RIFIUTATO: da verificare e allineare.
+4. **Conversione prospect FPI e Consulenti: già a posto (verificato il 20/11/2026).** Il vincolo ammette EVOLVI, SPOT, FPI, CONSULENTI e RIFIUTATO.
 5. **Rimozione della fatturazione Evolvi.** Deciso di eliminarla perché le fatture si emettono con il gestionale collegato allo SDI. Prima esportare le eventuali fatture presenti.
 6. **Contratto firmato: risolto il 20/11/2026.** "Registra contratto firmato" nei contratti di progetto e nei contratti Evolvi: file su Drive accanto al contratto approvato, data, canale, note, chi ha registrato; i solleciti si fermano.
 7. **Riconversione cliente in prospect.** Cancella fisicamente fatture, contratti, documenti, progetti e formazione del cliente; pulsante visibile a tutti.
 8. **Caricamento su Drive dei documenti dei bandi.** Cerca la cartella del bando nel posto sbagliato e quindi non funziona.
-9. **Prospect: stato predefinito.** Il valore predefinito della colonna `stato` ("nuovo") non è ammesso dal suo stesso vincolo: un inserimento che non indica lo stato viene rifiutato.
-10. **Eventi di calendario.** Il trigger su `updated_at` della tabella `calendar_events` potrebbe riferirsi a una colonna mancante: da verificare prima di modificare eventi da codice.
+9. **Prospect: stato predefinito: risolto il 20/11/2026** (ora 'bozza').
+10. **Eventi di calendario: risolto il 20/11/2026.** Aggiunta la colonna updated_at richiesta dal trigger.
 11. **Tracking dei contratti di progetto ricostruito.** Le 12 righe ricostruite il 19/11/2026 dai PDF approvati su Drive hanno come destinatario l'email attuale del cliente e come data d'invio la creazione del PDF; se un invio di allora era fallito, il dato va corretto a mano.
 
-12. **Firma email nella sezione Email: risolto il 20/11/2026.** Le email della sezione Email partono in testo e HTML con la firma dell'utente. Restano senza firma l'invio del contratto di progetto da "Invia email" e i solleciti.
+12. **Firma email nella sezione Email: risolto il 20/11/2026.** Le route /api/contracts/send-email e /api/contracts/tracking/[id]/send-reminder non sono richiamate da nessuna schermata (l'invio del contratto avviene nell'approvazione, che include la firma; il pannello dei solleciti non è mostrato) e inviano con il token di sistema: se si vogliono i solleciti, vanno riprogettati con l'account dell'utente e la firma.
 13. **File orfani nell'archivio progetti: risolto il 20/11/2026.** Caricamento ed eliminazione dei documenti di progetto corretti; il Modul_C.pdf di TRE GELSI è stato ricollegato. Restano quattro file di progetti eliminati, eliminabili dalla dashboard.
+
+14. **Scadenze della formazione: risolto il 20/11/2026.** La tabella delle scadenze contrattuali non aveva cliente_id né il tipo FORMAZIONE, e il codice usava colonne inesistenti: nessuna scadenza di piani formativi o certificazioni veniva creata e la panoramica della formazione dava errore.
 
 ## Nuove funzioni (materiale di Stefano, 19/11/2026)
 

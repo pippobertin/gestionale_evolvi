@@ -29,14 +29,20 @@ export async function syncPianoScadenze(pianoId: string): Promise<void> {
     return
   }
 
+  // Colonne reali di scadenze_bandi_scadenze_contrattuali (prima il codice usava
+  // colonne inesistenti, 'tipo' e 'giorni_notifica_prima', e l'inserimento falliva)
   const scadenze: Array<{
     cliente_id: string
     entity_type: string
     entity_id: string
-    tipo: string
+    titolo: string
     descrizione: string
+    tipo_scadenza: string
+    categoria: string
     data_scadenza: string
-    giorni_notifica_prima: number[]
+    priorita: string
+    notifica_giorni_prima: number[]
+    tags: string[]
   }> = []
 
   // Scadenza rendicontazione
@@ -45,10 +51,14 @@ export async function syncPianoScadenze(pianoId: string): Promise<void> {
       cliente_id: piano.cliente_id,
       entity_type: 'FORMAZIONE',
       entity_id: piano.id,
-      tipo: 'SCADENZA_RENDICONTAZIONE',
+      titolo: `Rendicontazione piano "${piano.titolo}"`,
       descrizione: `Rendicontazione piano "${piano.titolo}" (${piano.codice_piano || 'senza codice'})`,
+      tipo_scadenza: 'AMMINISTRATIVA',
+      categoria: 'FORMAZIONE',
       data_scadenza: piano.data_scadenza_rendicontazione,
-      giorni_notifica_prima: [60, 30, 15, 7, 1],
+      priorita: 'ALTA',
+      notifica_giorni_prima: [60, 30, 15, 7, 1],
+      tags: ['SCADENZA_RENDICONTAZIONE'],
     })
   }
 
@@ -58,10 +68,14 @@ export async function syncPianoScadenze(pianoId: string): Promise<void> {
       cliente_id: piano.cliente_id,
       entity_type: 'FORMAZIONE',
       entity_id: piano.id,
-      tipo: 'SCADENZA_FINE_ATTIVITA',
+      titolo: `Fine attività piano "${piano.titolo}"`,
       descrizione: `Fine attività piano "${piano.titolo}" (${piano.codice_piano || 'senza codice'})`,
+      tipo_scadenza: 'AMMINISTRATIVA',
+      categoria: 'FORMAZIONE',
       data_scadenza: piano.data_fine_attivita,
-      giorni_notifica_prima: [30, 15, 7, 1],
+      priorita: 'MEDIA',
+      notifica_giorni_prima: [30, 15, 7, 1],
+      tags: ['SCADENZA_FINE_ATTIVITA'],
     })
   }
 
@@ -110,10 +124,14 @@ export async function syncCertificazioneScadenza(certId: string): Promise<void> 
         cliente_id: cert.cliente_id,
         entity_type: 'FORMAZIONE',
         entity_id: cert.id,
-        tipo: 'RINNOVO_CERTIFICAZIONE',
+        titolo: `Rinnovo ${tipoLabel}${persona}`,
         descrizione: `Rinnovo ${tipoLabel}${persona}`,
+        tipo_scadenza: 'CERTIFICAZIONE',
+        categoria: 'FORMAZIONE',
         data_scadenza: cert.data_scadenza,
-        giorni_notifica_prima: [90, 60, 30, 7],
+        priorita: 'MEDIA',
+        notifica_giorni_prima: [90, 60, 30, 7],
+        tags: ['RINNOVO_CERTIFICAZIONE'],
       })
 
     if (insertError) {
