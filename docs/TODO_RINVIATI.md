@@ -60,6 +60,8 @@ Una pagina riservata agli admin, di facile lettura e con filtri (persona, period
 
 14. **Scadenze della formazione: risolto il 20/11/2026.** La tabella delle scadenze contrattuali non aveva cliente_id né il tipo FORMAZIONE, e il codice usava colonne inesistenti: nessuna scadenza di piani formativi o certificazioni veniva creata e la panoramica della formazione dava errore.
 
+15. **Resti del vecchio client di posta IMAP: da decidere.** Le tabelle scadenze_bandi_email_messages, _folders, _accounts, _attachments, _links e _sync_logs contengono una copia di 9.274 email della casella bertin@ sincronizzate tra il 26 e il 28/11/2025 (1,6 GB nel database), non usate da nessuna parte del codice. Sono escluse dal backup mensile. Eliminarle libererebbe spazio nel progetto Supabase condiviso; serve una migrazione con conferma esplicita.
+
 ## Nuove funzioni (materiale di Stefano, 19/11/2026)
 
 Da progettare dopo le fasi 3 e 4, partendo dal disegno dei processi: strutture di cartelle Drive per tipo di processo, controllo dei documenti richiesti, rilevazione dei file caricati direttamente su Drive con richiesta di abbinamento, registrazione di email, deroghe e accordi telefonici come documenti tracciati, esposizione dei dati per il cervello aziendale (Obsidian o Claude).
