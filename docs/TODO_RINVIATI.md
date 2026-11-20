@@ -35,6 +35,12 @@ Tutte le tabelle, le viste, le funzioni di ricerca e gli archivi dei file del ge
 
 ## Fase 4: ruoli e tracciabilità per la 231
 
+**4A, registro delle operazioni: fatto il 20/11/2026** (in anteprima). Tabella scadenze_bandi_registro_operazioni non modificabile, trigger su 53 tabelle, autore reale anche dal server (intestazione inserita dal proxy e accettata dal database solo con la chiave di servizio), eventi di accesso, uscita, password ed email, pagina Impostazioni > Registro attività con filtri ed esportazione. Restano fuori, per volume o perché sono già registri: sessioni, impostazioni di sistema, log delle notifiche, coda email, log esistenti, dati RNA e tabelle di riferimento (ATECO, CCNL, sigle), vecchio client IMAP.
+
+**4B, ripristino:** da fare. Le eliminazioni conservano la riga intera nel registro; serve il pulsante "Ripristina" (anche a cascata, per esempio un cliente con referenti e note) e la gestione dei file eliminati dagli archivi Supabase, oggi definitiva.
+
+**4C, ruoli:** da fare. OdV in sola lettura (database, server e interfaccia), permessi per operazione.
+
 Ruoli applicati dal server sulle operazioni critiche, registro delle operazioni non modificabile (chi, quando, che cosa, valore prima e dopo), autore reale al posto di "system", separazione tra chi crea e chi approva i contratti, archiviazione al posto delle cancellazioni fisiche, rimozione delle cascate sui dati storici, cestino invece dell'eliminazione definitiva su Drive. Serve un'indicazione del consulente 231 sui tempi di conservazione dei documenti.
 
 ## Pagina dei registri per gli amministratori (richiesta del 20/11/2026)
