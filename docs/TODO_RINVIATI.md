@@ -2,7 +2,7 @@
 
 Elenco delle attività emerse durante l'analisi del 19/11/2026 e lasciate consapevolmente per un secondo momento. Per ciascuna è indicato perché conta e che cosa serve per farla. Le voci sono raggruppate per area e, dentro ogni area, in ordine di priorità.
 
-Ultimo aggiornamento: 19/11/2026.
+Ultimo aggiornamento: 20/11/2026.
 
 ## Già fatto il 19/11/2026 (per riferimento)
 
@@ -29,12 +29,9 @@ Ultimo aggiornamento: 19/11/2026.
 5. **Cambio password obbligatorio al primo accesso** applicato solo dall'interfaccia: il server rilascia comunque un token valido.
 6. **Mancano** limiti ai tentativi di login, autenticazione a due fattori, intestazioni di sicurezza (CSP, HSTS) e i controlli di tipo nel build (`ignoreBuildErrors: true` in `next.config.js`).
 
-## Fase 3: chiusura del database
+## Fase 3: chiusura del database (completata il 20/11/2026)
 
-Stato al 19/11/2026: passaggi A, B, C e D completati. Tutte le tabelle e le viste del gestionale (`scadenze_bandi_*`, `vista_*`, `scadenze_enhanced_simple`), compresi utenti e sessioni, rispondono solo al badge rilasciato dal gestionale ai suoi utenti attivi; la chiave pubblica da sola non legge e non scrive nulla. Restano:
-
-- **E. Archivi dei file: completato il 19/11/2026.** I bucket `bandi-documenti`, `clienti-documenti`, `progetti-documenti` (non più pubblico), `clienti-amministrativi` e `contratti-firmati` rispondono solo al badge; `firme-email` resta leggibile pubblicamente perché le immagini sono incorporate nelle email, ma si scrive solo dal server.
-- **F. Pulizia finale.** Token di sessione solo nel cookie protetto e non più nel `localStorage`, logout con revoca effettiva, prova conclusiva con la sola chiave pubblica anche sui file, cifratura dei token Google.
+Tutte le tabelle, le viste, le funzioni di ricerca e gli archivi dei file del gestionale rispondono solo al badge rilasciato al login a un utente attivo; le sessioni sono revocabili (logout effettivo), il token vive solo nel cookie httpOnly e il cambio della password temporanea è imposto dal server. Prova finale del 20/11/2026 con la sola chiave pubblica (`frontend/scripts/prova-chiave-pubblica.sh`): 99 controlli, nessuna risorsa accessibile. Resta da valutare la cifratura dei token Google salvati nel database (oggi leggibili solo dal server con la chiave riservata).
 
 ## Fase 4: ruoli e tracciabilità per la 231
 

@@ -31,7 +31,7 @@ Durante le prove del 19/11 sono stati corretti anche difetti preesistenti emersi
 
 Pubblicato in produzione: sessioni revocabili (il logout chiude la sessione nel database), token solo nel cookie httpOnly, cambio della password temporanea imposto dal server, badge del database ridotto a 15 minuti, Impostazioni → La mia password, Gestione utenti → Reimposta password, requisiti della password visibili. Chi entra con email e password ha dovuto rifare il login una volta.
 
-Prova finale con la sola chiave pubblica: `bash scripts/prova-chiave-pubblica.sh` dalla cartella `frontend` (legge la chiave da `.env.local`). Va lanciata dal Mac: l'ambiente cloud di Claude non raggiunge Supabase via HTTP.
+Prova finale con la sola chiave pubblica, lanciata dal Mac il 20/11/2026: 99 controlli chiusi, nessuno aperto (`bash scripts/prova-chiave-pubblica.sh` dalla cartella `frontend`; l'ambiente cloud di Claude non raggiunge Supabase via HTTP). Login Google in produzione verificato: una sola sessione per accesso, riusata tra le pagine. **La fase 3 è conclusa.**
 
 ## Dopo il passaggio F
 
