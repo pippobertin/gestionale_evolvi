@@ -21,17 +21,20 @@ export async function GET(request: NextRequest, { params }: Params) {
   const pratica = await datiPratica(id)
   if (!pratica) return NextResponse.json({ error: 'Pratica non trovata' }, { status: 404 })
 
-  const [stato, passaggi, ordini, contatti, verifiche, utenti, voci, au, tracking] = await Promise.all([
+  const [stato, passaggi, ordini, contatti, verifiche, utenti, voci, au, tracking, integrazioni, rendiconti, rettifiche] = await Promise.all([
     supabaseAdmin.rpc('gestionale_stato_pratica', { p_progetto: id }),
     supabaseAdmin.from('scadenze_bandi_pratica_passaggi').select('*').eq('progetto_id', id).order('quando', { ascending: false }),
     supabaseAdmin.from('scadenze_bandi_ordini_lavoro').select('*').eq('progetto_id', id).order('created_at', { ascending: false }),
     supabaseAdmin.from('scadenze_bandi_contatti_pa').select('*').eq('progetto_id', id).order('data', { ascending: false }),
     supabaseAdmin.from('scadenze_bandi_pratica_verifiche').select('*').eq('progetto_id', id).order('created_at', { ascending: false }),
-    supabaseAdmin.from('scadenze_bandi_utenti').select('id, nome, cognome, livello_permessi').eq('attivo', true).order('nome'),
+    supabaseAdmin.from('scadenze_bandi_utenti').select('id, nome, cognome, email, livello_permessi').eq('attivo', true).order('nome'),
     supabaseAdmin.from('scadenze_bandi_checklist_voci').select('tipo, chiave, etichetta, ordine').eq('attiva', true).order('ordine'),
     supabaseAdmin.from('scadenze_bandi_system_settings').select('value').eq('key', 'utente_au').maybeSingle(),
     supabaseAdmin.from('scadenze_bandi_contract_tracking').select('id, overall_status, signed_contract_received')
-      .eq('entity_type', 'PROGETTO').eq('entity_id', id).order('created_at', { ascending: false }).limit(1)
+      .eq('entity_type', 'PROGETTO').eq('entity_id', id).order('created_at', { ascending: false }).limit(1),
+    supabaseAdmin.from('scadenze_bandi_integrazioni').select('*').eq('progetto_id', id).order('scadenza', { ascending: true }),
+    supabaseAdmin.from('scadenze_bandi_rendiconti').select('*').eq('progetto_id', id).order('scadenza', { ascending: true }),
+    supabaseAdmin.from('scadenze_bandi_rettifiche').select('*').eq('progetto_id', id).order('data_rilevazione', { ascending: false })
   ])
   if (stato.error) return NextResponse.json({ error: stato.error.message }, { status: 500 })
 
@@ -51,7 +54,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       id: pratica.id, titolo: pratica.titolo_progetto, codice: pratica.codice_progetto, fase: pratica.fase,
       rp_id: pratica.rp_id, rev_id: pratica.rev_id, pratica_propria: pratica.pratica_propria,
       trasmissione: pratica.trasmissione, motivazione_stesso_bando: pratica.motivazione_stesso_bando,
-      data_invio: pratica.data_invio, bando: pratica.scadenze_bandi_bandi?.nome || '',
+      data_invio: pratica.data_invio, scadenza_rendicontazione: pratica.scadenza_rendicontazione_finale || null, bando: pratica.scadenze_bandi_bandi?.nome || '',
       cliente: pratica.scadenze_bandi_clienti?.denominazione || ''
     },
     stato: stato.data,
@@ -60,6 +63,11 @@ export async function GET(request: NextRequest, { params }: Params) {
     contatti: contatti.data || [],
     verifiche: verifiche.data || [],
     voci: (voci.data || []).filter(v => v.tipo === 'checklist_preinvio'),
+    vociRendicontazione: (voci.data || []).filter(v => v.tipo === 'checklist_rendicontazione'),
+    integrazioni: integrazioni.data || [],
+    rendiconti: rendiconti.data || [],
+    rettifiche: rettifiche.data || [],
+    email: Object.fromEntries((utenti.data || []).map(u => [u.id, u.email])),
     accordi: accordi || [],
     contratto: tracking.data?.[0] || null,
     utenti: (utenti.data || []).filter(u => u.livello_permessi !== 'odv').map(u => ({ id: u.id, nome: nomi[u.id] })),

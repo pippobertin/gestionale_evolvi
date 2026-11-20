@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Check, X, AlertTriangle, ExternalLink, FileText, Upload, ChevronRight, ChevronLeft, Trash2 } from 'lucide-react'
 import { LoadingSpinner } from './shared'
 import { useAuth } from '@/contexts/AuthContext'
+import PraticaDopoInvio from './PraticaDopoInvio'
 
 /**
  * Percorso della pratica di finanza agevolata (Modello 231, PR.01 e PR.02):
@@ -197,6 +198,11 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
           <p className="text-sm text-green-700">Domanda inviata{pratica.data_invio ? ` il ${dataIt(pratica.data_invio)}` : ''}. Da qui prosegue con lo stato del progetto (decreto atteso, ricevuto, accettato).</p>
         )}
       </Sezione>
+
+      {/* Dopo l'invio: integrazioni, rendicontazione, rettifiche */}
+      {pratica.fase === 'inviata' && (
+        <PraticaDopoInvio progettoId={progettoId} dati={dati} ricarica={carica} invia={inviaForm} occupato={inCorso !== null} />
+      )}
 
       {/* Ruoli */}
       <Sezione titolo="Responsabile di pratica e revisore">

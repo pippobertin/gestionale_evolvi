@@ -7,7 +7,7 @@ import { findProjectFolder, sottocartellaProgetto } from './driveProgetto'
 export async function datiPratica(progettoId: string) {
   const { data, error } = await supabaseAdmin
     .from('scadenze_bandi_progetti')
-    .select('id, titolo_progetto, codice_progetto, cliente_id, bando_id, fase, rp_id, rev_id, pratica_propria, trasmissione, motivazione_stesso_bando, data_invio, scadenze_bandi_bandi(nome, ente_erogatore), scadenze_bandi_clienti(denominazione, partita_iva, citta_fatturazione, provincia_fatturazione, indirizzo_fatturazione)')
+    .select('id, titolo_progetto, codice_progetto, cliente_id, bando_id, fase, rp_id, rev_id, pratica_propria, trasmissione, motivazione_stesso_bando, data_invio, scadenza_rendicontazione_finale, scadenze_bandi_bandi(nome, ente_erogatore), scadenze_bandi_clienti(denominazione, partita_iva, citta_fatturazione, provincia_fatturazione, indirizzo_fatturazione)')
     .eq('id', progettoId)
     .maybeSingle()
   if (error) throw new Error(error.message)

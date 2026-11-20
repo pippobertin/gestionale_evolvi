@@ -359,6 +359,48 @@ ${scadenza.note ? `📝 Note:\\n${scadenza.note}\\n\\n` : ''}🚀 Apri Gestional
     }
   }
 
+  /**
+   * Promemoria delle scadenze della pratica (Modello 231, PR.01 §4.3.6): un
+   * evento 30 giorni prima, uno 10 giorni prima e uno il giorno della scadenza,
+   * con responsabile di pratica e revisore invitati. Restituisce quanti eventi
+   * ha creato (le date già passate si saltano).
+   */
+  static async creaPromemoria231(p: {
+    entityId: string
+    titolo: string
+    descrizione: string
+    scadenza: string // AAAA-MM-GG
+    partecipanti: string[]
+  }): Promise<number> {
+    const oggi = new Date(); oggi.setHours(0, 0, 0, 0)
+    const quando = [
+      { giorni: 30, prefisso: 'Tra 30 giorni' },
+      { giorni: 10, prefisso: 'Tra 10 giorni' },
+      { giorni: 0, prefisso: 'Scadenza oggi' }
+    ]
+    let creati = 0
+    for (const q of quando) {
+      const giorno = new Date(`${p.scadenza}T09:00:00`)
+      giorno.setDate(giorno.getDate() - q.giorni)
+      if (giorno < oggi) continue
+      const fine = new Date(giorno); fine.setMinutes(30)
+      const id = await this.createCalendarEvent({
+        title: `${q.prefisso}: ${p.titolo}`,
+        description: `${p.descrizione}\n\nScadenza: ${p.scadenza.split('-').reverse().join('/')}\nPromemoria del Gestionale Evolvi (Modello 231).`,
+        start: giorno.toISOString(),
+        end: fine.toISOString(),
+        reminders: [{ method: 'popup', minutes: 60 }],
+        attendees: Array.from(new Set(p.partecipanti.filter(Boolean))),
+        location: 'Gestionale Evolvi'
+      })
+      if (id) {
+        await this.saveEventReference(p.entityId, id, 'promemoria_231')
+        creati++
+      }
+    }
+    return creati
+  }
+
   private static async saveEventReference(entityId: string, calendarEventId: string, eventType: string): Promise<void> {
     await supabase
       .from('scadenze_bandi_calendar_events')

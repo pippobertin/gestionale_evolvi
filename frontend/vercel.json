@@ -11,6 +11,10 @@
     {
       "path": "/api/backup/cron",
       "schedule": "0 2 1 * *"
+    },
+    {
+      "path": "/api/cron/scadenze-231",
+      "schedule": "30 5 * * *"
     }
   ]
 }

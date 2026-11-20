@@ -82,7 +82,9 @@ Una pagina riservata agli admin, di facile lettura e con filtri (persona, period
 - Su decisione di BLM non ci sono la scheda primo contatto e la checklist dei requisiti approvata da RAP o AU (PR.01 §4.1.1 e §4.1.2): il protocollo va allineato, oppure va indicato un presidio alternativo.
 - La conferma scritta del cliente sulla versione finale è richiesta sempre (PR.01 §4.2.3); la delega solo quando trasmette BLM (§4.2.4). Una sola email del cliente può valere per entrambe.
 
-**Passaggio B: da fare.** Richieste di integrazione con scadenza e controllo del REV, rendicontazione (dichiarazione del cliente sul cumulo, checklist di RP e REV), registro delle rettifiche dopo l'invio con informativa ad AU e OdV.
+**Passaggio B: fatto il 21/11/2026** (in anteprima). Integrazioni con scadenza e controllo a quattro occhi (chi verifica è diverso da chi prepara); rendiconti con dichiarazione del cliente sul cumulo, checklist del solo RP e del solo REV, firma del cliente o di un delegato BLM (delega e AU informata), ricevuta; rettifiche segnalate ad AU e OdV nel registro. Promemoria nel calendario Google 30 e 10 giorni prima e il giorno della scadenza, con RP e REV invitati. Controllo giornaliero (/api/cron/scadenze-231, 5:30 UTC) che segnala nel registro le scadenze superate.
+
+**Email automatiche ferme da un anno.** La coda scadenze_bandi_email_queue ha 861 email in attesa (l'ultima inviata il 21/11/2025): manca il collegamento Gmail di sistema (system_settings vuoto). Prima di ricollegarlo vanno annullate le email arretrate, altrimenti partirebbero tutte insieme.
 
 ## Nuove funzioni (materiale di Stefano, 19/11/2026)
 
