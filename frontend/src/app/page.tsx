@@ -22,6 +22,7 @@ import InterrogazioniContent from '@/components/InterrogazioniContent'
 import BandiEsterniManager from '@/components/BandiEsterniManager'
 import { LoadingSpinner } from '@/components/shared'
 import OdvApp from '@/components/OdvApp'
+import Modello231Content from '@/components/modello231/Modello231Content'
 
 // True solo quando la pagina è stata ricaricata (F5 / reload), non alla prima apertura.
 function isPageReload(): boolean {
@@ -122,6 +123,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'interrogazioni': return 'Interrogazioni'
       case 'consulenti': return 'Consulenti'
       case 'reports': return 'Reports'
+      case 'modello231': return 'Modello 231'
       case 'settings': return 'Impostazioni'
       case 'faq': return 'FAQ'
       default: return 'Dashboard'
@@ -142,6 +144,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'interrogazioni': return ['Home', 'Analytics', 'Interrogazioni']
       case 'consulenti': return ['Home', 'Gestione', 'Consulenti']
       case 'reports': return ['Home', 'Analytics', 'Reports']
+      case 'modello231': return ['Home', 'Sistema', 'Modello 231']
       case 'settings': return ['Home', 'Sistema', 'Impostazioni']
       case 'faq': return ['Home', 'Aiuto', 'FAQ']
       default: return ['Home', 'Dashboard']
@@ -178,6 +181,8 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
         return <ConsulentiContent onNavigate={onNavigate} />
       case 'reports':
         return <ReportsContent />
+      case 'modello231':
+        return <Modello231Content />
       case 'settings':
         return <SettingsContent />
       case 'faq':

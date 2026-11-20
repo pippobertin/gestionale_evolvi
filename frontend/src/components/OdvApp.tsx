@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import RegistroAttivita from './RegistroAttivita'
 import BackupGestionale from './BackupGestionale'
 import ChangeOwnPassword from './ChangeOwnPassword'
+import Modello231Content from './modello231/Modello231Content'
 
 /**
  * Area dell'Organismo di Vigilanza (fase 4C): consultazione in sola lettura dei
@@ -13,10 +14,11 @@ import ChangeOwnPassword from './ChangeOwnPassword'
  * impostazioni; il database stesso non concede altro al ruolo OdV.
  */
 
-type Scheda = 'registro' | 'backup' | 'password'
+type Scheda = 'registro' | 'registri231' | 'backup' | 'password'
 
 const SCHEDE: { id: Scheda; etichetta: string; icona: typeof ScrollText }[] = [
   { id: 'registro', etichetta: 'Registro attività', icona: ScrollText },
+  { id: 'registri231', etichetta: 'Qualifiche, interessi e conflitti', icona: ShieldCheck },
   { id: 'backup', etichetta: 'Backup e prove di ripristino', icona: Database },
   { id: 'password', etichetta: 'La mia password', icona: Key }
 ]
@@ -56,12 +58,13 @@ export default function OdvApp() {
 
       <main className="max-w-7xl mx-auto px-4 py-4">
         {scheda === 'registro' && <RegistroAttivita modalita="odv" />}
+        {scheda === 'registri231' && <Modello231Content solaLettura />}
         {scheda === 'backup' && <BackupGestionale solaLettura />}
         {scheda === 'password' && <ChangeOwnPassword />}
         {scheda !== 'password' && (
           <p className="text-xs text-gray-500 mt-6">
-            Gli altri registri del Modello 231 (qualifiche delle controparti, dichiarazioni degli interessi e conflitti,
-            report semestrale) si aggiungeranno qui quando saranno attivati nel gestionale.
+            Gli altri registri del Modello 231 (deleghe dei clienti, ingressi e uscite del personale, segnalatori,
+            deroghe, report semestrale) si aggiungeranno qui quando saranno attivati nel gestionale.
           </p>
         )}
       </main>

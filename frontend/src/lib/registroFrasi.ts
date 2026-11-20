@@ -74,7 +74,13 @@ const OGGETTI: Record<string, string> = {
   scadenze_bandi_ordini_lavoro: "l'ordine di lavoro",
   scadenze_bandi_contatti_pa: 'il contatto con la PA',
   scadenze_bandi_pratica_verifiche: 'la verifica della pratica',
-  scadenze_bandi_pratica_passaggi: 'il passaggio di fase della pratica'
+  scadenze_bandi_pratica_passaggi: 'il passaggio di fase della pratica',
+  scadenze_bandi_integrazioni: "l'integrazione richiesta dalla PA",
+  scadenze_bandi_rendiconti: 'il rendiconto',
+  scadenze_bandi_rettifiche: 'la rettifica',
+  scadenze_bandi_qualifiche: 'la qualifica della controparte',
+  scadenze_bandi_dichiarazioni_interessi: 'la dichiarazione degli interessi',
+  scadenze_bandi_conflitti: 'il conflitto di interessi'
 }
 
 const CAMPI: Record<string, string> = {

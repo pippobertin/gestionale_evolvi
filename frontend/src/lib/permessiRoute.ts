@@ -57,9 +57,9 @@ export function permessoRichiesto(metodo: string, percorso: string): Permesso | 
   return null
 }
 
-/** OdV: solo autenticazione e lettura dei registri (registro attività, backup). */
+/** OdV: solo autenticazione e lettura dei registri (registro attività, backup, registri del Modello 231). */
 export function consentitoAllOdv(metodo: string, percorso: string): boolean {
   if (percorso.startsWith('/api/auth/')) return true
   if (metodo !== 'GET') return false
-  return percorso === '/api/admin/registro' || percorso === '/api/backup'
+  return percorso === '/api/admin/registro' || percorso === '/api/backup' || percorso.startsWith('/api/231/')
 }

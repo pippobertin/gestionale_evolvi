@@ -20,7 +20,8 @@ import {
   HelpCircle,
   Inbox,
   Search,
-  Landmark
+  Landmark,
+  ShieldCheck
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -74,6 +75,7 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
     { id: 'interrogazioni', label: 'Interrogazioni', icon: Search, adminOnly: false, badge: 0 },
     { id: 'consulenti', label: 'Consulenti', icon: Building, adminOnly: false, badge: 0 },
     { id: 'reports', label: 'Reports', icon: BarChart3, adminOnly: false, badge: 0 },
+    { id: 'modello231', label: 'Modello 231', icon: ShieldCheck, adminOnly: false, badge: 0 },
     { id: 'settings', label: 'Impostazioni', icon: Settings, adminOnly: false, badge: 0 },
     { id: 'faq', label: 'FAQ', icon: HelpCircle, adminOnly: false, badge: 0 }
   ]

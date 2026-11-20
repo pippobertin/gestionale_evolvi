@@ -96,7 +96,13 @@ const ETICHETTE_TABELLA: Record<string, string> = {
   scadenze_bandi_contatti_pa: 'Contatti con la PA',
   scadenze_bandi_pratica_verifiche: 'Verifiche della pratica',
   scadenze_bandi_pratica_passaggi: 'Fasi della pratica',
-  scadenze_bandi_checklist_voci: 'Voci delle checklist'
+  scadenze_bandi_checklist_voci: 'Voci delle checklist',
+  scadenze_bandi_integrazioni: 'Integrazioni richieste dalla PA',
+  scadenze_bandi_rendiconti: 'Rendiconti',
+  scadenze_bandi_rettifiche: 'Rettifiche',
+  scadenze_bandi_qualifiche: 'Qualifica delle controparti',
+  scadenze_bandi_dichiarazioni_interessi: 'Dichiarazioni degli interessi',
+  scadenze_bandi_conflitti: 'Registro dei conflitti'
 }
 
 export function etichettaTabella(tabella: string | null | undefined): string {
