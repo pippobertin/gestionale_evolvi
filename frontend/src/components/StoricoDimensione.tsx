@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { History, Plus, Pencil, Trash2, X, Save } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { applicaDueEsercizi, dimensioniPerEsercizio, type DatiEsercizio, type LegameConStorico } from '@/lib/dimensioneImpresa'
+import { applicaDueEsercizi, dimensioniPerEsercizio, type DatiEsercizio, type LegameConStorico, type DimensioneRiconosciuta } from '@/lib/dimensioneImpresa'
 
 /**
  * Storico per esercizio dei dati dimensionali di un cliente, con la dimensione
@@ -59,11 +59,13 @@ const CAMPI: Record<string, string> = {
 
 const euro = (v: number | null) => v === null || v === undefined ? '-' : `€ ${Number(v).toLocaleString('it-IT')}`
 
-export default function StoricoDimensione({ clienteId, collegamenti = [], modificabile = true, onAggiornato }: {
+export default function StoricoDimensione({ clienteId, collegamenti = [], modificabile = true, onAggiornato, onRiconosciuta }: {
   clienteId: string
   collegamenti?: CollegamentoPerStorico[]
   modificabile?: boolean
   onAggiornato?: () => void
+  /** Riceve la dimensione riconosciuta (regola dei due esercizi) a ogni ricalcolo */
+  onRiconosciuta?: (r: DimensioneRiconosciuta, numeroEsercizi: number) => void
 }) {
   const { user } = useAuth()
   const [righe, setRighe] = useState<RigaEsercizio[]>([])
@@ -120,6 +122,10 @@ export default function StoricoDimensione({ clienteId, collegamenti = [], modifi
     )
     return { perAnno, riconosciuta: applicaDueEsercizi(perAnno) }
   }, [righe, eserciziLegami, collegamenti])
+
+  useEffect(() => {
+    onRiconosciuta?.(calcolo.riconosciuta, righe.length)
+  }, [calcolo])
 
   // I valori attuali della scheda cliente seguono l'ultimo esercizio dello storico
   const allineaCliente = async (elenco: RigaEsercizio[]) => {

@@ -31,6 +31,7 @@ import ContributiOttenutiManager from './ContributiOttenutiManager'
 import NoteTimeline from './NoteTimeline'
 import ListaSpesa from './ListaSpesa'
 import StoricoDimensione from './StoricoDimensione'
+import type { DimensioneRiconosciuta } from '@/lib/dimensioneImpresa'
 
 interface CollegamentoAziendale {
   id: string
@@ -117,6 +118,7 @@ interface ClienteDettaglioProps {
 
 export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, onNavigate, onClienteDeleted, initialTab, initialSubTab }: ClienteDettaglioProps) {
   const [cliente, setCliente] = useState<Cliente | null>(null)
+  const [riconosciuta, setRiconosciuta] = useState<{ r: DimensioneRiconosciuta; n: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentTab, setCurrentTab] = useState('anagrafica')
   const [collegamenti, setCollegamenti] = useState<CollegamentoAziendale[]>([])
@@ -124,6 +126,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
 
   useEffect(() => {
     if (isOpen && clienteId) {
+      setRiconosciuta(null)
       fetchCliente()
       loadCollegamenti()
     }
@@ -136,8 +139,8 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
     }
   }, [isOpen, initialTab])
 
-  const fetchCliente = async () => {
-    setLoading(true)
+  const fetchCliente = async (silenzioso = false) => {
+    if (!silenzioso) setLoading(true)
     try {
       const { data, error } = await supabase
         .from('scadenze_bandi_clienti')
@@ -573,10 +576,16 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
         )
 
       case 'dimensionamento':
-        const dimensioneCalc = calcolaDimensioneAggregata()
+        // Con lo storico vale la dimensione riconosciuta (regola dei due esercizi consecutivi)
+        const dimensioneCalc = (riconosciuta && riconosciuta.n > 0 ? riconosciuta.r.dimensione : null) || calcolaDimensioneAggregata()
         return (
           <div className="space-y-3">
-            <StoricoDimensione clienteId={cliente.id} collegamenti={collegamenti} />
+            <StoricoDimensione
+              clienteId={cliente.id}
+              collegamenti={collegamenti}
+              onAggiornato={() => fetchCliente(true)}
+              onRiconosciuta={(r, n) => setRiconosciuta({ r, n })}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
@@ -611,6 +620,12 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
                   </span>
                 ) : (
                   <span className="text-sm text-gray-500">Non determinabile: servono le ULA e il fatturato o l'attivo</span>
+                )}
+                {riconosciuta && riconosciuta.n > 0 && (
+                  <span className="text-xs text-blue-600">
+                    Riconosciuta con la regola dei due esercizi
+                    {riconosciuta.r.inAttesaDiConferma && riconosciuta.r.ultimaCalcolata ? ` (ultimo esercizio: ${riconosciuta.r.ultimaCalcolata}, da confermare)` : ''}
+                  </span>
                 )}
                 {collegamenti.length > 0 && dimensioneCalc && (
                   <span className="text-xs text-blue-600">
