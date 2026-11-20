@@ -48,7 +48,7 @@ Una pagina riservata agli admin, di facile lettura e con filtri (persona, period
 3. **Notifiche delle scadenze.** Lo scheduler parte solo se un browser è aperto nella finestra giusta; la coda email si svuota solo a mano; le scadenze contrattuali non generano email; i responsabili per gruppo o per bando sono ignorati. Richiede un'attività pianificata vera (vedi Vercel Pro).
 4. **Conversione prospect FPI e Consulenti.** Il vincolo sul campo `decisione` della tabella prospect ammette solo EVOLVI, SPOT e RIFIUTATO: da verificare e allineare.
 5. **Rimozione della fatturazione Evolvi.** Deciso di eliminarla perché le fatture si emettono con il gestionale collegato allo SDI. Prima esportare le eventuali fatture presenti.
-6. **Contratto firmato: risolto il 20/11/2026.** \"Registra contratto firmato\" nei contratti di progetto e nei contratti Evolvi: file su Drive accanto al contratto approvato, data, canale, note, chi ha registrato; i solleciti si fermano.
+6. **Contratto firmato: risolto il 20/11/2026.** "Registra contratto firmato" nei contratti di progetto e nei contratti Evolvi: file su Drive accanto al contratto approvato, data, canale, note, chi ha registrato; i solleciti si fermano.
 7. **Riconversione cliente in prospect.** Cancella fisicamente fatture, contratti, documenti, progetti e formazione del cliente; pulsante visibile a tutti.
 8. **Caricamento su Drive dei documenti dei bandi.** Cerca la cartella del bando nel posto sbagliato e quindi non funziona.
 9. **Prospect: stato predefinito.** Il valore predefinito della colonna `stato` ("nuovo") non è ammesso dal suo stesso vincolo: un inserimento che non indica lo stato viene rifiutato.
