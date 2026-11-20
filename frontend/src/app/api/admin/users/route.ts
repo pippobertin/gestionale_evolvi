@@ -3,6 +3,7 @@ import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import crypto from 'crypto'
 import bcrypt from 'bcrypt'
 import { requireAdmin } from '@/lib/jwtAuth'
+import { normalizzaAccessoFinoAl } from '@/lib/accessoUtente'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     // Recupera tutti gli utenti
     const { data: users, error } = await supabase
       .from('scadenze_bandi_utenti')
-      .select('id, email, nome, cognome, livello_permessi, attivo, created_at, updated_at, ultimo_accesso')
+      .select('id, email, nome, cognome, livello_permessi, attivo, accesso_fino_al, created_at, updated_at, ultimo_accesso')
       .order('created_at', { ascending: false })
 
     if (error) throw error
@@ -50,6 +51,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Livello permessi non valido' }, { status: 400 })
     }
 
+    const scadenza = normalizzaAccessoFinoAl(body.accesso_fino_al)
+    if (!scadenza.ok) {
+      return NextResponse.json({ error: 'Data di fine accesso non valida' }, { status: 400 })
+    }
+
     // Controlla se l'email esiste già
     const { data: existingUser, error: checkError } = await supabase
       .from('scadenze_bandi_utenti')
@@ -77,10 +83,11 @@ export async function POST(request: NextRequest) {
         first_login_password_change: true, // Deve cambiare password al primo accesso
         created_by: admin.userId,
         attivo: true,
+        accesso_fino_al: scadenza.valore,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }])
-      .select('id, email, nome, cognome, livello_permessi, attivo, created_at, updated_at, ultimo_accesso')
+      .select('id, email, nome, cognome, livello_permessi, attivo, accesso_fino_al, created_at, updated_at, ultimo_accesso')
       .single()
 
     if (createError) throw createError

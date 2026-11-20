@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { verifyJWT } from '@/lib/jwtAuth'
 import { creaSessione, impostaCookieSessione } from '@/lib/sessioni'
+import { accessoScaduto } from '@/lib/accessoUtente'
 
 /**
  * GET /api/auth/google-jwt
@@ -24,13 +25,17 @@ export async function GET(request: NextRequest) {
 
     const { data: utente, error } = await supabase
       .from('scadenze_bandi_utenti')
-      .select('id, email, nome, cognome, livello_permessi, attivo')
+      .select('id, email, nome, cognome, livello_permessi, attivo, accesso_fino_al')
       .eq('email', emailGoogle)
       .eq('attivo', true)
       .single()
 
     if (error || !utente) {
       return NextResponse.json({ error: 'User not found or inactive' }, { status: 404 })
+    }
+
+    if (accessoScaduto(utente.accesso_fino_al)) {
+      return NextResponse.json({ error: 'Accesso scaduto' }, { status: 403 })
     }
 
     const userData = {

@@ -10,6 +10,7 @@ import GmailSetupNew from './GmailSetupNew'
 import UserGmailConnection from './UserGmailConnection'
 import EmailSignatureEditor from './EmailSignatureEditor'
 import ChangeOwnPassword from './ChangeOwnPassword'
+import BackupGestionale from './BackupGestionale'
 import {
   Settings,
   Users,
@@ -97,9 +98,9 @@ export default function SettingsContent() {
     },
     {
       id: 'database',
-      label: 'Database',
+      label: 'Backup',
       icon: Database,
-      description: 'Backup, ripristino e manutenzione',
+      description: 'Esportazioni mensili e prove di ripristino',
       adminOnly: true
     }
   ]
@@ -282,24 +283,7 @@ export default function SettingsContent() {
         )
 
       case 'database':
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-4 h-4 bg-green-100 rounded-lg flex items-center justify-center">
-                <Database className="w-4 h-4 text-green-600" />
-              </div>
-              <div>
-                <h1 className="text-sm font-semibold text-gray-900">Database</h1>
-                <p className="text-gray-600">Gestisci backup e manutenzione</p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">Backup</h3>
-              <p className="text-gray-600">Sezione in sviluppo - Backup automatici e ripristino</p>
-            </div>
-          </div>
-        )
+        return <BackupGestionale />
 
       default:
         return <div>Sezione non trovata</div>

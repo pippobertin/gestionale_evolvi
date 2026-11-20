@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
 import type { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from './supabaseAdmin'
+import { accessoScaduto } from '@/lib/accessoUtente'
 
 /**
  * Sessioni del gestionale (fase 3, passaggio F).
@@ -130,7 +131,7 @@ export async function verificaSessione(token: string | null | undefined): Promis
       .maybeSingle(),
     supabaseAdmin
       .from('scadenze_bandi_utenti')
-      .select('id, email, livello_permessi, attivo, first_login_password_change')
+      .select('id, email, livello_permessi, attivo, accesso_fino_al, first_login_password_change')
       .eq('id', decoded.userId)
       .maybeSingle()
   ])
@@ -139,6 +140,7 @@ export async function verificaSessione(token: string | null | undefined): Promis
   if (sessione.revoked_at) return null
   if (new Date(sessione.expires_at).getTime() <= ora) return null
   if (!utente || !utente.attivo) return null
+  if (accessoScaduto(utente.accesso_fino_al)) return null
 
   const risultato: SessioneValida = {
     userId: utente.id,

@@ -21,6 +21,7 @@ const PUBBLICHE: { prefisso: string; motivo: string }[] = [
   { prefisso: '/api/clienti/match', motivo: 'n8n: header x-ingest-secret' },
   { prefisso: '/api/bandi-esterni/ingest-gmail', motivo: 'cron Vercel: CRON_SECRET / x-ingest-secret' },
   { prefisso: '/api/rna/sync', motivo: 'CRON_SECRET / INGEST_SECRET' },
+  { prefisso: '/api/backup/cron', motivo: 'cron Vercel: CRON_SECRET' },
   { prefisso: '/api/rna/agente', motivo: 'agente RNA sul Mac: header x-rna-agent-secret' },
   { prefisso: '/api/user/gmail/callback', motivo: 'ritorno da Google OAuth' },
 ]

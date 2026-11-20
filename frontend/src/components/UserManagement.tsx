@@ -13,8 +13,10 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  UserPlus
+  UserPlus,
+  CalendarClock
 } from 'lucide-react'
+import { accessoScaduto } from '@/lib/accessoUtente'
 import { LoadingSpinner } from './shared'
 
 interface User {
@@ -24,6 +26,7 @@ interface User {
   cognome: string
   livello_permessi: 'admin' | 'collaboratore'
   attivo: boolean
+  accesso_fino_al?: string | null
   created_at: string
   updated_at: string
   ultimo_accesso?: string
@@ -41,13 +44,16 @@ export default function UserManagement() {
     nome: '',
     cognome: '',
     email: '',
-    livello_permessi: 'collaboratore' as 'admin' | 'collaboratore'
+    livello_permessi: 'collaboratore' as 'admin' | 'collaboratore',
+    accesso_fino_al: ''
   })
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [temporaryPassword, setTemporaryPassword] = useState('')
   const [createdUserEmail, setCreatedUserEmail] = useState('')
   const [passwordModalTitolo, setPasswordModalTitolo] = useState('Utente Creato con Successo')
   const [utenteDaReimpostare, setUtenteDaReimpostare] = useState<User | null>(null)
+  const [utenteScadenza, setUtenteScadenza] = useState<User | null>(null)
+  const [nuovaScadenza, setNuovaScadenza] = useState('')
 
   useEffect(() => {
     fetchUsers()
@@ -181,7 +187,8 @@ export default function UserManagement() {
         nome: '',
         cognome: '',
         email: '',
-        livello_permessi: 'collaboratore'
+        livello_permessi: 'collaboratore',
+        accesso_fino_al: ''
       })
       setShowAddModal(false)
       setError('')
@@ -200,6 +207,22 @@ export default function UserManagement() {
   const changeUserRole = (user: User) => {
     const newRole = user.livello_permessi === 'admin' ? 'collaboratore' : 'admin'
     updateUser(user.id, { livello_permessi: newRole })
+  }
+
+  const formatGiorno = (giorno: string) => {
+    const [a, m, g] = giorno.slice(0, 10).split('-')
+    return `${g}/${m}/${a}`
+  }
+
+  const apriScadenza = (user: User) => {
+    setUtenteScadenza(user)
+    setNuovaScadenza(user.accesso_fino_al ? user.accesso_fino_al.slice(0, 10) : '')
+  }
+
+  const salvaScadenza = async (valore: string) => {
+    if (!utenteScadenza) return
+    await updateUser(utenteScadenza.id, { accesso_fino_al: valore || null })
+    setUtenteScadenza(null)
   }
 
   const formatDate = (dateString: string) => {
@@ -281,6 +304,9 @@ export default function UserManagement() {
                   Status
                 </th>
                 <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Accesso fino al
+                </th>
+                <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Registrato
                 </th>
                 <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -324,16 +350,33 @@ export default function UserManagement() {
                   </td>
                   <td className="px-3 py-1.5 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      user.attivo
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
+                      !user.attivo
+                        ? 'bg-red-100 text-red-800'
+                        : accessoScaduto(user.accesso_fino_al)
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-green-100 text-green-800'
                     }`}>
-                      {user.attivo ? (
-                        <><CheckCircle className="w-3 h-3 mr-1" /> Attivo</>
-                      ) : (
+                      {!user.attivo ? (
                         <><XCircle className="w-3 h-3 mr-1" /> Bloccato</>
+                      ) : accessoScaduto(user.accesso_fino_al) ? (
+                        <><CalendarClock className="w-3 h-3 mr-1" /> Accesso scaduto</>
+                      ) : (
+                        <><CheckCircle className="w-3 h-3 mr-1" /> Attivo</>
                       )}
                     </span>
+                  </td>
+                  <td className="px-3 py-1.5 whitespace-nowrap text-sm">
+                    <button
+                      onClick={() => apriScadenza(user)}
+                      disabled={actionLoading === user.id}
+                      className={`inline-flex items-center gap-1 hover:underline ${
+                        accessoScaduto(user.accesso_fino_al) ? 'text-amber-700' : user.accesso_fino_al ? 'text-gray-900' : 'text-gray-400'
+                      }`}
+                      title="Imposta o modifica la fine dell'accesso"
+                    >
+                      <CalendarClock className="w-3.5 h-3.5" />
+                      {user.accesso_fino_al ? formatGiorno(user.accesso_fino_al) : 'Senza scadenza'}
+                    </button>
                   </td>
                   <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-500">
                     {formatDate(user.created_at)}
@@ -451,6 +494,58 @@ export default function UserManagement() {
         </div>
       )}
 
+      {/* Fine accesso */}
+      {utenteScadenza && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center">
+                <CalendarClock className="w-4 h-4 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">Fine dell&apos;accesso</h3>
+                <p className="text-sm text-gray-500">{utenteScadenza.nome} {utenteScadenza.cognome}</p>
+              </div>
+            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Accesso fino al</label>
+            <input
+              type="date"
+              value={nuovaScadenza}
+              onChange={(e) => setNuovaScadenza(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="mt-1 mb-3 text-xs text-gray-500">
+              L&apos;utente può entrare fino a questo giorno compreso. Una data già passata chiude
+              l&apos;accesso entro pochi secondi, anche se è collegato in quel momento.
+            </p>
+            <div className="flex justify-between">
+              <button
+                onClick={() => salvaScadenza('')}
+                disabled={!utenteScadenza.accesso_fino_al || actionLoading === utenteScadenza.id}
+                className="px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40"
+              >
+                Togli la scadenza
+              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setUtenteScadenza(null)}
+                  className="px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={() => salvaScadenza(nuovaScadenza)}
+                  disabled={!nuovaScadenza || actionLoading === utenteScadenza.id}
+                  className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Salva
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add User Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -518,6 +613,21 @@ export default function UserManagement() {
                   <option value="admin">Amministratore</option>
                 </select>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Accesso fino al (facoltativo)
+                </label>
+                <input
+                  type="date"
+                  value={newUserData.accesso_fino_al}
+                  onChange={(e) => setNewUserData({...newUserData, accesso_fino_al: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Per tirocinanti e collaboratori a tempo: dal giorno successivo l&apos;accesso cessa da solo.
+                </p>
+              </div>
             </div>
 
             <div className="flex justify-end space-x-3">
@@ -528,7 +638,8 @@ export default function UserManagement() {
                     nome: '',
                     cognome: '',
                     email: '',
-                    livello_permessi: 'collaboratore'
+                    livello_permessi: 'collaboratore',
+                    accesso_fino_al: ''
                   })
                   setError('')
                 }}

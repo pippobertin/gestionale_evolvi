@@ -1,6 +1,7 @@
 import { AuthOptions } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 import { supabaseAdmin } from "@/lib/supabaseAdmin"
+import { accessoScaduto } from '@/lib/accessoUtente'
 
 async function refreshAccessToken(token: any) {
   try {
@@ -72,12 +73,12 @@ export const authOptions: AuthOptions = {
       if (!email) return false
       const { data, error } = await supabaseAdmin
         .from('scadenze_bandi_utenti')
-        .select('id')
+        .select('id, accesso_fino_al')
         .eq('email', email)
         .eq('attivo', true)
         .maybeSingle()
-      if (error || !data) {
-        console.warn('[auth] Accesso Google rifiutato: utente non censito o non attivo')
+      if (error || !data || accessoScaduto(data.accesso_fino_al)) {
+        console.warn('[auth] Accesso Google rifiutato: utente non censito, non attivo o con accesso scaduto')
         return false
       }
       return true

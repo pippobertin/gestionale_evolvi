@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { creaSessione, impostaCookieSessione } from '@/lib/sessioni'
+import { accessoScaduto } from '@/lib/accessoUtente'
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,6 +36,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Credenziali non valide' },
         { status: 401 }
+      )
+    }
+
+    // Accesso a termine scaduto: la password è giusta, ma l'accesso non è più consentito
+    if (accessoScaduto(utente.accesso_fino_al)) {
+      return NextResponse.json(
+        { error: "Il tuo accesso al gestionale è scaduto. Rivolgiti a un amministratore." },
+        { status: 403 }
       )
     }
 

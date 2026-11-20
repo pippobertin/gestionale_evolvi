@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { requireAdmin } from '@/lib/jwtAuth'
+import { normalizzaAccessoFinoAl } from '@/lib/accessoUtente'
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -28,11 +29,19 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         updates.livello_permessi = body.livello_permessi
       }
 
+      if (body.accesso_fino_al !== undefined) {
+        const scadenza = normalizzaAccessoFinoAl(body.accesso_fino_al)
+        if (!scadenza.ok) {
+          return NextResponse.json({ error: 'Data di fine accesso non valida' }, { status: 400 })
+        }
+        updates.accesso_fino_al = scadenza.valore
+      }
+
       const { data, error } = await supabase
         .from('scadenze_bandi_utenti')
         .update(updates)
         .eq('id', id)
-        .select('id, email, nome, cognome, livello_permessi, attivo, created_at, updated_at, ultimo_accesso')
+        .select('id, email, nome, cognome, livello_permessi, attivo, accesso_fino_al, created_at, updated_at, ultimo_accesso')
         .single()
 
       if (error) throw error
