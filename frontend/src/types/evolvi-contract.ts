@@ -147,6 +147,12 @@ export interface ContractTracking {
   signed_contract_received_at?: string
   signed_contract_storage_path?: string
   signed_contract_notes?: string
+  signed_contract_drive_id?: string
+  signed_contract_drive_url?: string
+  signed_contract_file_name?: string
+  signed_contract_canale?: 'email' | 'pec' | 'a_mano' | 'piattaforma_firma' | 'altro'
+  signed_contract_registrato_da?: string
+  signed_contract_registrato_at?: string
   reminder_sent_count: number
   last_reminder_sent_at?: string
   reminder_interval_days: number
@@ -210,4 +216,12 @@ export const PRIORITA_SCADENZA: Record<string, { label: string; color: string; b
   MEDIA: { label: 'Media', color: 'text-blue-600', bgColor: 'bg-blue-100' },
   ALTA: { label: 'Alta', color: 'text-orange-600', bgColor: 'bg-orange-100' },
   CRITICA: { label: 'Critica', color: 'text-red-600', bgColor: 'bg-red-100' }
+}
+
+export const CANALI_CONTRATTO_FIRMATO: Record<string, string> = {
+  email: 'Email',
+  pec: 'PEC',
+  a_mano: 'Consegna a mano',
+  piattaforma_firma: 'Piattaforma di firma',
+  altro: 'Altro'
 }

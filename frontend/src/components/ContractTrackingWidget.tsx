@@ -1,13 +1,18 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Bell, AlertCircle } from 'lucide-react'
+import { Bell, AlertCircle, FileSignature, ExternalLink } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { ContractTracking, TRACKING_STATI } from '@/types/evolvi-contract'
+import { ContractTracking, TRACKING_STATI, CANALI_CONTRATTO_FIRMATO } from '@/types/evolvi-contract'
+import RegistraContrattoFirmatoModal from './RegistraContrattoFirmatoModal'
 
 interface ContractTrackingWidgetProps {
   entityType: string
   entityId: string
+  /** Descrizione mostrata nella finestra di registrazione del firmato */
+  descrizione?: string
+  /** Chiamata dopo la registrazione del firmato (per aggiornare la scheda che contiene il riquadro) */
+  onAggiornato?: () => void
 }
 
 const TIMELINE_STEPS = [
@@ -42,9 +47,10 @@ function getStepColor(stepKey: string, currentStatus: string): { dot: string; li
   return { dot: 'bg-gray-300', line: 'bg-gray-200' }
 }
 
-export default function ContractTrackingWidget({ entityType, entityId }: ContractTrackingWidgetProps) {
+export default function ContractTrackingWidget({ entityType, entityId, descrizione, onAggiornato }: ContractTrackingWidgetProps) {
   const [tracking, setTracking] = useState<ContractTracking | null>(null)
   const [loading, setLoading] = useState(true)
+  const [mostraRegistra, setMostraRegistra] = useState(false)
 
   useEffect(() => {
     loadTracking()
@@ -140,6 +146,37 @@ export default function ContractTrackingWidget({ entityType, entityId }: Contrac
           <div>Firmato: {new Date(tracking.signed_contract_received_at).toLocaleDateString('it-IT')}</div>
         )}
       </div>
+
+      {/* Contratto firmato: registrazione o riepilogo */}
+      {tracking.signed_contract_received ? (
+        <div className="text-xs text-green-700 bg-green-50 border border-green-200 rounded p-1.5 space-y-0.5">
+          <div>
+            Firmato ricevuto{tracking.signed_contract_received_at ? ` il ${new Date(tracking.signed_contract_received_at).toLocaleDateString('it-IT')}` : ''}
+            {tracking.signed_contract_canale ? ` (${CANALI_CONTRATTO_FIRMATO[tracking.signed_contract_canale] || tracking.signed_contract_canale})` : ''}
+          </div>
+          {tracking.signed_contract_drive_url && (
+            <a href={tracking.signed_contract_drive_url} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center text-green-800 underline">
+              <ExternalLink className="w-3 h-3 mr-1" />Apri il contratto firmato su Drive
+            </a>
+          )}
+          {tracking.signed_contract_notes && <div className="text-green-800">{tracking.signed_contract_notes}</div>}
+        </div>
+      ) : tracking.contract_document_url && currentStatus !== 'DRAFT' ? (
+        <button type="button" onClick={() => setMostraRegistra(true)}
+          className="inline-flex items-center text-xs font-medium text-green-700 border border-green-300 rounded px-2 py-1 hover:bg-green-50">
+          <FileSignature className="w-3 h-3 mr-1" />Registra contratto firmato
+        </button>
+      ) : null}
+
+      {mostraRegistra && (
+        <RegistraContrattoFirmatoModal
+          trackingId={tracking.id}
+          descrizione={descrizione || 'Contratto inviato al cliente'}
+          onClose={() => setMostraRegistra(false)}
+          onRegistrato={() => { loadTracking(); onAggiornato?.() }}
+        />
+      )}
 
       {/* Failed status warning */}
       {currentStatus === 'FAILED' && (

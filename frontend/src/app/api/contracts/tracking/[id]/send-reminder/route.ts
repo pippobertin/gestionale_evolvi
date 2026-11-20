@@ -28,6 +28,14 @@ export async function POST(
       throw trackingError
     }
 
+    // Contratto già firmato: nessun sollecito
+    if (tracking.signed_contract_received || ['SIGNED_RECEIVED', 'COMPLETED'].includes(tracking.overall_status)) {
+      return Response.json({
+        success: false,
+        error: 'Il contratto firmato risulta già ricevuto: sollecito non inviato'
+      }, { status: 409 })
+    }
+
     // Recupera dati cliente
     const { data: cliente, error: clienteError } = await supabase
       .from('scadenze_bandi_clienti')

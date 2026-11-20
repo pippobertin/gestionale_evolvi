@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { FileText, CheckCircle, Mail, ExternalLink, RefreshCw, Eye, Loader2, Calendar, Euro, CreditCard, RotateCcw, Trash2, FileDown } from 'lucide-react'
 import { ContrattoEvolvi, CONTRATTO_EVOLVI_STATI } from '@/types/evolvi-contract'
 import { useEvolviContractGeneration } from '@/hooks/useEvolviContractGeneration'
+import ContractTrackingWidget from './ContractTrackingWidget'
 
 interface EvolviContractCardProps {
   contract: ContrattoEvolvi
@@ -302,6 +303,18 @@ export default function EvolviContractCard({ contract, onRefresh }: EvolviContra
             </div>
           </div>
         </div>
+
+        {/* Tracking e registrazione del contratto firmato */}
+        {['inviato', 'firmato', 'attivo'].includes(contract.stato) && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <ContractTrackingWidget
+              entityType="CONTRATTO_EVOLVI"
+              entityId={contract.id}
+              descrizione={`Contratto Evolvi ${contract.numero_contratto || ''}`.trim()}
+              onAggiornato={onRefresh}
+            />
+          </div>
+        )}
       </div>
     </div>
   )

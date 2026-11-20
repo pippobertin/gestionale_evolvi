@@ -2155,6 +2155,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                       <ContractTrackingWidget
                         entityType="PROGETTO"
                         entityId={progetto.id}
+                        descrizione={`Contratto del progetto ${progetto.codice_progetto || ''} ${progetto.titolo_progetto ? '– ' + progetto.titolo_progetto : ''}`.trim()}
                       />
                     </div>
                   )}
