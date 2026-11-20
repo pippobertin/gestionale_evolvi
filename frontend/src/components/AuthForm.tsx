@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import PasswordRules from './PasswordRules'
 import { Eye, EyeOff, User, Mail, Lock } from 'lucide-react'
 import Image from 'next/image'
 import { useAuth } from '@/contexts/AuthContext'
@@ -309,6 +310,18 @@ export default function AuthForm() {
                   </div>
                 </div>
               </div>
+
+              <PasswordRules
+                nuova={passwordChangeData.newPassword}
+                conferma={passwordChangeData.confirmPassword}
+              />
+
+              {/* Errore (prima era mostrato solo nel modulo di login) */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm">
+                  {error}
+                </div>
+              )}
 
               {/* Submit Button */}
               <button

@@ -6,6 +6,7 @@ import {
   UserCheck,
   UserX,
   Trash2,
+  KeyRound,
   Shield,
   User,
   MoreHorizontal,
@@ -45,6 +46,8 @@ export default function UserManagement() {
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [temporaryPassword, setTemporaryPassword] = useState('')
   const [createdUserEmail, setCreatedUserEmail] = useState('')
+  const [passwordModalTitolo, setPasswordModalTitolo] = useState('Utente Creato con Successo')
+  const [utenteDaReimpostare, setUtenteDaReimpostare] = useState<User | null>(null)
 
   useEffect(() => {
     fetchUsers()
@@ -67,6 +70,27 @@ export default function UserManagement() {
       setError(error instanceof Error ? error.message : 'Errore del server')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Nuova password temporanea per un collega (obbligo di cambio al primo accesso)
+  const resetPassword = async (target: User) => {
+    setUtenteDaReimpostare(null)
+    setActionLoading(target.id)
+    setError('')
+    try {
+      const response = await fetch(`/api/admin/users/${target.id}/reset-password`, { method: 'POST' })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Errore nella reimpostazione della password')
+      setTemporaryPassword(data.temporaryPassword)
+      setCreatedUserEmail(target.email)
+      setPasswordModalTitolo('Password Reimpostata')
+      setShowPasswordModal(true)
+      await fetchUsers()
+    } catch (err: any) {
+      setError(err.message || 'Errore nella reimpostazione della password')
+    } finally {
+      setActionLoading(null)
     }
   }
 
@@ -149,6 +173,7 @@ export default function UserManagement() {
       // Mostra la password temporanea
       setTemporaryPassword(data.temporaryPassword)
       setCreatedUserEmail(newUserData.email)
+      setPasswordModalTitolo('Utente Creato con Successo')
       setShowPasswordModal(true)
 
       // Reset form e chiudi modal
@@ -348,6 +373,16 @@ export default function UserManagement() {
                         <Shield className="w-4 h-4" />
                       </button>
 
+                      {/* Reset Password */}
+                      <button
+                        onClick={() => setUtenteDaReimpostare(user)}
+                        disabled={actionLoading === user.id}
+                        className="p-2 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors"
+                        title="Reimposta password"
+                      >
+                        <KeyRound className="w-4 h-4" />
+                      </button>
+
                       {/* Delete User */}
                       <button
                         onClick={() => setShowDeleteModal(user.id)}
@@ -527,7 +562,7 @@ export default function UserManagement() {
                 <CheckCircle className="w-4 h-4 text-green-600" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-gray-900">Utente Creato con Successo</h3>
+                <h3 className="text-sm font-semibold text-gray-900">{passwordModalTitolo}</h3>
                 <p className="text-sm text-gray-500">Ecco le credenziali temporanee</p>
               </div>
             </div>
@@ -562,6 +597,30 @@ export default function UserManagement() {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Ho Preso Nota
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Conferma reimpostazione password */}
+      {utenteDaReimpostare && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">Reimposta password</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Verrà generata una nuova password temporanea per {utenteDaReimpostare.nome} {utenteDaReimpostare.cognome}
+              ({utenteDaReimpostare.email}). Le sue sessioni aperte verranno chiuse e al prossimo accesso
+              dovrà scegliere una nuova password.
+            </p>
+            <div className="flex justify-end space-x-2">
+              <button onClick={() => setUtenteDaReimpostare(null)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+                Annulla
+              </button>
+              <button onClick={() => resetPassword(utenteDaReimpostare)}
+                className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-700">
+                Reimposta
               </button>
             </div>
           </div>

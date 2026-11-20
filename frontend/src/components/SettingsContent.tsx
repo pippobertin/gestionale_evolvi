@@ -9,6 +9,7 @@ import SchedulerManager from './SchedulerManager'
 import GmailSetupNew from './GmailSetupNew'
 import UserGmailConnection from './UserGmailConnection'
 import EmailSignatureEditor from './EmailSignatureEditor'
+import ChangeOwnPassword from './ChangeOwnPassword'
 import {
   Settings,
   Users,
@@ -61,6 +62,12 @@ export default function SettingsContent() {
       label: 'Notifiche',
       icon: Bell,
       description: 'Configurazione notifiche email e sistema'
+    },
+    {
+      id: 'my-password',
+      label: 'La mia password',
+      icon: Key,
+      description: 'Cambia la password di accesso'
     },
     {
       id: 'my-gmail',
@@ -215,6 +222,9 @@ export default function SettingsContent() {
             <SchedulerManager />
           </div>
         )
+
+      case 'my-password':
+        return <ChangeOwnPassword />
 
       case 'my-gmail':
         return (
