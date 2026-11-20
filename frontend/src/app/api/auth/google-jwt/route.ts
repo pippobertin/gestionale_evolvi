@@ -5,6 +5,7 @@ import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { verifyJWT } from '@/lib/jwtAuth'
 import { creaSessione, impostaCookieSessione } from '@/lib/sessioni'
 import { accessoScaduto } from '@/lib/accessoUtente'
+import { registraEvento } from '@/lib/registro'
 
 /**
  * GET /api/auth/google-jwt
@@ -31,10 +32,19 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (error || !utente) {
+      await registraEvento({
+        evento: 'accesso_negato', esito: 'negato', request,
+        descrizione: 'Accesso con Google: email non censita o utente disattivato',
+        dettagli: { email_google: emailGoogle }
+      })
       return NextResponse.json({ error: 'User not found or inactive' }, { status: 404 })
     }
 
     if (accessoScaduto(utente.accesso_fino_al)) {
+      await registraEvento({
+        evento: 'accesso_negato', esito: 'negato', utenteId: utente.id, request,
+        descrizione: `Accesso con Google: accesso scaduto il ${utente.accesso_fino_al}`
+      })
       return NextResponse.json({ error: 'Accesso scaduto' }, { status: 403 })
     }
 
@@ -59,6 +69,7 @@ export async function GET(request: NextRequest) {
       .eq('id', utente.id)
 
     const token = await creaSessione(utente, request, 'google')
+    await registraEvento({ evento: 'accesso', utenteId: utente.id, request, descrizione: 'Accesso con Google' })
     const response = NextResponse.json({ success: true, user: userData })
     impostaCookieSessione(response, token)
 

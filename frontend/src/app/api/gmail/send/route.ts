@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getGmailClient } from '@/lib/gmail'
 import { verifyJWT } from '@/lib/jwtAuth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { registraEvento } from '@/lib/registro'
 
 function escapeHtml(testo: string) {
   return testo
@@ -228,6 +229,17 @@ export async function POST(request: NextRequest) {
         console.warn('Could not mark original message as read:', error)
       }
     }
+
+    await registraEvento({
+      evento: 'email_inviata', utenteId: userId || null,
+      descrizione: `Email "${String(subject || '(senza oggetto)').slice(0, 150)}"`,
+      dettagli: {
+        a: String(to || '').slice(0, 500),
+        cc: cc ? String(cc).slice(0, 500) : undefined,
+        risposta: replyTo ? true : undefined,
+        gmail_id: result.data.id
+      }
+    })
 
     return NextResponse.json({
       success: true,

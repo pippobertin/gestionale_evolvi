@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import bcrypt from 'bcrypt'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { requireAdmin } from '@/lib/jwtAuth'
+import { registraEvento } from '@/lib/registro'
 
 /**
  * POST /api/admin/users/[id]/reset-password  (solo amministratori)
@@ -50,6 +51,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .update({ revoked_at: new Date().toISOString() })
       .eq('utente_id', id)
       .is('revoked_at', null)
+
+    await registraEvento({
+      evento: 'reimpostazione_password', utenteId: admin.userId, request,
+      tabella: 'scadenze_bandi_utenti', recordId: utente.id,
+      descrizione: `Password temporanea generata per ${utente.nome} ${utente.cognome}; sessioni chiuse`
+    })
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cancellaCookieSessione, revocaSessioneDaToken, tokenDallaRichiesta } from '@/lib/sessioni'
+import { registraEvento } from '@/lib/registro'
 
 /**
  * POST /api/auth/logout
@@ -11,7 +12,10 @@ import { cancellaCookieSessione, revocaSessioneDaToken, tokenDallaRichiesta } fr
  */
 export async function POST(request: NextRequest) {
   try {
-    await revocaSessioneDaToken(tokenDallaRichiesta(request))
+    const utenteId = await revocaSessioneDaToken(tokenDallaRichiesta(request))
+    if (utenteId) {
+      await registraEvento({ evento: 'uscita', utenteId, request, descrizione: 'Uscita dal gestionale' })
+    }
   } catch (error) {
     console.error('Errore revoca sessione:', error)
   }

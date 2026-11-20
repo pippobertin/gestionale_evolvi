@@ -11,6 +11,7 @@ import UserGmailConnection from './UserGmailConnection'
 import EmailSignatureEditor from './EmailSignatureEditor'
 import ChangeOwnPassword from './ChangeOwnPassword'
 import BackupGestionale from './BackupGestionale'
+import RegistroAttivita from './RegistroAttivita'
 import {
   Settings,
   Users,
@@ -23,7 +24,8 @@ import {
   ChevronRight,
   Clock,
   Mail,
-  UserPlus
+  UserPlus,
+  ScrollText
 } from 'lucide-react'
 
 export default function SettingsContent() {
@@ -42,6 +44,13 @@ export default function SettingsContent() {
       label: 'Gestione Utenti',
       icon: Users,
       description: 'Gestisci utenti, ruoli e permessi',
+      adminOnly: true
+    },
+    {
+      id: 'registro',
+      label: 'Registro attività',
+      icon: ScrollText,
+      description: 'Chi ha fatto che cosa e quando',
       adminOnly: true
     },
     {
@@ -113,6 +122,9 @@ export default function SettingsContent() {
     switch (activeSection) {
       case 'users':
         return <UserManagement />
+
+      case 'registro':
+        return <RegistroAttivita />
 
       case 'groups':
         return (

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verificaSessione, tokenDallaRichiesta } from '@/lib/sessioni'
+import { INTESTAZIONE_UTENTE } from '@/lib/identitaRichiesta'
 
 /**
  * Controllo centrale sulle API (fase 3, passaggio C).
@@ -30,11 +31,29 @@ function nonAutenticato() {
   return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
 }
 
+/**
+ * Identità per il registro delle operazioni (fase 4A): il proxy aggiunge alla
+ * richiesta l'utente della sessione verificata, e il client del server la
+ * inoltra al database (lib/supabaseAdmin.ts). Un valore inviato dal browser
+ * viene sempre scartato.
+ */
+
+function prosegui(request: NextRequest, utenteId: string | null) {
+  const intestazioni = new Headers(request.headers)
+  intestazioni.delete(INTESTAZIONE_UTENTE)
+  if (utenteId) intestazioni.set(INTESTAZIONE_UTENTE, utenteId)
+  return NextResponse.next({ request: { headers: intestazioni } })
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   if (PUBBLICHE.some(p => pathname === p.prefisso.replace(/\/$/, '') || pathname.startsWith(p.prefisso))) {
-    return NextResponse.next()
+    // Route con autenticazione propria: se c'è comunque una sessione valida
+    // (per esempio il cambio password), l'operazione viene attribuita alla persona.
+    const token = tokenDallaRichiesta(request)
+    const sessione = token && process.env.JWT_SECRET ? await verificaSessione(token) : null
+    return prosegui(request, sessione?.userId ?? null)
   }
 
   if (!process.env.JWT_SECRET) {
@@ -51,7 +70,7 @@ export async function proxy(request: NextRequest) {
     )
   }
 
-  return NextResponse.next()
+  return prosegui(request, sessione.userId)
 }
 
 export const config = {

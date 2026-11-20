@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { verifyJWT } from '@/lib/jwtAuth'
 import { dimenticaToken, revocaAltreSessioni, tokenDallaRichiesta } from '@/lib/sessioni'
+import { registraEvento } from '@/lib/registro'
 
 
 export async function POST(request: NextRequest) {
@@ -80,6 +81,13 @@ export async function POST(request: NextRequest) {
     if (decoded.sid) {
       await revocaAltreSessioni(utente.id, decoded.sid)
     }
+
+    await registraEvento({
+      evento: 'cambio_password', utenteId: utente.id, request,
+      descrizione: utente.first_login_password_change
+        ? 'Cambio della password temporanea al primo accesso'
+        : 'Cambio della propria password; chiuse le altre sessioni aperte'
+    })
 
     return NextResponse.json({
       success: true,

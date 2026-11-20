@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { creaSessione, impostaCookieSessione } from '@/lib/sessioni'
 import { accessoScaduto } from '@/lib/accessoUtente'
+import { registraEvento } from '@/lib/registro'
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,6 +25,11 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (userError || !utente) {
+      await registraEvento({
+        evento: 'accesso_negato', esito: 'negato', request,
+        descrizione: 'Accesso con password: email non censita o utente disattivato',
+        dettagli: { email_inserita: String(email).toLowerCase().slice(0, 120) }
+      })
       return NextResponse.json(
         { error: 'Credenziali non valide' },
         { status: 401 }
@@ -33,6 +39,10 @@ export async function POST(request: NextRequest) {
     // Verifica la password
     const passwordMatch = await bcrypt.compare(password, utente.password_hash)
     if (!passwordMatch) {
+      await registraEvento({
+        evento: 'accesso_negato', esito: 'negato', utenteId: utente.id, request,
+        descrizione: 'Accesso con password: password errata'
+      })
       return NextResponse.json(
         { error: 'Credenziali non valide' },
         { status: 401 }
@@ -41,6 +51,10 @@ export async function POST(request: NextRequest) {
 
     // Accesso a termine scaduto: la password è giusta, ma l'accesso non è più consentito
     if (accessoScaduto(utente.accesso_fino_al)) {
+      await registraEvento({
+        evento: 'accesso_negato', esito: 'negato', utenteId: utente.id, request,
+        descrizione: `Accesso con password: accesso scaduto il ${utente.accesso_fino_al}`
+      })
       return NextResponse.json(
         { error: "Il tuo accesso al gestionale è scaduto. Rivolgiti a un amministratore." },
         { status: 403 }
@@ -55,6 +69,10 @@ export async function POST(request: NextRequest) {
 
     // Sessione revocabile nel database e token nel solo cookie httpOnly
     const token = await creaSessione(utente, request, 'password')
+    await registraEvento({
+      evento: 'accesso', utenteId: utente.id, request,
+      descrizione: 'Accesso con password'
+    })
 
     // Prepara dati utente (senza password_hash)
     const userData = {

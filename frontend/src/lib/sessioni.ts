@@ -160,21 +160,23 @@ export async function verificaSessione(token: string | null | undefined): Promis
 }
 
 /** Revoca una sessione (logout). Accetta anche token scaduti, per chiudere comunque la riga. */
-export async function revocaSessioneDaToken(token: string | null | undefined) {
-  if (!token) return
+export async function revocaSessioneDaToken(token: string | null | undefined): Promise<string | null> {
+  if (!token) return null
   dimenticaToken(token)
   let decoded: any
   try {
     decoded = jwt.verify(token, segretoJwt(), { ignoreExpiration: true })
   } catch {
-    return
+    return null
   }
-  if (!decoded?.sid) return
+  if (!decoded?.sid) return null
   await supabaseAdmin
     .from('scadenze_bandi_sessioni')
     .update({ revoked_at: new Date().toISOString() })
     .eq('id', decoded.sid)
     .is('revoked_at', null)
+  // Utente della sessione chiusa, per il registro delle operazioni
+  return typeof decoded.userId === 'string' ? decoded.userId : null
 }
 
 /** Revoca tutte le altre sessioni aperte di un utente (dopo il cambio password). */
