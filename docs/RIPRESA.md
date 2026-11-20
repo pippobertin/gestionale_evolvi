@@ -1,6 +1,6 @@
 # Punto di ripresa del lavoro
 
-Aggiornato la sera del 19/11/2026. Branch di lavoro `claude/stoic-hawking-mf8eph`, allineato a `main` al commit `58686a8` (produzione su gestionale.blmproject.com).
+Aggiornato il 20/11/2026. Branch di lavoro `claude/stoic-hawking-mf8eph`, allineato a `main` (produzione su gestionale.blmproject.com).
 
 ## Dove siamo
 
@@ -27,14 +27,11 @@ Durante le prove del 19/11 sono stati corretti anche difetti preesistenti emersi
 
    Altri cinque file senza riga nel database risalgono a caricamenti falliti tra novembre 2025 e maggio 2026; tra questi `e71655ec-d08f-4af0-9aad-665948877c02/1779432141005_Modul_C.pdf` del progetto TRE GELSI, che potrebbe essere un documento vero da ricollegare al progetto. Da decidere caso per caso, non eliminare alla cieca.
 
-## Prossimo passo: fase 3, passaggio F (pulizia finale)
+## Passaggio F (20/11/2026)
 
-1. **Token di sessione solo nel cookie protetto.** Oggi il token è salvato anche nel `localStorage` e letto in 6 file (17 punti): `AuthContext` e le chiamate che mandano l'intestazione `Authorization`. Vanno tutte portate sul cookie httpOnly, già inviato in automatico dal browser.
-2. **Logout con revoca effettiva** del token lato server (oggi resta valido fino alla scadenza di 7 giorni).
-3. **Cambio password al primo accesso** imposto anche dal server, non solo dall'interfaccia.
-4. **Prova conclusiva** con la sola chiave pubblica su tabelle, viste, funzioni e file.
+Pubblicato in produzione: sessioni revocabili (il logout chiude la sessione nel database), token solo nel cookie httpOnly, cambio della password temporanea imposto dal server, badge del database ridotto a 15 minuti, Impostazioni → La mia password, Gestione utenti → Reimposta password, requisiti della password visibili. Chi entra con email e password ha dovuto rifare il login una volta.
 
-Come per gli altri passaggi: anteprima, prova, poi produzione.
+Prova finale con la sola chiave pubblica: `bash scripts/prova-chiave-pubblica.sh` dalla cartella `frontend` (legge la chiave da `.env.local`). Va lanciata dal Mac: l'ambiente cloud di Claude non raggiunge Supabase via HTTP.
 
 ## Dopo il passaggio F
 
