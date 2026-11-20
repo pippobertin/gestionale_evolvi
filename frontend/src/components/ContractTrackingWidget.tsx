@@ -5,6 +5,7 @@ import { Bell, AlertCircle, FileSignature, ExternalLink } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { ContractTracking, TRACKING_STATI, CANALI_CONTRATTO_FIRMATO } from '@/types/evolvi-contract'
 import RegistraContrattoFirmatoModal from './RegistraContrattoFirmatoModal'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface ContractTrackingWidgetProps {
   entityType: string
@@ -13,7 +14,11 @@ interface ContractTrackingWidgetProps {
   descrizione?: string
   /** Chiamata dopo la registrazione del firmato (per aggiornare la scheda che contiene il riquadro) */
   onAggiornato?: () => void
+  /** Apertura dell'approvazione di una bozza in attesa (Modello 231: approva una persona diversa da chi l'ha generata) */
+  onApprovaBozza?: (bozza: { trackingId: string; contractId: string; contractUrl: string; generatoDa: string | null }) => void
 }
+
+type Bozza = { id: string; contract_file_id: string; contract_document_url: string; generato_da: string | null; generato_il: string | null }
 
 const TIMELINE_STEPS = [
   { key: 'DRAFT', label: 'Bozza' },
@@ -47,7 +52,10 @@ function getStepColor(stepKey: string, currentStatus: string): { dot: string; li
   return { dot: 'bg-gray-300', line: 'bg-gray-200' }
 }
 
-export default function ContractTrackingWidget({ entityType, entityId, descrizione, onAggiornato }: ContractTrackingWidgetProps) {
+export default function ContractTrackingWidget({ entityType, entityId, descrizione, onAggiornato, onApprovaBozza }: ContractTrackingWidgetProps) {
+  const { user, haPermesso } = useAuth()
+  const [bozza, setBozza] = useState<Bozza | null>(null)
+  const [autoreBozza, setAutoreBozza] = useState<string>('')
   const [tracking, setTracking] = useState<ContractTracking | null>(null)
   const [loading, setLoading] = useState(true)
   const [mostraRegistra, setMostraRegistra] = useState(false)
@@ -66,11 +74,24 @@ export default function ContractTrackingWidget({ entityType, entityId, descrizio
         .eq('entity_type', entityType)
         .eq('entity_id', entityId)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+        .limit(10)
 
       if (error) throw error
-      setTracking(data)
+      const righe = (data || []) as any[]
+      // Stato principale: l'ultimo contratto inviato; la bozza in attesa si mostra a parte
+      const inviato = righe.find(r => r.overall_status !== 'DRAFT')
+      setTracking(inviato || righe[0] || null)
+      const inAttesa = righe.find(r => r.overall_status === 'DRAFT' && r.contract_file_id)
+      setBozza(inAttesa || null)
+      setAutoreBozza('')
+      if (inAttesa?.generato_da) {
+        const { data: autore } = await supabase
+          .from('scadenze_bandi_utenti')
+          .select('nome, cognome')
+          .eq('id', inAttesa.generato_da)
+          .maybeSingle()
+        if (autore) setAutoreBozza(`${autore.nome} ${autore.cognome}`)
+      }
     } catch (err: any) {
       console.error('Errore caricamento tracking:', err)
     } finally {
@@ -96,9 +117,33 @@ export default function ContractTrackingWidget({ entityType, entityId, descrizio
 
   const currentStatus = tracking.overall_status
   const statusInfo = TRACKING_STATI[currentStatus]
+  const puoApprovare = haPermesso('contratti.approva')
 
   return (
     <div className="space-y-2">
+      {bozza && (
+        <div className="text-xs bg-amber-50 border border-amber-200 rounded p-2 space-y-1">
+          <div className="text-amber-900 font-medium">Bozza del contratto in attesa di approvazione</div>
+          <div className="text-amber-800">
+            Generata{autoreBozza ? ` da ${autoreBozza}` : ''}{bozza.generato_il ? ` il ${new Date(bozza.generato_il).toLocaleDateString('it-IT')}` : ''}
+            {bozza.generato_da && user?.id === bozza.generato_da && puoApprovare && ' (l\'hai generata tu: puoi approvarla solo in deroga motivata)'}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <a href={bozza.contract_document_url} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center text-amber-900 underline">
+              <ExternalLink className="w-3 h-3 mr-1" />Rivedi su Google Docs
+            </a>
+            {puoApprovare && onApprovaBozza && (
+              <button type="button"
+                onClick={() => onApprovaBozza({ trackingId: bozza.id, contractId: bozza.contract_file_id, contractUrl: bozza.contract_document_url, generatoDa: bozza.generato_da })}
+                className="inline-flex items-center font-medium text-white bg-green-600 hover:bg-green-700 rounded px-2 py-0.5">
+                Approva e invia
+              </button>
+            )}
+            {!puoApprovare && <span className="text-amber-700">La approverà un amministratore.</span>}
+          </div>
+        </div>
+      )}
       {/* Status badge */}
       <div className="flex items-center justify-between">
         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusInfo?.bgColor || 'bg-gray-100'} ${statusInfo?.color || 'text-gray-700'}`}>

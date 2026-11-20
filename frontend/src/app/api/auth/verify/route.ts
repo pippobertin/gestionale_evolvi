@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { verifyJWT } from '@/lib/jwtAuth'
+import { permessiDelRuolo } from '@/lib/permessi'
 
 /**
  * GET /api/auth/verify
@@ -32,6 +33,7 @@ export async function GET(request: NextRequest) {
         nome: utente.nome,
         cognome: utente.cognome,
         livello_permessi: utente.livello_permessi,
+        permessi: await permessiDelRuolo(utente.livello_permessi),
         nome_completo: `${utente.nome} ${utente.cognome}`,
         first_login_password_change: !!sessione.deve_cambiare_password
       },

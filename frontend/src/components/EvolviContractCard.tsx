@@ -5,6 +5,7 @@ import { FileText, CheckCircle, Mail, ExternalLink, RefreshCw, Eye, Loader2, Cal
 import { ContrattoEvolvi, CONTRATTO_EVOLVI_STATI } from '@/types/evolvi-contract'
 import { useEvolviContractGeneration } from '@/hooks/useEvolviContractGeneration'
 import ContractTrackingWidget from './ContractTrackingWidget'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface EvolviContractCardProps {
   contract: ContrattoEvolvi
@@ -25,6 +26,7 @@ const STATO_BORDER_COLORS: Record<string, string> = {
 export default function EvolviContractCard({ contract, onRefresh }: EvolviContractCardProps) {
   const [actionLoading, setActionLoading] = useState(false)
   const { generateContract, approveContract, sendEmail, renewContract } = useEvolviContractGeneration()
+  const { haPermesso } = useAuth()
 
   const statoConfig = CONTRATTO_EVOLVI_STATI[contract.stato] || CONTRATTO_EVOLVI_STATI.bozza
   const borderColor = STATO_BORDER_COLORS[contract.stato] || 'border-l-gray-400'
@@ -54,7 +56,18 @@ export default function EvolviContractCard({ contract, onRefresh }: EvolviContra
   const handleApprove = async () => {
     try {
       setActionLoading(true)
-      await approveContract(contract.id)
+      try {
+        await approveContract(contract.id)
+      } catch (err: any) {
+        // Chi ha generato la bozza la approva solo in deroga motivata (Modello 231)
+        if (err?.code !== 'DEROGA_RICHIESTA') throw err
+        const motivo = window.prompt(
+          'Hai generato tu questa bozza: per la separazione dei compiti dovrebbe approvarla un\'altra persona.\n\n' +
+          'Per approvarla comunque scrivi il motivo della deroga (almeno 15 caratteri). Resterà nel registro attività.'
+        )
+        if (!motivo || motivo.trim().length < 15) return
+        await approveContract(contract.id, motivo.trim())
+      }
       onRefresh()
     } catch (err) {
       console.error('Errore approvazione:', err)
@@ -160,7 +173,7 @@ export default function EvolviContractCard({ contract, onRefresh }: EvolviContra
             )}
 
             {/* State-based actions */}
-            {contract.stato === 'bozza' && (
+            {contract.stato === 'bozza' && haPermesso('contratti.genera') && (
               <button
                 type="button"
                 onClick={handleGenerate}
@@ -177,7 +190,7 @@ export default function EvolviContractCard({ contract, onRefresh }: EvolviContra
               </button>
             )}
 
-            {contract.stato === 'in_revisione' && (
+            {contract.stato === 'in_revisione' && haPermesso('contratti.approva') && (
               <button
                 type="button"
                 onClick={handleApprove}
@@ -194,7 +207,7 @@ export default function EvolviContractCard({ contract, onRefresh }: EvolviContra
               </button>
             )}
 
-            {contract.stato === 'approvato' && (
+            {contract.stato === 'approvato' && haPermesso('contratti.approva') && (
               <button
                 type="button"
                 onClick={handleSendEmail}
@@ -217,7 +230,7 @@ export default function EvolviContractCard({ contract, onRefresh }: EvolviContra
               </span>
             )}
 
-            {contract.stato === 'scaduto' && contract.rinnovo_automatico && (
+            {contract.stato === 'scaduto' && contract.rinnovo_automatico && haPermesso('contratti.approva') && (
               <button
                 type="button"
                 onClick={handleRenew}
@@ -235,7 +248,7 @@ export default function EvolviContractCard({ contract, onRefresh }: EvolviContra
             )}
 
             {/* Elimina contratto */}
-            <button
+            {haPermesso('entita.elimina') && <button
               type="button"
               onClick={handleDelete}
               className="text-xs py-1 px-2 flex items-center space-x-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
@@ -247,7 +260,7 @@ export default function EvolviContractCard({ contract, onRefresh }: EvolviContra
               ) : (
                 <Trash2 className="w-3 h-3" />
               )}
-            </button>
+            </button>}
           </div>
         </div>
 

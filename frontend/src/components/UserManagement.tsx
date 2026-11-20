@@ -17,6 +17,16 @@ import {
   CalendarClock
 } from 'lucide-react'
 import { accessoScaduto } from '@/lib/accessoUtente'
+import { ETICHETTE_RUOLO, type Ruolo } from '@/lib/ruoli'
+
+// Ruoli assegnabili da questa schermata (l'OdV arriva con il passaggio 4C2)
+const RUOLI_ASSEGNABILI: Ruolo[] = ['admin', 'collaboratore', 'collaboratore_limitato']
+const COLORI_RUOLO: Record<Ruolo, string> = {
+  admin: 'bg-purple-100 text-purple-800',
+  collaboratore: 'bg-blue-100 text-blue-800',
+  collaboratore_limitato: 'bg-sky-50 text-sky-800',
+  odv: 'bg-slate-100 text-slate-700'
+}
 import { LoadingSpinner } from './shared'
 
 interface User {
@@ -24,7 +34,7 @@ interface User {
   email: string
   nome: string
   cognome: string
-  livello_permessi: 'admin' | 'collaboratore'
+  livello_permessi: Ruolo
   attivo: boolean
   accesso_fino_al?: string | null
   created_at: string
@@ -44,7 +54,7 @@ export default function UserManagement() {
     nome: '',
     cognome: '',
     email: '',
-    livello_permessi: 'collaboratore' as 'admin' | 'collaboratore',
+    livello_permessi: 'collaboratore' as Ruolo,
     accesso_fino_al: ''
   })
   const [showPasswordModal, setShowPasswordModal] = useState(false)
@@ -204,9 +214,10 @@ export default function UserManagement() {
     updateUser(user.id, { attivo: !user.attivo })
   }
 
-  const changeUserRole = (user: User) => {
-    const newRole = user.livello_permessi === 'admin' ? 'collaboratore' : 'admin'
-    updateUser(user.id, { livello_permessi: newRole })
+  const changeUserRole = (user: User, nuovoRuolo: Ruolo) => {
+    if (nuovoRuolo === user.livello_permessi) return
+    if (!confirm(`Cambiare il ruolo di ${user.nome} ${user.cognome} in "${ETICHETTE_RUOLO[nuovoRuolo]}"?`)) return
+    updateUser(user.id, { livello_permessi: nuovoRuolo })
   }
 
   const formatGiorno = (giorno: string) => {
@@ -336,17 +347,17 @@ export default function UserManagement() {
                     </div>
                   </td>
                   <td className="px-3 py-1.5 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      user.livello_permessi === 'admin'
-                        ? 'bg-purple-100 text-purple-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {user.livello_permessi === 'admin' ? (
-                        <><Shield className="w-3 h-3 mr-1" /> Amministratore</>
-                      ) : (
-                        <><User className="w-3 h-3 mr-1" /> Collaboratore</>
-                      )}
-                    </span>
+                    <select
+                      value={user.livello_permessi}
+                      onChange={(e) => changeUserRole(user, e.target.value as Ruolo)}
+                      disabled={actionLoading === user.id}
+                      title="Cambia ruolo"
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium border-0 cursor-pointer ${COLORI_RUOLO[user.livello_permessi] || 'bg-gray-100 text-gray-700'}`}
+                    >
+                      {RUOLI_ASSEGNABILI.concat(RUOLI_ASSEGNABILI.includes(user.livello_permessi) ? [] : [user.livello_permessi]).map(r => (
+                        <option key={r} value={r}>{ETICHETTE_RUOLO[r]}</option>
+                      ))}
+                    </select>
                   </td>
                   <td className="px-3 py-1.5 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -404,16 +415,6 @@ export default function UserManagement() {
                         ) : (
                           <UserCheck className="w-4 h-4" />
                         )}
-                      </button>
-
-                      {/* Change Role */}
-                      <button
-                        onClick={() => changeUserRole(user)}
-                        disabled={actionLoading === user.id}
-                        className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors"
-                        title={`Cambia in ${user.livello_permessi === 'admin' ? 'Collaboratore' : 'Amministratore'}`}
-                      >
-                        <Shield className="w-4 h-4" />
                       </button>
 
                       {/* Reset Password */}
@@ -606,12 +607,14 @@ export default function UserManagement() {
                 </label>
                 <select
                   value={newUserData.livello_permessi}
-                  onChange={(e) => setNewUserData({...newUserData, livello_permessi: e.target.value as 'admin' | 'collaboratore'})}
+                  onChange={(e) => setNewUserData({...newUserData, livello_permessi: e.target.value as Ruolo})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="collaboratore">Collaboratore</option>
-                  <option value="admin">Amministratore</option>
+                  {RUOLI_ASSEGNABILI.map(r => <option key={r} value={r}>{ETICHETTE_RUOLO[r]}</option>)}
                 </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  I permessi di collaboratori e collaboratori limitati si scelgono in Impostazioni &gt; Ruoli e permessi.
+                </p>
               </div>
 
               <div>

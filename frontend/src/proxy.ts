@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verificaSessione, tokenDallaRichiesta } from '@/lib/sessioni'
 import { INTESTAZIONE_UTENTE } from '@/lib/identitaRichiesta'
+import { consentitoAllOdv, permessoRichiesto } from '@/lib/permessiRoute'
+import { etichettaPermesso, haPermesso } from '@/lib/permessi'
+import { registraEvento } from '@/lib/registro'
 
 /**
  * Controllo centrale sulle API (fase 3, passaggio C).
@@ -10,7 +13,10 @@ import { INTESTAZIONE_UTENTE } from '@/lib/identitaRichiesta'
  * Dal passaggio F si verifica anche che la sessione esista, non sia stata
  * revocata (logout) e che l'utente sia attivo. Chi deve ancora cambiare la
  * password temporanea può usare solo le route di autenticazione.
- * Il ruolo resta verificato dalle singole route (requireAdmin).
+ * Il ruolo resta verificato dalle singole route (requireAdmin). Dalla fase 4C
+ * qui si verificano anche i permessi configurabili dei collaboratori per le
+ * azioni che non si esauriscono nel database (lib/permessiRoute.ts) e la sola
+ * lettura dell'OdV.
  *
  * Eccezioni esplicite: route con un proprio meccanismo di autenticazione.
  */
@@ -70,7 +76,35 @@ export async function proxy(request: NextRequest) {
     )
   }
 
+  // Permessi (fase 4C): gli amministratori passano sempre
+  if (sessione.livello_permessi !== 'admin') {
+    const metodo = request.method.toUpperCase()
+    if (sessione.livello_permessi === 'odv') {
+      if (!consentitoAllOdv(metodo, pathname)) {
+        return negato(request, sessione.userId, 'Il ruolo OdV è in sola lettura', null)
+      }
+    } else {
+      const permesso = permessoRichiesto(metodo, pathname)
+      if (permesso && !(await haPermesso(sessione.livello_permessi, permesso))) {
+        const etichetta = await etichettaPermesso(permesso)
+        return negato(request, sessione.userId, `Permesso negato: ${etichetta.toLowerCase()}`, permesso)
+      }
+    }
+  }
+
   return prosegui(request, sessione.userId)
+}
+
+async function negato(request: NextRequest, utenteId: string, messaggio: string, permesso: string | null) {
+  await registraEvento({
+    evento: 'permesso_negato', esito: 'negato', utenteId, request,
+    descrizione: messaggio,
+    dettagli: { metodo: request.method, percorso: request.nextUrl.pathname, permesso }
+  })
+  return NextResponse.json(
+    { error: messaggio, code: 'PERMESSO_NEGATO', permesso },
+    { status: 403, headers: { 'x-gestionale-negato': '1' } }
+  )
 }
 
 export const config = {

@@ -3,6 +3,8 @@ import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { getValidGoogleToken } from '@/lib/googleAuth'
 import { uploadFileToFolder } from '@/lib/googleDrive'
 import { verifyJWT } from '@/lib/jwtAuth'
+import { verificaSeparazione } from '@/lib/approvazioneContratti'
+import { registraEvento } from '@/lib/registro'
 import { getGmailClient } from '@/lib/gmail'
 
 function buildProjectHtmlBody(
@@ -189,7 +191,7 @@ function buildMimeMessage(params: {
 
 export async function POST(req: NextRequest) {
   try {
-    const { progettoId, contractId, contractUrl, customMessage } = await req.json()
+    const { progettoId, contractId, contractUrl, customMessage, deroga } = await req.json()
 
     if (!progettoId || !contractId || !contractUrl) {
       return Response.json({
@@ -202,6 +204,18 @@ export async function POST(req: NextRequest) {
     // 1. Verifica JWT e recupera dati utente
     const decoded = await verifyJWT(req)
     const userId = decoded?.userId
+
+    // Separazione dei compiti (Modello 231): chi ha generato la bozza non la approva, salvo deroga
+    const { data: bozza } = await supabase
+      .from('scadenze_bandi_contract_tracking')
+      .select('id, generato_da')
+      .eq('contract_file_id', contractId)
+      .eq('overall_status', 'DRAFT')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const separazione = verificaSeparazione(bozza?.generato_da, userId, deroga)
+    if (!separazione.ok) return separazione.risposta
 
     const { data: utente } = await supabase
       .from('scadenze_bandi_utenti')
@@ -477,19 +491,36 @@ export async function POST(req: NextRequest) {
     try {
       // Tipo ammesso dal vincolo della tabella: 'PROGETTO' (prima 'CONTRATTO_PROGETTO',
       // rifiutato dal database: il tracking dei contratti di progetto non veniva mai salvato)
-      const { error: trackingInsertError } = await supabase.from('scadenze_bandi_contract_tracking').insert({
-        entity_type: 'PROGETTO',
-        entity_id: progettoId,
-        cliente_id: baseProgetto.cliente_id,
+      const datiInvio = {
         contract_document_url: pdfUploadResult.webViewLink,
         email_sent: true,
         email_sent_at: new Date().toISOString(),
         email_sent_to: clientEmail,
         email_message_id: response.data.id || null,
         email_delivery_status: 'SENT',
-        overall_status: 'SENT'
-      })
+        overall_status: 'SENT',
+        approvato_da: userId || null,
+        approvato_il: new Date().toISOString(),
+        deroga_approvazione: separazione.deroga
+      }
+      // La bozza registrata alla generazione diventa il contratto inviato
+      const { error: trackingInsertError } = bozza
+        ? await supabase.from('scadenze_bandi_contract_tracking').update(datiInvio).eq('id', bozza.id)
+        : await supabase.from('scadenze_bandi_contract_tracking').insert({
+            entity_type: 'PROGETTO',
+            entity_id: progettoId,
+            cliente_id: baseProgetto.cliente_id,
+            contract_file_id: contractId,
+            ...datiInvio
+          })
       if (trackingInsertError) throw trackingInsertError
+      if (separazione.deroga) {
+        await registraEvento({
+          evento: 'deroga_approvazione', utenteId: userId, request: req,
+          tabella: 'scadenze_bandi_contract_tracking', recordId: bozza?.id, clienteId: baseProgetto.cliente_id,
+          descrizione: `Contratto di progetto approvato da chi ha generato la bozza: ${separazione.deroga}`
+        })
+      }
       console.log('✅ Record tracking creato')
     } catch (trackingError) {
       console.warn('⚠️ Warning: tracking record non creato:', trackingError)

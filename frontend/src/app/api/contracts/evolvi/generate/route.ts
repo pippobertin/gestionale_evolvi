@@ -205,7 +205,9 @@ export async function POST(req: NextRequest) {
         contract_word_id: uploadResult.id,
         contract_word_url: uploadResult.webViewLink,
         stato: 'in_revisione',
-        numero_contratto: templateData.NumeroContratto
+        numero_contratto: templateData.NumeroContratto,
+        // Chi ha generato la bozza: non potrà approvarla, salvo deroga (Modello 231)
+        generato_da: (await verifyJWT(req))?.userId || null
       })
       .eq('id', contrattoId)
 

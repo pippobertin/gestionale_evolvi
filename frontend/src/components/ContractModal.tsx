@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { FileText, Loader2, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+
+/** Lunghezza minima della motivazione di una deroga alla separazione tra chi genera e chi approva. */
+const MIN_DEROGA = 15
 
 interface ContractModalProps {
   isOpen: boolean
@@ -19,9 +23,14 @@ interface ContractModalProps {
     }
   }
   onSuccess?: () => void
+  /** Bozza già generata da approvare (dal riquadro del contratto nel progetto) */
+  bozzaEsistente?: { contractId: string; contractUrl: string; contractFileName?: string; generatoDa?: string | null } | null
 }
 
-export default function ContractModal({ isOpen, onClose, progettoData, onSuccess }: ContractModalProps) {
+export default function ContractModal({ isOpen, onClose, progettoData, onSuccess, bozzaEsistente }: ContractModalProps) {
+  const { user, haPermesso } = useAuth()
+  const [deroga, setDeroga] = useState('')
+  const [derogaRichiesta, setDerogaRichiesta] = useState(false)
   const [step, setStep] = useState(1)
   const [importoConsulenza, setImportoConsulenza] = useState('')
   const [emailTarget, setEmailTarget] = useState('')
@@ -51,8 +60,28 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
       setSendingEmail(false)
       setEmailSent(false)
       setEmailResult(null)
+      setDeroga('')
+      setDerogaRichiesta(false)
     }
   }, [isOpen, progettoData])
+
+  // Approvazione di una bozza esistente: si parte direttamente dall'ultimo passo
+  useEffect(() => {
+    if (isOpen && bozzaEsistente) {
+      setContractData({
+        contractId: bozzaEsistente.contractId,
+        contractUrl: bozzaEsistente.contractUrl,
+        contractFileName: bozzaEsistente.contractFileName,
+        generatoDa: bozzaEsistente.generatoDa
+      })
+      setStep(4)
+    }
+  }, [isOpen, bozzaEsistente])
+
+  // Separazione dei compiti (Modello 231): chi ha generato la bozza la approva solo in deroga motivata
+  const puoApprovare = haPermesso('contratti.approva')
+  const generatoDaMe = !!user && !!contractData?.generatoDa && contractData.generatoDa === user.id
+  const serveDeroga = puoApprovare && (generatoDaMe || derogaRichiesta)
 
   const handleGoToPreview = () => {
     if (!importoConsulenza.trim()) {
@@ -106,11 +135,18 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
           progettoId: progettoData.id,
           contractId: contractData.contractId,
           contractUrl: contractData.contractUrl,
-          customMessage: customMessage || undefined
+          customMessage: customMessage || undefined,
+          deroga: serveDeroga ? deroga.trim() : undefined
         })
       })
 
       const result = await response.json()
+      if (response.status === 409 && result.code === 'DEROGA_RICHIESTA') {
+        setDerogaRichiesta(true)
+        setError('')
+        setSendingEmail(false)
+        return
+      }
 
       if (result.success) {
         setEmailSent(true)
@@ -304,12 +340,36 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
                     Apri su Google Docs
                   </button>
 
-                  <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded-r-md">
-                    <p className="text-xs text-amber-700">
-                      Rivedi e modifica il contratto su Google Docs se necessario, poi clicca
-                      &quot;Approva contratto e invialo al cliente&quot; per convertirlo in PDF e spedirlo.
-                    </p>
-                  </div>
+                  {!puoApprovare ? (
+                    <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-r-md">
+                      <p className="text-xs text-blue-800">
+                        La bozza è salvata. Un amministratore la rivedrà, la approverà e la invierà al cliente
+                        dalla scheda del progetto (Documenti, riquadro del contratto).
+                      </p>
+                    </div>
+                  ) : serveDeroga ? (
+                    <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded-r-md space-y-2">
+                      <p className="text-xs text-amber-800">
+                        Hai generato tu questa bozza. Per la separazione dei compiti prevista dal Modello 231 dovrebbe
+                        approvarla un&apos;altra persona: puoi lasciarla in bozza (chiudi) oppure approvarla in deroga,
+                        scrivendo il motivo. La motivazione resta nel registro attività.
+                      </p>
+                      <textarea
+                        value={deroga}
+                        onChange={e => setDeroga(e.target.value)}
+                        rows={2}
+                        placeholder="Motivo della deroga (per esempio: unico amministratore disponibile, scadenza imminente)"
+                        className="w-full text-sm border border-amber-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded-r-md">
+                      <p className="text-xs text-amber-700">
+                        Rivedi e modifica il contratto su Google Docs se necessario, poi clicca
+                        &quot;Approva contratto e invialo al cliente&quot; per convertirlo in PDF e spedirlo.
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -385,10 +445,11 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
                 Genera Contratto
               </button>
             )}
-            {step === 4 && !error && contractData && (
+            {step === 4 && !error && contractData && puoApprovare && (
               <button
                 onClick={handleApproveAndSend}
-                disabled={sendingEmail}
+                disabled={sendingEmail || (serveDeroga && deroga.trim().length < MIN_DEROGA)}
+                title={serveDeroga && deroga.trim().length < MIN_DEROGA ? `Scrivi il motivo della deroga (almeno ${MIN_DEROGA} caratteri)` : undefined}
                 className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md flex items-center gap-2 disabled:opacity-50"
               >
                 {sendingEmail ? (
@@ -399,7 +460,7 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
                 ) : (
                   <>
                     <CheckCircle className="h-4 w-4" />
-                    Approva contratto e invialo al cliente
+                    {serveDeroga ? 'Approva in deroga e invia al cliente' : 'Approva contratto e invialo al cliente'}
                   </>
                 )}
               </button>

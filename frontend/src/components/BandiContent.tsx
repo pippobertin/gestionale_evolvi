@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Search, Plus, Filter, Calendar, Euro, Building, FileText, ExternalLink, Upload, Edit, Rocket, Trash2, CheckSquare, Square } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 import { fetchAllRows, countByKey } from '@/lib/supabaseQueries'
 import BandoForm from './BandoForm'
 import ProgettoForm from './ProgettoForm'
@@ -212,12 +213,22 @@ export default function BandiContent({ initialFilter }: { initialFilter?: string
 
 
 
+  // Eliminazione delle entità principali: dipende dal permesso del ruolo (fase 4C)
+  const { haPermesso: haPermessoElimina } = useAuth()
+  const eliminazioneNegata = () => {
+    if (haPermessoElimina('entita.elimina')) return false
+    alert('Il tuo ruolo non permette di eliminare clienti, prospect, progetti, bandi e contratti. Se ti serve, chiedi a un amministratore.')
+    return true
+  }
+
   const handleDeleteBando = (bandoId: string) => {
+    if (eliminazioneNegata()) return
     setBandoToDelete(bandoId)
     setShowDeleteConfirm(true)
   }
 
   const handleBulkDelete = () => {
+    if (eliminazioneNegata()) return
     if (selectedBandiForDelete.size > 0) {
       setShowDeleteConfirm(true)
     }

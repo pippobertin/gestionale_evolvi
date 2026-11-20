@@ -6,6 +6,7 @@ import { verifyJWT } from '@/lib/jwtAuth'
 import { creaSessione, impostaCookieSessione } from '@/lib/sessioni'
 import { accessoScaduto } from '@/lib/accessoUtente'
 import { registraEvento } from '@/lib/registro'
+import { permessiDelRuolo } from '@/lib/permessi'
 
 /**
  * GET /api/auth/google-jwt
@@ -54,6 +55,7 @@ export async function GET(request: NextRequest) {
       nome: utente.nome,
       cognome: utente.cognome,
       livello_permessi: utente.livello_permessi,
+      permessi: await permessiDelRuolo(utente.livello_permessi),
       nome_completo: `${utente.nome} ${utente.cognome}`
     }
 

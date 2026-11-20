@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { INTESTAZIONE_DATABASE, utenteDellaRichiesta } from './identitaRichiesta'
+import { INTESTAZIONE_AMBIENTE, INTESTAZIONE_DATABASE, utenteDellaRichiesta } from './identitaRichiesta'
 
 /**
  * Client Supabase con SERVICE ROLE KEY.
@@ -25,11 +25,15 @@ if (!supabaseServiceRoleKey) {
  * il registro delle operazioni attribuisce così le modifiche alla persona e non
  * genericamente al "server" (fase 4A).
  */
+const AMBIENTE = process.env.VERCEL_ENV || 'development'
+
 async function fetchConUtente(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const utente = await utenteDellaRichiesta()
-  if (!utente) return fetch(input, init)
   const intestazioni = new Headers(init?.headers)
-  intestazioni.set(INTESTAZIONE_DATABASE, utente)
+  // Ambiente (preview, production): il controllo dei permessi nel database può
+  // essere attivato prima sull'anteprima (fase 4C)
+  intestazioni.set(INTESTAZIONE_AMBIENTE, AMBIENTE)
+  if (utente) intestazioni.set(INTESTAZIONE_DATABASE, utente)
   return fetch(input, { ...init, headers: intestazioni })
 }
 

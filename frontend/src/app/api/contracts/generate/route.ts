@@ -3,6 +3,7 @@ import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { getValidGoogleToken } from '@/lib/googleAuth'
 import { createDriveFolderInSharedDrive, listSharedDriveFiles, uploadFileToFolder } from '@/lib/googleDrive'
 import { findWordTemplate, processWordTemplate } from '@/lib/wordTemplate'
+import { verifyJWT } from '@/lib/jwtAuth'
 import fs from 'fs'
 import path from 'path'
 
@@ -313,10 +314,37 @@ export async function POST(req: NextRequest) {
       mimeType
     )
 
+    // 8. Bozza da approvare (Modello 231): resta in attesa finché una persona
+    // diversa da chi l'ha generata non la approva, salvo deroga motivata
+    const sessione = await verifyJWT(req)
+    let trackingId: string | null = null
+    const { data: bozza, error: bozzaError } = await supabase
+      .from('scadenze_bandi_contract_tracking')
+      .insert({
+        entity_type: 'PROGETTO',
+        entity_id: progettoId,
+        cliente_id: progetto.cliente_id,
+        contract_document_url: uploadResult.webViewLink,
+        contract_file_id: uploadResult.id,
+        email_sent: false,
+        email_delivery_status: 'PENDING',
+        signed_contract_received: false,
+        reminder_sent_count: 0,
+        overall_status: 'DRAFT',
+        generato_da: sessione?.userId || null,
+        generato_il: new Date().toISOString()
+      })
+      .select('id')
+      .single()
+    if (bozzaError) console.warn('⚠️ Bozza del contratto non registrata:', bozzaError.message)
+    else trackingId = bozza.id
+
     return Response.json({
       success: true,
       message: `Contratto ${isWordDocument ? 'Word' : 'testo'} generato con successo`,
       data: {
+        trackingId,
+        generatoDa: sessione?.userId || null,
         contractFileName,
         contractId: uploadResult.id,
         contractUrl: uploadResult.webViewLink,

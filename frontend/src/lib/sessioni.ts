@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
 import type { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from './supabaseAdmin'
+import type { Ruolo } from '@/lib/ruoli'
 import { accessoScaduto } from '@/lib/accessoUtente'
 
 /**
@@ -21,7 +22,7 @@ export const DURATA_SESSIONE_SECONDI = 7 * 24 * 60 * 60 // 7 giorni
 export interface SessioneValida {
   userId: string
   email: string
-  livello_permessi: 'admin' | 'collaboratore'
+  livello_permessi: Ruolo
   sid: string
   deve_cambiare_password: boolean
 }

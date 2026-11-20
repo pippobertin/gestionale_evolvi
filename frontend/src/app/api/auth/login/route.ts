@@ -4,6 +4,7 @@ import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { creaSessione, impostaCookieSessione } from '@/lib/sessioni'
 import { accessoScaduto } from '@/lib/accessoUtente'
 import { registraEvento } from '@/lib/registro'
+import { permessiDelRuolo } from '@/lib/permessi'
 
 export async function POST(request: NextRequest) {
   try {
@@ -81,6 +82,7 @@ export async function POST(request: NextRequest) {
       nome: utente.nome,
       cognome: utente.cognome,
       livello_permessi: utente.livello_permessi,
+      permessi: await permessiDelRuolo(utente.livello_permessi),
       nome_completo: `${utente.nome} ${utente.cognome}`,
       first_login_password_change: utente.first_login_password_change || false
     }

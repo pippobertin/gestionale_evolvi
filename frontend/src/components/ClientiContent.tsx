@@ -13,6 +13,7 @@ import {
   Upload
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 import { fetchAllRows, countByKey } from '@/lib/supabaseQueries'
 import ClienteForm from './ClienteForm'
 import ClienteDettaglio from './ClienteDettaglio'
@@ -303,12 +304,22 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
   }
 
   // Bulk selection handlers
+  // Eliminazione delle entità principali: dipende dal permesso del ruolo (fase 4C)
+  const { haPermesso: haPermessoElimina } = useAuth()
+  const eliminazioneNegata = () => {
+    if (haPermessoElimina('entita.elimina')) return false
+    alert('Il tuo ruolo non permette di eliminare clienti, prospect, progetti, bandi e contratti. Se ti serve, chiedi a un amministratore.')
+    return true
+  }
+
   const handleDeleteCliente = (clienteId: string) => {
+    if (eliminazioneNegata()) return
     setClienteToDelete(clienteId)
     setShowDeleteConfirm(true)
   }
 
   const handleBulkDelete = () => {
+    if (eliminazioneNegata()) return
     if (selectedClientiForDelete.size > 0) {
       setShowDeleteConfirm(true)
     }

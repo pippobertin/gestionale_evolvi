@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Search, Plus, Filter, Calendar, Euro, Building, FileText, Clock, CheckCircle, AlertTriangle, Upload, Edit, Trash2, CheckSquare, Square } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 import { fetchAllRows, countByKey } from '@/lib/supabaseQueries'
 import ProgettoForm from './ProgettoForm'
 
@@ -269,12 +270,22 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
     }
   }
 
+  // Eliminazione delle entità principali: dipende dal permesso del ruolo (fase 4C)
+  const { haPermesso: haPermessoElimina } = useAuth()
+  const eliminazioneNegata = () => {
+    if (haPermessoElimina('entita.elimina')) return false
+    alert('Il tuo ruolo non permette di eliminare clienti, prospect, progetti, bandi e contratti. Se ti serve, chiedi a un amministratore.')
+    return true
+  }
+
   const handleDeleteProgetto = (progettoId: string) => {
+    if (eliminazioneNegata()) return
     setProgettoToDelete(progettoId)
     setShowDeleteConfirm(true)
   }
 
   const handleBulkDelete = () => {
+    if (eliminazioneNegata()) return
     if (selectedProgettiForDelete.size > 0) {
       setShowDeleteConfirm(true)
     }

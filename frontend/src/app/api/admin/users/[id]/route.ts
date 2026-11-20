@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { requireAdmin } from '@/lib/jwtAuth'
 import { normalizzaAccessoFinoAl } from '@/lib/accessoUtente'
+import { eRuolo } from '@/lib/ruoli'
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -23,8 +24,22 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
 
       if (body.livello_permessi) {
-        if (!['admin', 'collaboratore'].includes(body.livello_permessi)) {
+        if (!eRuolo(body.livello_permessi)) {
           return NextResponse.json({ error: 'Livello permessi non valido' }, { status: 400 })
+        }
+        if (body.livello_permessi !== 'admin') {
+          if (admin.userId === id) {
+            return NextResponse.json({ error: 'Non puoi togliere a te stesso il ruolo di amministratore' }, { status: 400 })
+          }
+          const { count } = await supabase
+            .from('scadenze_bandi_utenti')
+            .select('id', { count: 'exact', head: true })
+            .eq('livello_permessi', 'admin')
+            .eq('attivo', true)
+            .neq('id', id)
+          if (!count) {
+            return NextResponse.json({ error: 'Deve restare almeno un amministratore attivo' }, { status: 400 })
+          }
         }
         updates.livello_permessi = body.livello_permessi
       }

@@ -12,6 +12,7 @@ import EmailSignatureEditor from './EmailSignatureEditor'
 import ChangeOwnPassword from './ChangeOwnPassword'
 import BackupGestionale from './BackupGestionale'
 import RegistroAttivita from './RegistroAttivita'
+import RuoliPermessi from './RuoliPermessi'
 import {
   Settings,
   Users,
@@ -25,7 +26,8 @@ import {
   Clock,
   Mail,
   UserPlus,
-  ScrollText
+  ScrollText,
+  KeySquare
 } from 'lucide-react'
 
 export default function SettingsContent() {
@@ -44,6 +46,13 @@ export default function SettingsContent() {
       label: 'Gestione Utenti',
       icon: Users,
       description: 'Gestisci utenti, ruoli e permessi',
+      adminOnly: true
+    },
+    {
+      id: 'permessi',
+      label: 'Ruoli e permessi',
+      icon: KeySquare,
+      description: 'Che cosa possono fare i collaboratori',
       adminOnly: true
     },
     {
@@ -125,6 +134,9 @@ export default function SettingsContent() {
 
       case 'registro':
         return <RegistroAttivita />
+
+      case 'permessi':
+        return <RuoliPermessi />
 
       case 'groups':
         return (

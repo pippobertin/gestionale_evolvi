@@ -4,6 +4,7 @@ import crypto from 'crypto'
 import bcrypt from 'bcrypt'
 import { requireAdmin } from '@/lib/jwtAuth'
 import { normalizzaAccessoFinoAl } from '@/lib/accessoUtente'
+import { eRuolo } from '@/lib/ruoli'
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nome, cognome ed email sono obbligatori' }, { status: 400 })
     }
 
-    if (!['admin', 'collaboratore'].includes(livello_permessi)) {
+    if (!eRuolo(livello_permessi)) {
       return NextResponse.json({ error: 'Livello permessi non valido' }, { status: 400 })
     }
 

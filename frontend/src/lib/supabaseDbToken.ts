@@ -37,6 +37,9 @@ export function mintDbToken(user: { userId: string; email: string; livello_perme
       aud: 'authenticated',
       app: DB_TOKEN_APP, // distingue il gestionale dalle altre app del progetto
       gestionale_ruolo: user.livello_permessi,
+      // Ambiente (preview, production): il controllo dei permessi nel database
+      // può essere attivato prima sull'anteprima (fase 4C)
+      amb: process.env.VERCEL_ENV || 'development',
       iat: now,
       exp
     },

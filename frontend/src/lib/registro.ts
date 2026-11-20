@@ -15,6 +15,9 @@ export type EventoRegistro =
   | 'reimpostazione_password'
   | 'email_inviata'
   | 'esportazione_registro'
+  | 'permesso_negato'
+  | 'deroga_approvazione'
+  | 'permessi_modificati'
 
 type DatiEvento = {
   evento: EventoRegistro

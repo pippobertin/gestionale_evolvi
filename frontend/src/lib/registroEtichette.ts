@@ -11,7 +11,10 @@ export const ETICHETTE_EVENTO: Record<string, string> = {
   cambio_password: 'Cambio password',
   reimpostazione_password: 'Reimpostazione password',
   email_inviata: 'Email inviata',
-  esportazione_registro: 'Esportazione del registro'
+  esportazione_registro: 'Esportazione del registro',
+  permesso_negato: 'Operazione negata',
+  deroga_approvazione: 'Approvazione in deroga',
+  permessi_modificati: 'Permessi modificati'
 }
 
 /** Gruppi di eventi per il filtro. */
@@ -22,7 +25,8 @@ export const GRUPPI_EVENTO: Record<string, { etichetta: string; eventi: string[]
   accessi: { etichetta: 'Accessi e uscite', eventi: ['accesso', 'accesso_negato', 'uscita'] },
   negati: { etichetta: 'Accessi negati', eventi: ['accesso_negato'] },
   password: { etichetta: 'Password', eventi: ['cambio_password', 'reimpostazione_password'] },
-  email: { etichetta: 'Email inviate', eventi: ['email_inviata'] }
+  email: { etichetta: 'Email inviate', eventi: ['email_inviata'] },
+  permessi: { etichetta: 'Permessi, operazioni negate e deroghe', eventi: ['permesso_negato', 'deroga_approvazione', 'permessi_modificati'] }
 }
 
 export const ETICHETTE_CANALE: Record<string, string> = {

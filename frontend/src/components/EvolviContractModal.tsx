@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { X, FileText, ChevronRight, ChevronLeft, CheckCircle, Loader2, AlertCircle, ExternalLink, Eye } from 'lucide-react'
 import { useEvolviContractGeneration } from '@/hooks/useEvolviContractGeneration'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface EvolviContractModalProps {
   isOpen: boolean
@@ -55,6 +56,9 @@ export default function EvolviContractModal({
   clienteDenominazione
 }: EvolviContractModalProps) {
   const [step, setStep] = useState(1)
+  const { haPermesso } = useAuth()
+  const puoApprovare = haPermesso('contratti.approva')
+  const [deroga, setDeroga] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [createdContractId, setCreatedContractId] = useState<string | null>(null)
 
@@ -229,7 +233,8 @@ export default function EvolviContractModal({
   const handleApproveAndSend = async () => {
     if (!createdContractId) return
     try {
-      await approveContract(createdContractId)
+      // Chi ha appena generato la bozza la approva solo in deroga motivata (Modello 231)
+      await approveContract(createdContractId, deroga.trim() || undefined)
       await sendEmail({ contrattoId: createdContractId })
       onSuccess()
     } catch (err: any) {
@@ -553,7 +558,7 @@ export default function EvolviContractModal({
             </div>
           )}
 
-          {/* Step 4: Success */}
+          {/* Step 4: Success (approvazione: separazione dei compiti, Modello 231) */}
           {step === 4 && (
             <div className="space-y-4">
               <div className="text-center py-4">
@@ -593,12 +598,29 @@ export default function EvolviContractModal({
                 </div>
               )}
 
-              <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded">
-                <p className="text-xs text-amber-700">
-                  Rivedi il documento su Google Docs. Puoi modificarlo direttamente.
-                  Quando il contenuto e confermato, approva il contratto per procedere all'invio.
-                </p>
-              </div>
+              {!puoApprovare ? (
+                <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded">
+                  <p className="text-xs text-blue-800">
+                    La bozza è salvata. Un amministratore la rivedrà, la approverà e la invierà al cliente dalla
+                    scheda del contratto.
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded space-y-2">
+                  <p className="text-xs text-amber-800">
+                    Rivedi il documento su Google Docs. Hai generato tu questa bozza: per la separazione dei compiti
+                    prevista dal Modello 231 dovrebbe approvarla un&apos;altra persona. Puoi chiudere e lasciarla in
+                    bozza, oppure approvarla in deroga scrivendo il motivo, che resta nel registro attività.
+                  </p>
+                  <textarea
+                    value={deroga}
+                    onChange={e => setDeroga(e.target.value)}
+                    rows={2}
+                    placeholder="Motivo della deroga (per esempio: unico amministratore disponibile, scadenza imminente)"
+                    className="w-full text-sm border border-amber-300 rounded-md px-2 py-1"
+                  />
+                </div>
+              )}
 
               {/* Generation error */}
               {generationError && (
@@ -617,19 +639,20 @@ export default function EvolviContractModal({
                 >
                   Chiudi
                 </button>
-                <button
+                {puoApprovare && <button
                   type="button"
                   onClick={handleApproveAndSend}
                   className="btn-primary flex items-center space-x-1 bg-green-600 hover:bg-green-700"
-                  disabled={loading}
+                  disabled={loading || deroga.trim().length < 15}
+                  title={deroga.trim().length < 15 ? 'Scrivi il motivo della deroga (almeno 15 caratteri)' : undefined}
                 >
                   {loading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <CheckCircle className="w-4 h-4" />
                   )}
-                  <span>Approva e invia al cliente</span>
-                </button>
+                  <span>Approva in deroga e invia al cliente</span>
+                </button>}
               </div>
             </div>
           )}

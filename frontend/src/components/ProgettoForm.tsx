@@ -86,6 +86,9 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
   const [activeTab, setActiveTab] = useState<TabType>('generale')
   const [loading, setLoading] = useState(false)
   const [showContractModal, setShowContractModal] = useState(false)
+  // Approvazione di una bozza di contratto già generata (Modello 231)
+  const [bozzaDaApprovare, setBozzaDaApprovare] = useState<{ trackingId: string; contractId: string; contractUrl: string; generatoDa: string | null } | null>(null)
+  const [versioneTracking, setVersioneTracking] = useState(0)
   const [savedProjectData, setSavedProjectData] = useState<any>(null)
 
   // Google Drive session
@@ -2152,8 +2155,10 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                     <div className="mt-6">
                       <h4 className="font-medium text-gray-900 mb-3">Tracking Contratto</h4>
                       <ContractTrackingWidget
+                        key={versioneTracking}
                         entityType="PROGETTO"
                         entityId={progetto.id}
+                        onApprovaBozza={setBozzaDaApprovare}
                         descrizione={`Contratto del progetto ${progetto.codice_progetto || ''} ${progetto.titolo_progetto ? '– ' + progetto.titolo_progetto : ''}`.trim()}
                       />
                     </div>
@@ -2408,6 +2413,26 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
         title={previewModal.documento?.nome_file || ''}
         googleDriveId={previewModal.documento?.google_drive_id || ''}
       />
+
+      {/* Approvazione di una bozza esistente */}
+      {progetto && bozzaDaApprovare && (
+        <ContractModal
+          isOpen={!!bozzaDaApprovare}
+          onClose={() => { setBozzaDaApprovare(null); setVersioneTracking(v => v + 1) }}
+          onSuccess={() => { setBozzaDaApprovare(null); setVersioneTracking(v => v + 1) }}
+          bozzaEsistente={bozzaDaApprovare}
+          progettoData={{
+            id: progetto.id,
+            titolo_progetto: progetto.titolo_progetto,
+            cliente: {
+              denominazione: (cliente as any)?.denominazione || progetto.scadenze_bandi_clienti?.denominazione || progetto.cliente_denominazione || '',
+              email: (cliente as any)?.email,
+              pec: (cliente as any)?.pec
+            },
+            bando: { nome: bando?.nome || progetto.scadenze_bandi_bandi?.nome || '' }
+          }}
+        />
+      )}
 
       {/* Modal Contratto */}
       {savedProjectData && (

@@ -2,10 +2,13 @@ import { NextRequest } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { getValidGoogleToken } from '@/lib/googleAuth'
 import { uploadFileToFolder } from '@/lib/googleDrive'
+import { verifyJWT } from '@/lib/jwtAuth'
+import { verificaSeparazione } from '@/lib/approvazioneContratti'
+import { registraEvento } from '@/lib/registro'
 
 export async function POST(req: NextRequest) {
   try {
-    const { contrattoId, approvatoDa } = await req.json()
+    const { contrattoId, deroga } = await req.json()
 
     if (!contrattoId) {
       return Response.json({
@@ -17,7 +20,7 @@ export async function POST(req: NextRequest) {
     // 1. Recupera contratto con info file
     const { data: contratto, error: fetchError } = await supabase
       .from('scadenze_bandi_contratti_evolvi')
-      .select('id, stato, numero_contratto, contract_word_id, cliente_id')
+      .select('id, stato, numero_contratto, contract_word_id, cliente_id, generato_da')
       .eq('id', contrattoId)
       .single()
 
@@ -26,6 +29,16 @@ export async function POST(req: NextRequest) {
         success: false,
         message: 'Contratto non trovato'
       }, { status: 404 })
+    }
+
+    // Separazione dei compiti (Modello 231): chi ha generato la bozza non la approva, salvo deroga
+    const sessione = await verifyJWT(req)
+    const separazione = verificaSeparazione(contratto.generato_da, sessione?.userId, deroga)
+    if (!separazione.ok) return separazione.risposta
+    let nomeApprovatore = 'system'
+    if (sessione?.userId) {
+      const { data: u } = await supabase.from('scadenze_bandi_utenti').select('nome, cognome').eq('id', sessione.userId).maybeSingle()
+      if (u) nomeApprovatore = `${u.nome} ${u.cognome}`
     }
 
     if (!['bozza', 'in_revisione'].includes(contratto.stato)) {
@@ -120,7 +133,9 @@ export async function POST(req: NextRequest) {
       .from('scadenze_bandi_contratti_evolvi')
       .update({
         stato: 'approvato',
-        approvato_da: approvatoDa || 'system',
+        approvato_da: nomeApprovatore,
+        approvato_da_utente: sessione?.userId || null,
+        deroga_approvazione: separazione.deroga,
         approvato_il: new Date().toISOString(),
         contract_pdf_id: pdfUploadResult.id,
         contract_pdf_url: pdfUploadResult.webViewLink
@@ -132,6 +147,13 @@ export async function POST(req: NextRequest) {
     if (updateError) throw updateError
 
     console.log('Contratto Evolvi approvato con PDF:', contrattoId)
+    if (separazione.deroga) {
+      await registraEvento({
+        evento: 'deroga_approvazione', utenteId: sessione?.userId, request: req,
+        tabella: 'scadenze_bandi_contratti_evolvi', recordId: contrattoId, clienteId: contratto.cliente_id,
+        descrizione: `Contratto Metodo Evolvi ${contratto.numero_contratto || ''} approvato da chi ha generato la bozza: ${separazione.deroga}`
+      })
+    }
 
     return Response.json({
       success: true,

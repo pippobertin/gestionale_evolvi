@@ -65,7 +65,7 @@ export function useEvolviContractGeneration() {
     }
   }, [])
 
-  const approveContract = useCallback(async (contrattoId: string) => {
+  const approveContract = useCallback(async (contrattoId: string, deroga?: string) => {
     setState(prev => ({ ...prev, loading: true, error: null }))
 
     try {
@@ -74,10 +74,17 @@ export function useEvolviContractGeneration() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ contrattoId })
+        body: JSON.stringify({ contrattoId, deroga })
       })
 
       const result = await response.json()
+      // Separazione dei compiti (Modello 231): serve una motivazione di deroga
+      if (response.status === 409 && result.code === 'DEROGA_RICHIESTA') {
+        setState(prev => ({ ...prev, loading: false, error: null }))
+        const errore: any = new Error(result.message)
+        errore.code = 'DEROGA_RICHIESTA'
+        throw errore
+      }
 
       if (result.success) {
         setState(prev => ({

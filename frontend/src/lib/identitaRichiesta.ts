@@ -9,6 +9,7 @@
  */
 export const INTESTAZIONE_UTENTE = 'x-gestionale-utente-id'
 export const INTESTAZIONE_DATABASE = 'x-gestionale-utente'
+export const INTESTAZIONE_AMBIENTE = 'x-gestionale-ambiente'
 
 const UUID = /^[0-9a-fA-F-]{36}$/
 
