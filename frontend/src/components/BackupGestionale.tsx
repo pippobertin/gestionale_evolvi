@@ -37,6 +37,17 @@ type EsitoVerifica = {
   errore?: string
 }
 
+/** Legge la risposta come JSON; se il server risponde con una pagina d'errore, dà un messaggio leggibile. */
+async function leggiJson(r: Response): Promise<any> {
+  const testo = await r.text()
+  try {
+    return JSON.parse(testo)
+  } catch {
+    const motivo = r.status === 504 ? 'tempo massimo superato' : r.status === 404 ? 'servizio non trovato' : `errore ${r.status}`
+    return { error: `Il server non ha risposto correttamente (${motivo})` }
+  }
+}
+
 const oggi = () => new Date().toISOString().slice(0, 10)
 
 function formatData(iso: string, conOra = true) {
@@ -78,7 +89,7 @@ export default function BackupGestionale() {
   const carica = async () => {
     try {
       const r = await fetch('/api/backup')
-      const d = await r.json()
+      const d = await leggiJson(r)
       if (!r.ok) throw new Error(d.error || 'Registro non disponibile')
       setRegistro(d.registro || [])
       setDestinazione(d.destinazione || '')
@@ -95,7 +106,7 @@ export default function BackupGestionale() {
     setInCorso('esporta'); setErrore(''); setMessaggio('')
     try {
       const r = await fetch('/api/backup', { method: 'POST' })
-      const d = await r.json()
+      const d = await leggiJson(r)
       if (!r.ok) throw new Error(d.error || 'Esportazione non riuscita')
       setMessaggio(`Esportazione completata: ${d.riga.file_nome}`)
     } catch (e) {
@@ -110,7 +121,7 @@ export default function BackupGestionale() {
     setInCorso(`verifica-${riga.id}`); setErrore('')
     try {
       const r = await fetch(`/api/backup/${riga.id}/verifica`, { method: 'POST' })
-      const d: EsitoVerifica = await r.json()
+      const d: EsitoVerifica = await leggiJson(r)
       setVerifiche(v => ({ ...v, [riga.id]: d }))
       // Precompila la registrazione della prova con l'esito ottenuto
       setProva({
@@ -136,7 +147,7 @@ export default function BackupGestionale() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(prova)
       })
-      const d = await r.json()
+      const d = await leggiJson(r)
       if (!r.ok) throw new Error(d.error || 'Registrazione non riuscita')
       setMessaggio('Prova di ripristino registrata')
       setMostraProva(false)
