@@ -1090,12 +1090,28 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
   const handleDeleteDocument = async (docId: string) => {
     try {
+      const doc = documenti.find(d => d.id === docId)
+      const ereditato = doc && bucketDocumentoProgetto(doc) === 'bandi-documenti'
+      const messaggio = ereditato
+        ? `Togliere "${doc?.nome_file}" dai documenti del progetto? Il modello resta disponibile nel bando.`
+        : `Eliminare definitivamente "${doc?.nome_file || 'il documento'}"? Il file verrà cancellato.`
+      if (!confirm(messaggio)) return
+
       const { error } = await supabase
         .from('scadenze_bandi_documenti_progetto')
         .delete()
         .eq('id', docId)
 
       if (error) throw error
+
+      // Elimina anche il file, ma solo se caricato nel progetto: i documenti
+      // ereditati puntano al file del bando, che deve restare.
+      if (doc?.url_file && bucketDocumentoProgetto(doc) === 'progetti-documenti') {
+        const { error: storageError } = await supabase.storage
+          .from('progetti-documenti')
+          .remove([doc.url_file])
+        if (storageError) console.warn('File non eliminato dall\'archivio:', storageError)
+      }
 
       setDocumenti(prev => prev.filter(doc => doc.id !== docId))
     } catch (error) {

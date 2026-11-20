@@ -1,6 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getGmailClient } from '@/lib/gmail'
 import { verifyJWT } from '@/lib/jwtAuth'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
+
+function escapeHtml(testo: string) {
+  return testo
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function htmlInTesto(html: string) {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|tr|li|h[1-6])>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+/** Contenuto in base64 a righe di 76 caratteri (RFC 2045) */
+function base64ARighe(testo: string) {
+  return (Buffer.from(testo, 'utf-8').toString('base64').match(/.{1,76}/g) || []).join('\r\n')
+}
+
+/** Oggetto codificato (RFC 2047): le lettere accentate arrivano intatte */
+function codificaOggetto(oggetto: string) {
+  return /^[\x20-\x7E]*$/.test(oggetto) ? oggetto : `=?UTF-8?B?${Buffer.from(oggetto, 'utf-8').toString('base64')}?=`
+}
+
+/**
+ * Parte multipart/alternative con testo semplice e HTML. La firma impostata
+ * dall'utente (Impostazioni → Le Mie API Google) è aggiunta in fondo.
+ */
+function parteTestoConFirma(corpo: string, firmaHtml: string | null) {
+  const alt = `alt_${Date.now()}_${Math.random().toString(36).slice(2)}`
+  const testo = (corpo || '') + (firmaHtml ? '\r\n\r\n-- \r\n' + htmlInTesto(firmaHtml) : '')
+  const html =
+    `<div style="font-family: Arial, sans-serif; font-size: 14px;">${escapeHtml(corpo || '').replace(/\r?\n/g, '<br>')}</div>` +
+    (firmaHtml ? `<br><br>${firmaHtml}` : '')
+  return [
+    `Content-Type: multipart/alternative; boundary="${alt}"`,
+    '',
+    `--${alt}`,
+    'Content-Type: text/plain; charset=utf-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    base64ARighe(testo),
+    `--${alt}`,
+    'Content-Type: text/html; charset=utf-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    base64ARighe(html),
+    `--${alt}--`,
+    ''
+  ].join('\r\n')
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,6 +116,17 @@ export async function POST(request: NextRequest) {
     // Get Gmail client with user's tokens (or system fallback)
     const gmail = await getGmailClient(userId)
 
+    // Firma dell'utente collegato (se impostata)
+    let firmaHtml: string | null = null
+    if (userId) {
+      const { data: firma } = await supabaseAdmin
+        .from('scadenze_bandi_utenti')
+        .select('firma_email_html')
+        .eq('id', userId)
+        .single()
+      firmaHtml = firma?.firma_email_html?.trim() || null
+    }
+
     let emailMessage: string
 
     if (attachments.length > 0) {
@@ -66,7 +137,7 @@ export async function POST(request: NextRequest) {
         `To: ${to}`,
         cc ? `Cc: ${cc}` : '',
         bcc ? `Bcc: ${bcc}` : '',
-        `Subject: ${subject}`,
+        `Subject: ${codificaOggetto(subject)}`,
         'MIME-Version: 1.0',
         `Content-Type: multipart/mixed; boundary="${boundary}"`
       ].filter(part => part !== '')
@@ -74,11 +145,9 @@ export async function POST(request: NextRequest) {
       // Start building multipart message
       let multipartBody = headerParts.join('\r\n') + '\r\n\r\n'
 
-      // Add text part
+      // Testo e HTML (con firma)
       multipartBody += `--${boundary}\r\n`
-      multipartBody += 'Content-Type: text/plain; charset=utf-8\r\n'
-      multipartBody += 'Content-Transfer-Encoding: 8bit\r\n\r\n'
-      multipartBody += (emailBody || '') + '\r\n\r\n'
+      multipartBody += parteTestoConFirma(emailBody, firmaHtml) + '\r\n'
 
       // Add attachments
       for (const attachment of attachments) {
@@ -106,18 +175,16 @@ export async function POST(request: NextRequest) {
       console.log('Attachments:', attachments.length)
       console.log('Boundary:', boundary)
     } else {
-      // Create simple text email
+      // Email senza allegati: testo e HTML (con firma)
       const headerParts = [
         `To: ${to}`,
         cc ? `Cc: ${cc}` : '',
         bcc ? `Bcc: ${bcc}` : '',
-        `Subject: ${subject}`,
-        'MIME-Version: 1.0',
-        'Content-Type: text/plain; charset=utf-8',
-        'Content-Transfer-Encoding: 8bit'
+        `Subject: ${codificaOggetto(subject)}`,
+        'MIME-Version: 1.0'
       ].filter(part => part !== '')
 
-      emailMessage = headerParts.join('\r\n') + '\r\n\r\n' + (emailBody || '')
+      emailMessage = headerParts.join('\r\n') + '\r\n' + parteTestoConFirma(emailBody, firmaHtml)
 
       console.log('📧 Simple text email created:')
       console.log('Headers:', headerParts)
