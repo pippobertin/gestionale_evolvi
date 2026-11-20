@@ -37,7 +37,7 @@ Tutte le tabelle, le viste, le funzioni di ricerca e gli archivi dei file del ge
 
 **4A, registro delle operazioni: fatto il 20/11/2026** (in anteprima). Tabella scadenze_bandi_registro_operazioni non modificabile, trigger su 53 tabelle, autore reale anche dal server (intestazione inserita dal proxy e accettata dal database solo con la chiave di servizio), eventi di accesso, uscita, password ed email, pagina Impostazioni > Registro attività con filtri ed esportazione. Restano fuori, per volume o perché sono già registri: sessioni, impostazioni di sistema, log delle notifiche, coda email, log esistenti, dati RNA e tabelle di riferimento (ATECO, CCNL, sigle), vecchio client IMAP.
 
-**4B, ripristino:** da fare. Le eliminazioni conservano la riga intera nel registro; serve il pulsante "Ripristina" (anche a cascata, per esempio un cliente con referenti e note) e la gestione dei file eliminati dagli archivi Supabase, oggi definitiva.
+**4B, ripristino: fatto il 20/11/2026.** Pulsante "Ripristina" sulle eliminazioni del registro: reinserisce ciò che è stato eliminato nella stessa operazione e ricollega le righe solo staccate (collegamenti "set null"). I file eliminati vanno in _cestino/ nello stesso archivio e tornano al loro posto col ripristino; le copie su Drive escono dal cestino di Drive. Da decidere con il consulente quanto conservare il cestino (oggi non si svuota). I dati RNA non sono nel registro: un cliente ripristinato ritrova i suoi aiuti RNA alla sincronizzazione successiva.
 
 **4C, ruoli:** da fare. OdV in sola lettura (database, server e interfaccia), permessi per operazione.
 
