@@ -154,6 +154,18 @@ export async function GET(request: NextRequest) {
     for (const c of clienti || []) nomiClienti[c.id] = c.denominazione
   }
 
+  // Eliminazioni di questa pagina già ripristinate
+  const idsEliminazioni = ((data || []) as any[]).filter(r => r.evento === 'eliminazione').map(r => String(r.id))
+  let ripristinate: number[] = []
+  if (idsEliminazioni.length) {
+    const { data: rip } = await supabaseAdmin
+      .from('scadenze_bandi_registro_operazioni')
+      .select('dettagli')
+      .eq('evento', 'ripristino')
+      .in('dettagli->>ripristino_di', idsEliminazioni)
+    ripristinate = (rip || []).map((r: any) => Number(r.dettagli?.ripristino_di)).filter(Boolean)
+  }
+
   const { data: utenti } = await supabaseAdmin
     .from('scadenze_bandi_utenti')
     .select('id, nome, cognome')
@@ -164,6 +176,7 @@ export async function GET(request: NextRequest) {
     totale: count || 0,
     perPagina: PER_PAGINA,
     nomiClienti,
+    ripristinate,
     utenti: (utenti || []).map(u => ({ id: u.id, nome: `${u.nome || ''} ${u.cognome || ''}`.trim() }))
   })
 }

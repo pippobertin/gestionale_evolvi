@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { FileText, Plus, Upload, Download, Trash2, Loader2, X, Search, FolderOpen } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { spostaNelCestino } from '@/lib/cestinoArchivi'
 
 interface DocumentoFormazione {
   id: string
@@ -159,8 +160,8 @@ export default function DocumentiFormazioneManager({ clienteId }: DocumentiForma
   const handleDelete = async (doc: DocumentoFormazione) => {
     if (!confirm(`Eliminare "${doc.nome_file}"?`)) return
     try {
-      // Delete from storage
-      await supabase.storage.from(BUCKET_FORMAZIONE).remove([doc.storage_path])
+      // Nel cestino dell'archivio: resta ripristinabile dal Registro attività
+      await spostaNelCestino(supabase, BUCKET_FORMAZIONE, [doc.storage_path])
 
       // Delete DB record
       const { error } = await supabase

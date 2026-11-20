@@ -60,7 +60,18 @@ const COLORI_EVENTO: Record<string, string> = {
   cambio_password: 'bg-purple-100 text-purple-800',
   reimpostazione_password: 'bg-purple-100 text-purple-800',
   email_inviata: 'bg-teal-100 text-teal-800',
-  esportazione_registro: 'bg-gray-100 text-gray-700'
+  esportazione_registro: 'bg-gray-100 text-gray-700',
+  ripristino: 'bg-emerald-100 text-emerald-800'
+}
+
+const NON_RIPRISTINABILI = ['scadenze_bandi_utenti', 'scadenze_bandi_backup_registro']
+
+type EsitoRipristino = {
+  ripristinati: { area: string; descrizione: string }[]
+  ricollegati: { area: string; descrizione: string }[]
+  saltati: { area: string; descrizione: string; motivo?: string }[]
+  errori: { area: string; descrizione: string; motivo?: string }[]
+  file: { ripristinati: number; non_ritrovati: string[]; drive: number }
 }
 
 function etichettaCampo(campo: string) {
@@ -78,6 +89,71 @@ function valoreLeggibile(v: unknown): string {
   }
   const testo = JSON.stringify(v)
   return testo.length > 300 ? testo.slice(0, 300) + '…' : testo
+}
+
+function Ripristino({ riga, ripristinata, onRipristinata }: {
+  riga: Riga
+  ripristinata: boolean
+  onRipristinata: () => void
+}) {
+  const [inCorso, setInCorso] = useState(false)
+  const [esito, setEsito] = useState<EsitoRipristino | null>(null)
+  const [errore, setErrore] = useState('')
+
+  if (NON_RIPRISTINABILI.includes(riga.tabella || '')) {
+    return <p className="text-xs text-gray-500 mt-2">Gli elementi di questo tipo non si ripristinano dal registro.</p>
+  }
+  if (ripristinata && !esito) {
+    return <p className="text-xs text-emerald-700 mt-2">Eliminazione già ripristinata.</p>
+  }
+
+  const ripristina = async () => {
+    if (!confirm(`Ripristinare "${riga.descrizione || etichettaTabella(riga.tabella)}"?\n\nVerranno ripristinati anche gli elementi eliminati insieme nella stessa operazione, con i loro file.`)) return
+    setInCorso(true); setErrore('')
+    try {
+      const r = await fetch(`/api/admin/registro/${riga.id}/ripristina`, { method: 'POST' })
+      const testo = await r.text()
+      let d: any
+      try { d = JSON.parse(testo) } catch { throw new Error(`Il server non ha risposto correttamente (errore ${r.status})`) }
+      if (!r.ok) throw new Error(d.error || 'Ripristino non riuscito')
+      setEsito(d)
+      onRipristinata()
+    } catch (e) {
+      setErrore(e instanceof Error ? e.message : 'Errore')
+    } finally {
+      setInCorso(false)
+    }
+  }
+
+  return (
+    <div className="mt-2" onClick={e => e.stopPropagation()}>
+      {!esito && (
+        <button onClick={ripristina} disabled={inCorso}
+          className="px-3 py-1 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 inline-flex items-center gap-1">
+          {inCorso ? <LoadingSpinner size="small" /> : <RotateCcw className="w-3.5 h-3.5" />}
+          Ripristina
+        </button>
+      )}
+      {errore && <p className="text-xs text-red-700 mt-1">{errore}</p>}
+      {esito && (
+        <div className="text-xs mt-1 space-y-0.5">
+          <p className="text-emerald-700 font-medium">
+            Ripristinati {esito.ripristinati.length} elementi
+            {esito.ricollegati.length > 0 && `, ricollegati ${esito.ricollegati.length}`}
+            {esito.file.ripristinati > 0 && `, ${esito.file.ripristinati} file riportati al loro posto`}
+            {esito.file.drive > 0 && `, ${esito.file.drive} copie tolte dal cestino di Drive`}.
+          </p>
+          {esito.ripristinati.map((v, i) => <p key={`r${i}`} className="text-gray-600">{v.area}: {v.descrizione}</p>)}
+          {esito.file.non_ritrovati.length > 0 && (
+            <p className="text-amber-700">File non trovati nel cestino (eliminati prima della 4B): {esito.file.non_ritrovati.join(', ')}</p>
+          )}
+          {[...esito.saltati, ...esito.errori].map((v, i) => (
+            <p key={`e${i}`} className="text-amber-700">{v.area} {v.descrizione}: {v.motivo}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function Dettaglio({ riga }: { riga: Riga }) {
@@ -142,6 +218,7 @@ export default function RegistroAttivita() {
   const [perPagina, setPerPagina] = useState(100)
   const [nomiClienti, setNomiClienti] = useState<Record<string, string>>({})
   const [utenti, setUtenti] = useState<{ id: string; nome: string }[]>([])
+  const [ripristinate, setRipristinate] = useState<Set<number>>(new Set())
   const [aperte, setAperte] = useState<Set<number>>(new Set())
   const [caricamento, setCaricamento] = useState(true)
   const [errore, setErrore] = useState('')
@@ -167,6 +244,7 @@ export default function RegistroAttivita() {
       setTotale(d.totale)
       setPerPagina(d.perPagina)
       setNomiClienti(d.nomiClienti || {})
+      setRipristinate(new Set<number>(d.ripristinate || []))
       setUtenti(d.utenti || [])
       setAperte(new Set())
     } catch (e) {
@@ -341,6 +419,13 @@ export default function RegistroAttivita() {
                         <td></td>
                         <td colSpan={5} className="px-2 py-2">
                           <Dettaglio riga={r} />
+                          {r.evento === 'eliminazione' && r.prima && (
+                            <Ripristino
+                              riga={r}
+                              ripristinata={ripristinate.has(r.id)}
+                              onRipristinata={() => setRipristinate(prev => new Set(prev).add(r.id))}
+                            />
+                          )}
                         </td>
                       </tr>
                     )}

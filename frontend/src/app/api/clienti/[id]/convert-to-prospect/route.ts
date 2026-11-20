@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { requireAdmin } from '@/lib/jwtAuth'
+import { spostaNelCestino } from '@/lib/cestinoArchivi'
 
 // Riservata agli amministratori: la riconversione cancella definitivamente i dati
 // collegati al cliente (contratti, progetti, documenti, formazione...).
@@ -195,7 +196,8 @@ export async function POST(
       const paths = documenti.map((d: any) => d.storage_path).filter(Boolean)
       if (paths.length > 0) {
         try {
-          await supabase.storage.from('clienti-amministrativi').remove(paths)
+          // Nel cestino dell'archivio: restano ripristinabili dal Registro attività
+          await spostaNelCestino(supabase, 'clienti-amministrativi', paths)
         } catch (storageErr) {
           console.warn('Errore cleanup Storage (non bloccante):', storageErr)
         }

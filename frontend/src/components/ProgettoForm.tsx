@@ -25,6 +25,7 @@ import DocumentPreviewModal from './DocumentPreviewModal'
 import ContractModal from './ContractModal'
 import ContractTrackingWidget from './ContractTrackingWidget'
 import NoteCollegateBox from './NoteCollegateBox'
+import { spostaNelCestino } from '@/lib/cestinoArchivi'
 
 interface ProgettoFormData {
   bando_id: string
@@ -1107,10 +1108,8 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
       // Elimina anche il file, ma solo se caricato nel progetto: i documenti
       // ereditati puntano al file del bando, che deve restare.
       if (doc?.url_file && bucketDocumentoProgetto(doc) === 'progetti-documenti') {
-        const { error: storageError } = await supabase.storage
-          .from('progetti-documenti')
-          .remove([doc.url_file])
-        if (storageError) console.warn('File non eliminato dall\'archivio:', storageError)
+        // Nel cestino dell'archivio: resta ripristinabile dal Registro attività
+        await spostaNelCestino(supabase, 'progetti-documenti', [doc.url_file])
       }
 
       setDocumenti(prev => prev.filter(doc => doc.id !== docId))

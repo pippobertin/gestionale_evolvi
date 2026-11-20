@@ -3,6 +3,7 @@ import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { verifyJWT } from '@/lib/jwtAuth'
 import { getValidGoogleToken } from '@/lib/googleAuth'
 import { createDriveClient, findOrCreateSharedDrive, listSharedDriveFiles, trovaCartellaBando } from '@/lib/googleDrive'
+import { spostaNelCestino } from '@/lib/cestinoArchivi'
 
 /**
  * DELETE /api/bandi/documenti/[id]
@@ -75,8 +76,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     // File nell'archivio del gestionale: solo se nessun progetto lo usa
     let archivio: 'cancellato' | 'conservato' = 'conservato'
     if (!usatoDaProgetti && doc.url_file) {
-      const { error: storageError } = await supabase.storage.from('bandi-documenti').remove([doc.url_file])
-      if (!storageError) archivio = 'cancellato'
+      // Nel cestino dell'archivio: resta ripristinabile dal Registro attività
+      if (await spostaNelCestino(supabase, 'bandi-documenti', [doc.url_file])) archivio = 'cancellato'
     }
 
     const { error: deleteError } = await supabase.from('scadenze_bandi_documenti').delete().eq('id', id)

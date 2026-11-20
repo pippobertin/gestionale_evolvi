@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Upload, FileText, Trash2, Eye, Download, Edit, Save, X, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { spostaNelCestino } from '@/lib/cestinoArchivi'
 
 interface Documento {
   id?: string
@@ -188,14 +189,8 @@ export default function DocumentiManager({ clienteId, isNewClient = false }: Doc
     try {
       setLoading(true)
 
-      // Delete file from storage
-      const { error: storageError } = await supabase.storage
-        .from('clienti-documenti')
-        .remove([documento.file_path])
-
-      if (storageError) {
-        console.warn('Errore nella rimozione del file da storage:', storageError)
-      }
+      // Il file va nel cestino dell'archivio: resta ripristinabile dal Registro attività
+      await spostaNelCestino(supabase, 'clienti-documenti', [documento.file_path])
 
       // Delete metadata from database
       const { error: dbError } = await supabase

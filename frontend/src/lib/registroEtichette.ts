@@ -4,6 +4,7 @@ export const ETICHETTE_EVENTO: Record<string, string> = {
   inserimento: 'Creazione',
   modifica: 'Modifica',
   eliminazione: 'Eliminazione',
+  ripristino: 'Ripristino',
   accesso: 'Accesso',
   accesso_negato: 'Accesso negato',
   uscita: 'Uscita',
@@ -15,8 +16,9 @@ export const ETICHETTE_EVENTO: Record<string, string> = {
 
 /** Gruppi di eventi per il filtro. */
 export const GRUPPI_EVENTO: Record<string, { etichetta: string; eventi: string[] }> = {
-  dati: { etichetta: 'Modifiche ai dati', eventi: ['inserimento', 'modifica', 'eliminazione'] },
+  dati: { etichetta: 'Modifiche ai dati', eventi: ['inserimento', 'modifica', 'eliminazione', 'ripristino'] },
   eliminazioni: { etichetta: 'Solo eliminazioni', eventi: ['eliminazione'] },
+  ripristini: { etichetta: 'Ripristini', eventi: ['ripristino'] },
   accessi: { etichetta: 'Accessi e uscite', eventi: ['accesso', 'accesso_negato', 'uscita'] },
   negati: { etichetta: 'Accessi negati', eventi: ['accesso_negato'] },
   password: { etichetta: 'Password', eventi: ['cambio_password', 'reimpostazione_password'] },
