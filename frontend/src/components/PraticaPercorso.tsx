@@ -41,9 +41,9 @@ function Requisito({ ok, testo }: { ok: boolean; testo: string }) {
   )
 }
 
-function Sezione({ titolo, children, evidenza = false }: { titolo: string; children: React.ReactNode; evidenza?: boolean }) {
+function Sezione({ titolo, children, evidenza = false, fisso = false }: { titolo: string; children: React.ReactNode; evidenza?: boolean; fisso?: boolean }) {
   return (
-    <section className={`rounded-lg border p-3 ${evidenza ? 'border-blue-300 bg-blue-50/40' : 'border-gray-200 bg-white'}`}>
+    <section className={`rounded-lg border p-3 ${evidenza ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'} ${fisso ? 'sticky top-0 z-20 shadow-md' : ''}`}>
       <h4 className="text-sm font-semibold text-gray-900 mb-2">{titolo}</h4>
       {children}
     </section>
@@ -153,7 +153,8 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
       {messaggio && <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-700">{messaggio}</div>}
 
       {/* Fasi */}
-      <Sezione titolo="Fasi della pratica" evidenza>
+      {/* Sempre visibile mentre si scorre la scheda */}
+      <Sezione titolo="Fasi della pratica" evidenza fisso>
         <ol className="flex flex-wrap items-center gap-1 mb-3">
           {FASI.map((f, i) => (
             <li key={f.id} className="flex items-center gap-1">

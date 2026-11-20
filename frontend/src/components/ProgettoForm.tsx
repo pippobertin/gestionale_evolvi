@@ -2247,7 +2247,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
             {/* Note collegate (solo in edit) */}
             {progetto?.id && (
               <div className="px-4 py-3 border-t border-gray-200 bg-white max-h-[40vh] overflow-y-auto">
-                <NoteCollegateBox tipo="progetto" id={progetto.id} />
+                <NoteCollegateBox tipo="progetto" id={progetto.id} suggerimenti={false} />
               </div>
             )}
 

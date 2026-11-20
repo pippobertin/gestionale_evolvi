@@ -36,6 +36,8 @@ interface Props {
   tipo: 'bando' | 'progetto'
   /** Id del bando o progetto */
   id: string
+  /** Proporre note candidate e collegamenti suggeriti (predefinito sì). Nei progetti no: si abbinano dall'inbox delle note. */
+  suggerimenti?: boolean
 }
 
 /**
@@ -43,7 +45,7 @@ interface Props {
  * (note che citano l'entita ma non sono ancora collegate).
  * L'utente puo' confermare un candidato o rifiutarlo.
  */
-export default function NoteCollegateBox({ tipo, id }: Props) {
+export default function NoteCollegateBox({ tipo, id, suggerimenti = true }: Props) {
   const [collegate, setCollegate] = useState<NotaCollegata[]>([])
   const [candidati, setCandidati] = useState<NotaCandidata[]>([])
   const [loading, setLoading] = useState(true)
@@ -127,8 +129,8 @@ export default function NoteCollegateBox({ tipo, id }: Props) {
       score: l.score,
     }))
 
-    // 2) Candidati (RPC backward-link)
-    const { data: candData, error: candErr } = await supabase.rpc(
+    // 2) Candidati (RPC backward-link): solo se i suggerimenti sono attivi
+    const { data: candData, error: candErr } = !suggerimenti ? { data: [], error: null } : await supabase.rpc(
       rpcCandidati,
       {
         [rpcParam]: id,
@@ -143,7 +145,7 @@ export default function NoteCollegateBox({ tipo, id }: Props) {
     setCollegate(collegateOut)
     setCandidati((candData ?? []) as NotaCandidata[])
     setLoading(false)
-  }, [id, tableJoin, fkColumn, rpcCandidati, rpcParam])
+  }, [id, tableJoin, fkColumn, rpcCandidati, rpcParam, suggerimenti])
 
   useEffect(() => {
     fetchTutto()
@@ -213,7 +215,7 @@ export default function NoteCollegateBox({ tipo, id }: Props) {
   }
 
   // Filtra collegate visibili (escludo i rifiutati dall'elenco principale)
-  const collegateVisibili = collegate.filter((c) => c.stato !== 'rifiutato')
+  const collegateVisibili = collegate.filter((c) => c.stato !== 'rifiutato' && (suggerimenti || c.stato === 'confermato'))
 
   return (
     <div className="space-y-4">
@@ -227,7 +229,7 @@ export default function NoteCollegateBox({ tipo, id }: Props) {
             ({collegateVisibili.length})
           </span>
         </div>
-        <button
+        <button type="button"
           onClick={fetchTutto}
           className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
         >
@@ -336,7 +338,7 @@ function NotaCollegataCard({
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
         {isSuggested && (
-          <button
+          <button type="button"
             onClick={onConferma}
             className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
             title="Conferma collegamento"
@@ -345,7 +347,7 @@ function NotaCollegataCard({
             Conferma
           </button>
         )}
-        <button
+        <button type="button"
           onClick={onScollega}
           className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-100 text-gray-700"
           title="Scollega"
@@ -394,14 +396,14 @@ function NotaCandidataCard({
         <div className="text-sm text-gray-900 truncate">{nota.titolo}</div>
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
-        <button
+        <button type="button"
           onClick={onConferma}
           className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1"
         >
           <Check className="w-3 h-3" />
           Collega
         </button>
-        <button
+        <button type="button"
           onClick={onRifiuta}
           className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded hover:bg-red-50 flex items-center gap-1"
         >
