@@ -38,6 +38,6 @@ Nuove funzioni: Impostazioni → La mia password; Gestione utenti → Reimposta 
 
 0. **Ancora aperti tra le correzioni:** filtri di Interrogazioni sulla dimensione riconosciuta (oggi usano l'ultimo esercizio); notifiche automatiche delle scadenze (richiedono Vercel Pro, rinviate); eventuale eliminazione della tabella vuota delle fatture Evolvi.
 1. **Fase 4, ruoli e tracciabilità per la 231** (comprende la pagina dei registri per gli amministratori, vedi `docs/TODO_RINVIATI.md`): permessi per operazione (per esempio solo un amministratore approva i contratti), registro delle operazioni non modificabile, archiviazione al posto delle cancellazioni. Serve un'indicazione del consulente 231 sui tempi di conservazione.
-2. **Correzioni funzionali** da `docs/TODO_RINVIATI.md`: dimensione d'impresa, perimetro de minimis, notifiche automatiche (richiedono Vercel Pro), vincoli dei prospect, rimozione della fatturazione Evolvi, caricamento su Drive dei documenti dei bandi.
+2. **Correzioni funzionali:** quelle elencate in `docs/TODO_RINVIATI.md` sono state fatte il 20/11/2026, tranne quelle del punto 0.
 3. **Sicurezza delle altre app** sullo stesso progetto Supabase (tabelle e archivi file ancora aperti).
 4. **Funzioni dal materiale di Stefano** (processi, cartelle Drive per processo, controllo documenti, cervello aziendale).
