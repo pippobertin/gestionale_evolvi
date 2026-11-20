@@ -54,8 +54,9 @@ export function permessoRichiesto(metodo: string, percorso: string): Permesso | 
   return null
 }
 
-/** Per l'OdV (sola lettura): richieste consentite oltre alla lettura dei registri (passaggio C2). */
+/** OdV: solo autenticazione e lettura dei registri (registro attività, backup). */
 export function consentitoAllOdv(metodo: string, percorso: string): boolean {
   if (percorso.startsWith('/api/auth/')) return true
-  return metodo === 'GET'
+  if (metodo !== 'GET') return false
+  return percorso === '/api/admin/registro' || percorso === '/api/backup'
 }

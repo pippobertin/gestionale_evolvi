@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/jwtAuth'
+import { requireAdmin, requireAdminOOdv } from '@/lib/jwtAuth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { eseguiBackup, CARTELLA_BACKUP, NOME_DRIVE } from '@/lib/backupGestionale'
 
@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic'
 
 /** Registro delle esportazioni e delle prove di ripristino (solo amministratori). */
 export async function GET(request: NextRequest) {
-  const admin = await requireAdmin(request)
+  // Amministratori e OdV (sola lettura)
+  const admin = await requireAdminOOdv(request)
   if (!admin) return NextResponse.json({ error: 'Permessi insufficienti' }, { status: 403 })
 
   const { data, error } = await supabaseAdmin

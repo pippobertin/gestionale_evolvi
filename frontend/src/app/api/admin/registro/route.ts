@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/jwtAuth'
+import { requireAdminOOdv } from '@/lib/jwtAuth'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { registraEvento } from '@/lib/registro'
 import {
@@ -87,11 +87,12 @@ function cellaCsv(valore: unknown): string {
 }
 
 export async function GET(request: NextRequest) {
-  const admin = await requireAdmin(request)
+  // Amministratori e OdV (sola lettura)
+  const admin = await requireAdminOOdv(request)
   if (!admin) return NextResponse.json({ error: 'Permessi insufficienti' }, { status: 403 })
 
   const params = request.nextUrl.searchParams
-  const colonne = 'id, quando, utente_id, utente_nome, canale, evento, tabella, record_id, cliente_id, descrizione, campi, prima, dopo, esito, dettagli'
+  const colonne = 'id, quando, utente_id, utente_nome, canale, evento, tabella, record_id, cliente_id, descrizione, campi, prima, dopo, esito, dettagli, transazione'
 
   if (params.get('formato') === 'csv') {
     // Il database restituisce al massimo 1.000 righe per richiesta: si legge a blocchi

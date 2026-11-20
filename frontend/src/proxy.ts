@@ -81,7 +81,8 @@ export async function proxy(request: NextRequest) {
     const metodo = request.method.toUpperCase()
     if (sessione.livello_permessi === 'odv') {
       if (!consentitoAllOdv(metodo, pathname)) {
-        return negato(request, sessione.userId, 'Il ruolo OdV è in sola lettura', null)
+        // Senza registrazione né avviso: l'interfaccia dell'OdV non chiama altre API
+        return NextResponse.json({ error: 'Il ruolo OdV consulta solo i registri', code: 'PERMESSO_NEGATO' }, { status: 403 })
       }
     } else {
       const permesso = permessoRichiesto(metodo, pathname)

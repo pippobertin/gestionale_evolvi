@@ -75,7 +75,7 @@ function BadgeEsito({ esito }: { esito: RigaRegistro['esito'] }) {
   return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${stile}`}>{testo}</span>
 }
 
-export default function BackupGestionale() {
+export default function BackupGestionale({ solaLettura = false }: { solaLettura?: boolean } = {}) {
   const [registro, setRegistro] = useState<RigaRegistro[]>([])
   const [destinazione, setDestinazione] = useState('')
   const [caricamento, setCaricamento] = useState(true)
@@ -203,7 +203,7 @@ export default function BackupGestionale() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      {!solaLettura && <div className="flex flex-wrap gap-2">
         <button
           onClick={esportaOra}
           disabled={inCorso !== null}
@@ -220,10 +220,10 @@ export default function BackupGestionale() {
           <ClipboardCheck className="w-4 h-4" />
           Registra una prova di ripristino
         </button>
-      </div>
+      </div>}
 
       {/* Registrazione prova */}
-      {mostraProva && (
+      {mostraProva && !solaLettura && (
         <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
           <h3 className="text-sm font-semibold text-gray-900">Prova di ripristino</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -332,7 +332,7 @@ export default function BackupGestionale() {
                     </td>
                     <td className="px-3 py-1.5 whitespace-nowrap text-gray-600">{r.conteggi ? totaleRighe(r.conteggi).toLocaleString('it-IT') : ''}</td>
                     <td className="px-3 py-1.5 text-right">
-                      {r.esito === 'ok' && (
+                      {r.esito === 'ok' && !solaLettura && (
                         <button onClick={() => verifica(r)} disabled={inCorso !== null}
                           className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 inline-flex items-center gap-1 disabled:opacity-50"
                           title="Scarica il file da Drive e controlla che sia integro e leggibile">

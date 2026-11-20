@@ -19,8 +19,8 @@ import {
 import { accessoScaduto } from '@/lib/accessoUtente'
 import { ETICHETTE_RUOLO, type Ruolo } from '@/lib/ruoli'
 
-// Ruoli assegnabili da questa schermata (l'OdV arriva con il passaggio 4C2)
-const RUOLI_ASSEGNABILI: Ruolo[] = ['admin', 'collaboratore', 'collaboratore_limitato']
+// Ruoli assegnabili da questa schermata
+const RUOLI_ASSEGNABILI: Ruolo[] = ['admin', 'collaboratore', 'collaboratore_limitato', 'odv']
 const COLORI_RUOLO: Record<Ruolo, string> = {
   admin: 'bg-purple-100 text-purple-800',
   collaboratore: 'bg-blue-100 text-blue-800',

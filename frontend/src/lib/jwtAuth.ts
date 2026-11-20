@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import type { Ruolo } from '@/lib/ruoli'
 import { verificaSessione, tokenDallaRichiesta } from './sessioni'
 
 /**
@@ -17,7 +18,7 @@ export function getJwtSecret(): string {
 export interface JWTPayload {
   userId: string
   email: string
-  livello_permessi: 'admin' | 'collaboratore'
+  livello_permessi: Ruolo
   /** Identificativo della sessione nel database (scadenze_bandi_sessioni.id) */
   sid?: string
   /** true finché l'utente non ha cambiato la password temporanea */
@@ -44,6 +45,13 @@ export async function verifyJWT(request: NextRequest): Promise<JWTPayload | null
     console.error('[verifyJWT] Errore di verifica della sessione')
     return null
   }
+}
+
+/** Amministratori e OdV: per la sola lettura dei registri (fase 4C). */
+export async function requireAdminOOdv(request: NextRequest): Promise<JWTPayload | null> {
+  const payload = await verifyJWT(request)
+  if (!payload) return null
+  return payload.livello_permessi === 'admin' || payload.livello_permessi === 'odv' ? payload : null
 }
 
 export async function requireAdmin(request: NextRequest): Promise<JWTPayload | null> {

@@ -1,7 +1,8 @@
 'use client'
 
 import { Fragment, useCallback, useEffect, useState } from 'react'
-import { ScrollText, Download, ChevronDown, ChevronRight, RotateCcw } from 'lucide-react'
+import { ScrollText, Download, ChevronDown, ChevronRight, RotateCcw, List, AlignLeft } from 'lucide-react'
+import { raggruppa, etichettaCampoLeggibile, type Gruppo } from '@/lib/registroFrasi'
 import { LoadingSpinner } from './shared'
 import {
   ETICHETTE_CANALE, ETICHETTE_EVENTO, GRUPPI_EVENTO, areeRegistro, etichettaTabella
@@ -28,6 +29,17 @@ type Riga = {
   dopo: Record<string, unknown> | null
   esito: string
   dettagli: Record<string, unknown> | null
+  transazione?: number | null
+}
+
+const COLORI_CATEGORIA: Record<Gruppo['categoria'], string> = {
+  dati: 'bg-blue-500',
+  eliminazione: 'bg-red-500',
+  accesso: 'bg-gray-400',
+  sicurezza: 'bg-amber-500',
+  email: 'bg-teal-500',
+  contratti: 'bg-purple-500',
+  sistema: 'bg-gray-300'
 }
 
 type Filtri = {
@@ -75,7 +87,12 @@ type EsitoRipristino = {
 }
 
 function etichettaCampo(campo: string) {
-  return campo.replace(/_/g, ' ')
+  return etichettaCampoLeggibile(campo)
+}
+
+/** Campi tecnici nascosti finché non si chiede di vedere tutto. */
+function campoTecnico(campo: string) {
+  return campo === 'id' || /_id$/.test(campo) || /^(created_at|updated_at|created_by|transazione)$/.test(campo)
 }
 
 function valoreLeggibile(v: unknown): string {
@@ -185,7 +202,7 @@ function Dettaglio({ riga }: { riga: Riga }) {
   const dati = riga.evento === 'eliminazione' ? riga.prima : riga.evento === 'inserimento' ? riga.dopo : riga.dettagli
   if (!dati) return <p className="text-xs text-gray-500">Nessun dettaglio</p>
 
-  const voci = Object.entries(dati).filter(([, v]) => tutti || (v !== null && v !== '' && v !== undefined))
+  const voci = Object.entries(dati).filter(([k, v]) => tutti || (v !== null && v !== '' && v !== undefined && !campoTecnico(k)))
   const mostrate = tutti ? voci : voci.slice(0, 14)
   return (
     <div className="text-xs">
@@ -200,16 +217,18 @@ function Dettaglio({ riga }: { riga: Riga }) {
           </div>
         ))}
       </dl>
-      {voci.length > 14 && !tutti && (
+      {!tutti && (voci.length > 14 || Object.keys(dati).length > voci.length) && (
         <button onClick={() => setTutti(true)} className="mt-1 text-blue-600 hover:underline">
-          Mostra tutti i campi ({voci.length})
+          Mostra tutti i campi, compresi quelli tecnici ({Object.keys(dati).length})
         </button>
       )}
     </div>
   )
 }
 
-export default function RegistroAttivita() {
+export default function RegistroAttivita({ modalita = 'admin' }: { modalita?: 'admin' | 'odv' } = {}) {
+  const [vista, setVista] = useState<'sintetica' | 'completa'>('sintetica')
+  const [mostraAutomatiche, setMostraAutomatiche] = useState(false)
   const [filtri, setFiltri] = useState<Filtri>(FILTRI_INIZIALI)
   const [applicati, setApplicati] = useState<Filtri>(FILTRI_INIZIALI)
   const [pagina, setPagina] = useState(0)
@@ -282,6 +301,7 @@ export default function RegistroAttivita() {
           <h1 className="text-sm font-semibold text-gray-900">Registro attività</h1>
           <p className="text-gray-600 text-sm">
             Chi ha fatto che cosa e quando. Il registro non si può modificare né cancellare.
+            {modalita === 'odv' && ' Consultazione in sola lettura.'}
           </p>
         </div>
       </div>
@@ -339,8 +359,20 @@ export default function RegistroAttivita() {
           <button onClick={azzera} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1">
             <RotateCcw className="w-3.5 h-3.5" /> Azzera
           </button>
+          <div className="flex rounded-lg border border-gray-300 overflow-hidden ml-auto">
+            <button onClick={() => setVista('sintetica')}
+              className={`px-3 py-1.5 text-sm flex items-center gap-1 ${vista === 'sintetica' ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-50'}`}
+              title="Una frase per ogni operazione, comprensibile a tutti">
+              <AlignLeft className="w-3.5 h-3.5" /> Sintetica
+            </button>
+            <button onClick={() => setVista('completa')}
+              className={`px-3 py-1.5 text-sm flex items-center gap-1 ${vista === 'completa' ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-50'}`}
+              title="Tutte le righe tecniche, con i valori prima e dopo">
+              <List className="w-3.5 h-3.5" /> Completa
+            </button>
+          </div>
           <button onClick={esporta} disabled={totale === 0}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 disabled:opacity-50 ml-auto"
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 disabled:opacity-50"
             title="Scarica le righe filtrate in un file apribile con Excel (fino a 10.000)">
             <Download className="w-3.5 h-3.5" /> Esporta per Excel
           </button>
@@ -368,6 +400,50 @@ export default function RegistroAttivita() {
           <div className="p-6"><LoadingSpinner /></div>
         ) : righe.length === 0 ? (
           <p className="p-4 text-sm text-gray-500">Nessuna operazione con questi filtri.</p>
+        ) : vista === 'sintetica' ? (
+          <div>
+            <label className="flex items-center gap-2 px-4 py-2 text-xs text-gray-600 border-b border-gray-100">
+              <input type="checkbox" checked={mostraAutomatiche} onChange={e => setMostraAutomatiche(e.target.checked)} />
+              Mostra anche le operazioni automatiche del gestionale (per esempio gli eventi di calendario creati dal sistema)
+            </label>
+            <ul className="divide-y divide-gray-100">
+              {raggruppa(righe).filter(g => mostraAutomatiche || !g.automatico).map(g => {
+                const aperto = aperte.has(g.righe[0].id)
+                const cliente = g.righe.map(r => r.cliente_id && r.tabella !== 'scadenze_bandi_clienti' ? nomiClienti[r.cliente_id] : null).find(Boolean)
+                return (
+                  <li key={g.chiave}>
+                    <button onClick={() => apriChiudi(g.righe[0].id)} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-start gap-3">
+                      <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${COLORI_CATEGORIA[g.categoria]}`} />
+                      <span className="text-xs text-gray-500 whitespace-nowrap w-32 shrink-0 pt-0.5">
+                        {new Date(g.quando).toLocaleString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <span className="text-sm text-gray-900 flex-1">
+                        {g.frase}
+                        {cliente && <span className="text-gray-500"> · cliente {cliente}</span>}
+                      </span>
+                      {aperto ? <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />}
+                    </button>
+                    {aperto && (
+                      <div className="bg-gray-50 px-4 py-2 pl-12 space-y-3">
+                        {g.righe.map(r => (
+                          <div key={r.id} className="border-l-2 border-gray-200 pl-3">
+                            <div className="text-xs text-gray-500 mb-1">
+                              {ETICHETTE_EVENTO[r.evento] || r.evento} · {etichettaTabella(r.tabella) || 'evento'} {r.descrizione ? `· ${r.descrizione}` : ''}
+                            </div>
+                            <Dettaglio riga={r} />
+                            {modalita === 'admin' && r.evento === 'eliminazione' && r.prima && (
+                              <Ripristino riga={r} ripristinata={ripristinate.has(r.id)}
+                                onRipristinata={() => setRipristinate(prev => new Set(prev).add(r.id))} />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
         ) : (
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
@@ -419,7 +495,7 @@ export default function RegistroAttivita() {
                         <td></td>
                         <td colSpan={5} className="px-2 py-2">
                           <Dettaglio riga={r} />
-                          {r.evento === 'eliminazione' && r.prima && (
+                          {modalita === 'admin' && r.evento === 'eliminazione' && r.prima && (
                             <Ripristino
                               riga={r}
                               ripristinata={ripristinate.has(r.id)}

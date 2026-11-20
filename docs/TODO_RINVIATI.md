@@ -39,7 +39,13 @@ Tutte le tabelle, le viste, le funzioni di ricerca e gli archivi dei file del ge
 
 **4B, ripristino: fatto il 20/11/2026.** Pulsante "Ripristina" sulle eliminazioni del registro: reinserisce ciò che è stato eliminato nella stessa operazione e ricollega le righe solo staccate (collegamenti "set null"). I file eliminati vanno in _cestino/ nello stesso archivio e tornano al loro posto col ripristino; le copie su Drive escono dal cestino di Drive. Da decidere con il consulente quanto conservare il cestino (oggi non si svuota). I dati RNA non sono nel registro: gli aiuti RNA di un cliente eliminato restano nel database ma scollegati, e il ripristino non li ricollega; l'importazione li ricollega (per codice fiscale) solo reimportando i mesi interessati. Possibile miglioria: ricollegarli per codice fiscale durante il ripristino.
 
-**4C, ruoli:** da fare. OdV in sola lettura (database, server e interfaccia), permessi per operazione.
+**4C, ruoli e permessi: fatto il 20/11/2026** (in anteprima).
+- Ruoli: amministratore, collaboratore, collaboratore limitato, OdV. Matrice dei permessi di collaboratori e limitati in Impostazioni > Ruoli e permessi (modifiche nel registro).
+- Controllo nel database prima di ogni scrittura (trigger trg_controlla_permesso), per browser e server; il proxy controlla le azioni che non si esauriscono nel database (invio di contratti ed email). Operazioni negate nel registro.
+- **Interruttore**: system_settings.permessi_attivi = 'anteprima' (solo richieste dell'anteprima). Alla pubblicazione su main va portato a 'tutti': `update scadenze_bandi_system_settings set value = 'tutti' where key = 'permessi_attivi';` Spegnimento d'emergenza: value = 'no'.
+- Contratti: chi genera la bozza non la approva, salvo deroga motivata (registrata). Le bozze di progetto ora restano nel tracciamento come DRAFT con chi le ha generate.
+- OdV: area dedicata con registro attività (vista sintetica e completa), backup e prove di ripristino, password; il database non gli concede alcuna tabella (gestionale_utente_id esclude l'OdV).
+- Prima della pubblicazione: oggi l'unico amministratore è Filippo; Chiara (AU) è collaboratrice e perderebbe l'approvazione dei contratti e l'eliminazione delle entità.
 
 Ruoli applicati dal server sulle operazioni critiche, registro delle operazioni non modificabile (chi, quando, che cosa, valore prima e dopo), autore reale al posto di "system", separazione tra chi crea e chi approva i contratti, archiviazione al posto delle cancellazioni fisiche, rimozione delle cascate sui dati storici, cestino invece dell'eliminazione definitiva su Drive. Serve un'indicazione del consulente 231 sui tempi di conservazione dei documenti.
 

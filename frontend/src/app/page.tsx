@@ -21,6 +21,7 @@ import NoteInboxContent from '@/components/NoteInboxContent'
 import InterrogazioniContent from '@/components/InterrogazioniContent'
 import BandiEsterniManager from '@/components/BandiEsterniManager'
 import { LoadingSpinner } from '@/components/shared'
+import OdvApp from '@/components/OdvApp'
 
 // True solo quando la pagina è stata ricaricata (F5 / reload), non alla prima apertura.
 function isPageReload(): boolean {
@@ -52,6 +53,11 @@ function AppContent() {
 
   if (!user) {
     return <AuthForm />
+  }
+
+  // Organismo di Vigilanza: solo i registri, in sola lettura (fase 4C)
+  if (user.livello_permessi === 'odv') {
+    return <OdvApp />
   }
 
   const handleNavigation = (page: string, params?: any) => {
