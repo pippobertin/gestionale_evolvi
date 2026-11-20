@@ -459,6 +459,13 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
             if (driveResponse.ok) {
               const driveResult = await driveResponse.json()
               console.log('✅ File caricato su Google Drive:', driveResult)
+              // Identificativo su Drive: serve per spostare la copia nel cestino se il documento viene eliminato
+              if (driveResult?.data?.fileId && docData?.id) {
+                await supabase
+                  .from('scadenze_bandi_documenti')
+                  .update({ google_drive_id: driveResult.data.fileId })
+                  .eq('id', docData.id)
+              }
             } else {
               const dettaglio = await driveResponse.json().catch(() => ({}))
               console.error('❌ Errore upload Drive:', dettaglio)
@@ -497,25 +504,21 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
     setUploadProgress({})
   }
 
-  const deleteDocument = async (docId: string, urlFile: string) => {
+  const deleteDocument = async (docId: string, _urlFile: string) => {
+    const doc = documenti.find(d => d.id === docId)
+    if (!confirm(`Eliminare "${doc?.nome_file || 'il documento'}" dal bando? La copia su Google Drive andrà nel cestino di Drive.`)) return
     try {
-      // Rimuovi da storage
-      const { error: storageError } = await supabase.storage
-        .from('bandi-documenti')
-        .remove([urlFile])
+      const res = await fetch(`/api/bandi/documenti/${docId}`, { method: 'DELETE' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json.success) throw new Error(json.error || 'Errore eliminazione')
 
-      if (storageError) throw storageError
+      setDocumenti(prev => prev.filter(d => d.id !== docId))
 
-      // Rimuovi dal database
-      const { error: dbError } = await supabase
-        .from('scadenze_bandi_documenti')
-        .delete()
-        .eq('id', docId)
-
-      if (dbError) throw dbError
-
-      // Aggiorna lista
-      setDocumenti(prev => prev.filter(doc => doc.id !== docId))
+      const avvisi: string[] = []
+      if (json.data?.drive === 'non_trovato') avvisi.push('La copia su Google Drive non è stata trovata: se esiste, va eliminata a mano.')
+      if (json.data?.drive === 'errore') avvisi.push('Non è stato possibile spostare la copia su Google Drive nel cestino: va eliminata a mano.')
+      if (json.data?.usato_da_progetti > 0) avvisi.push(`Il file resta disponibile per ${json.data.usato_da_progetti} documenti di progetto che lo hanno ereditato.`)
+      if (avvisi.length) alert(avvisi.join('\n'))
     } catch (error: any) {
       console.error('Errore eliminazione:', error)
       alert(`Errore eliminando documento: ${error.message}`)
