@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { dimensioneAggregata } from '@/lib/dimensioneImpresa'
 import {
   Plus,
   Search,
@@ -228,80 +229,34 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
     fetchClienti() // Ricarica la lista dopo il salvataggio
   }
 
-  // Calcola dimensione aggregata considerando collegamenti aziendali (UE 2003/361/CE)
+  // Dimensione aggregata con imprese associate e collegate (Racc. 2003/361/CE, lib/dimensioneImpresa)
   const calcolaDimensioneAggregata = (cliente: Cliente): string => {
-    if (!cliente.ula && !cliente.ultimo_fatturato && !cliente.attivo_bilancio) {
-      return ''
+    const legami = tuttiCollegamenti
+      .filter(c => c.azienda_madre_id === cliente.id && c.azienda_collegata)
+      .map(c => ({
+        tipo: c.tipo_collegamento,
+        percentuale: c.percentuale_partecipazione,
+        ula: c.azienda_collegata.ula,
+        fatturato: c.azienda_collegata.ultimo_fatturato,
+        attivo: c.azienda_collegata.attivo_bilancio
+      }))
+
+    // Compatibilità con il vecchio collegamento singolo (solo se non ci sono collegamenti multipli)
+    if (legami.length === 0 && cliente.tipo_collegamento && cliente.tipo_collegamento !== 'AUTONOMA' && cliente.impresa_collegata_id) {
+      const az = clienti.find(c => c.id === cliente.impresa_collegata_id)
+      if (az) legami.push({
+        tipo: cliente.tipo_collegamento,
+        percentuale: cliente.percentuale_partecipazione,
+        ula: az.ula,
+        fatturato: az.ultimo_fatturato,
+        attivo: az.attivo_bilancio
+      })
     }
 
-    let ulaTotal = cliente.ula || 0
-    let fatturatoTotal = cliente.ultimo_fatturato || 0
-    let attivoTotal = cliente.attivo_bilancio || 0
-
-    // Somma i collegamenti multipli dalla tabella scadenze_bandi_collegamenti_aziendali
-    const collegamentiCliente = tuttiCollegamenti.filter(c => c.azienda_madre_id === cliente.id)
-    collegamentiCliente.forEach(col => {
-      const az = col.azienda_collegata
-      if (!az) return
-      if (col.tipo_collegamento === 'COLLEGATA') {
-        const perc = (col.percentuale_partecipazione || 0) / 100
-        ulaTotal += (az.ula || 0) * perc
-        fatturatoTotal += (az.ultimo_fatturato || 0) * perc
-        attivoTotal += (az.attivo_bilancio || 0) * perc
-      } else if (col.tipo_collegamento === 'ASSOCIATA') {
-        ulaTotal += az.ula || 0
-        fatturatoTotal += az.ultimo_fatturato || 0
-        attivoTotal += az.attivo_bilancio || 0
-      }
-    })
-
-    // Compatibilità vecchio sistema singolo collegamento (solo se non ci sono multi-collegamenti)
-    if (collegamentiCliente.length === 0 && cliente.tipo_collegamento !== 'AUTONOMA' && cliente.impresa_collegata_id) {
-      const aziendaCollegata = clienti.find(c => c.id === cliente.impresa_collegata_id)
-      if (aziendaCollegata) {
-        const percentuale = (cliente.percentuale_partecipazione || 0) / 100
-        if (cliente.tipo_collegamento === 'COLLEGATA') {
-          ulaTotal += (aziendaCollegata.ula || 0) * percentuale
-          fatturatoTotal += (aziendaCollegata.ultimo_fatturato || 0) * percentuale
-          attivoTotal += (aziendaCollegata.attivo_bilancio || 0) * percentuale
-        } else if (cliente.tipo_collegamento === 'ASSOCIATA') {
-          ulaTotal += aziendaCollegata.ula || 0
-          fatturatoTotal += aziendaCollegata.ultimo_fatturato || 0
-          attivoTotal += aziendaCollegata.attivo_bilancio || 0
-        }
-      }
-    }
-
-    // Classifica per ciascun parametro e prendi il MAX (UE 2003/361/CE)
-    const dimensioniOrdinate = ['MICRO', 'PICCOLA', 'MEDIA', 'GRANDE']
-    const getPeso = (dim: string) => dimensioniOrdinate.indexOf(dim)
-
-    let dimULA = 'MICRO'
-    if (ulaTotal >= 250) dimULA = 'GRANDE'
-    else if (ulaTotal >= 50) dimULA = 'MEDIA'
-    else if (ulaTotal >= 10) dimULA = 'PICCOLA'
-
-    let dimFatt = ''
-    if (fatturatoTotal > 0) {
-      if (fatturatoTotal > 50000000) dimFatt = 'GRANDE'
-      else if (fatturatoTotal > 10000000) dimFatt = 'MEDIA'
-      else if (fatturatoTotal > 2000000) dimFatt = 'PICCOLA'
-      else dimFatt = 'MICRO'
-    }
-
-    let dimAtt = ''
-    if (attivoTotal > 0) {
-      if (attivoTotal > 43000000) dimAtt = 'GRANDE'
-      else if (attivoTotal > 10000000) dimAtt = 'MEDIA'
-      else if (attivoTotal > 2000000) dimAtt = 'PICCOLA'
-      else dimAtt = 'MICRO'
-    }
-
-    let risultato = dimULA
-    if (dimFatt && getPeso(dimFatt) > getPeso(risultato)) risultato = dimFatt
-    if (dimAtt && getPeso(dimAtt) > getPeso(risultato)) risultato = dimAtt
-
-    return risultato
+    return dimensioneAggregata(
+      { ula: cliente.ula, fatturato: cliente.ultimo_fatturato, attivo: cliente.attivo_bilancio },
+      legami
+    ).dimensione || ''
   }
 
   const handleEditFromDettaglio = (cliente: Cliente) => {

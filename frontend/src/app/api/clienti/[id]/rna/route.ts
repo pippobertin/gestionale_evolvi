@@ -35,9 +35,10 @@ export async function GET(
         .select('id, anno_competenza, importo_contributo, bando_denominazione_manuale, rna_codice_concessione, origine, bando:scadenze_bandi_bandi!bando_id(nome)')
         .eq('cliente_id', clienteId)
         .order('anno_competenza', { ascending: false }),
+      // Tutti i legami di controllo: servono anche quelli indiretti (impresa unica)
       supabase.from('scadenze_bandi_collegamenti_aziendali')
         .select('azienda_madre_id, azienda_collegata_id, tipo_collegamento')
-        .or(`azienda_madre_id.eq.${clienteId},azienda_collegata_id.eq.${clienteId}`),
+        .eq('tipo_collegamento', 'COLLEGATA'),
       supabase.from('scadenze_bandi_rna_import_log')
         .select('completato_at')
         .eq('esito', 'OK')
@@ -64,13 +65,26 @@ export async function GET(
         nome: c.bando?.nome || c.bando_denominazione_manuale || '—',
       }))
 
-    // Impresa unica: aziende collegate (non le associate) presenti nel gestionale
-    const collegate = new Set<string>()
+    // Impresa unica (Reg. UE 2023/2831, art. 2, par. 2): imprese legate da controllo
+    // (tipo COLLEGATA: oltre il 50% dei voti o influenza dominante), anche
+    // indirettamente tramite altre imprese. Le associate (25-50%) non ne fanno parte.
+    const vicini = new Map<string, string[]>()
     ;(collRes.data || []).forEach((r: any) => {
-      if (r.tipo_collegamento !== 'COLLEGATA') return
-      const altro = r.azienda_madre_id === clienteId ? r.azienda_collegata_id : r.azienda_madre_id
-      if (altro && altro !== clienteId) collegate.add(altro)
+      if (!r.azienda_madre_id || !r.azienda_collegata_id) return
+      vicini.set(r.azienda_madre_id, [...(vicini.get(r.azienda_madre_id) || []), r.azienda_collegata_id])
+      vicini.set(r.azienda_collegata_id, [...(vicini.get(r.azienda_collegata_id) || []), r.azienda_madre_id])
     })
+    const collegate = new Set<string>()
+    const daVisitare = [clienteId]
+    while (daVisitare.length > 0) {
+      const corrente = daVisitare.pop() as string
+      for (const altro of vicini.get(corrente) || []) {
+        if (altro !== clienteId && !collegate.has(altro)) {
+          collegate.add(altro)
+          daVisitare.push(altro)
+        }
+      }
+    }
     let aiutiCollegate: any[] = []
     if (collegate.size > 0) {
       const { data, error } = await supabase.from('scadenze_bandi_rna_aiuti')

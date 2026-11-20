@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { dimensioneAggregata } from '@/lib/dimensioneImpresa'
 import {
   X,
   Edit,
@@ -195,56 +196,19 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
     return new Date(dateString).toISOString().split('T')[0]
   }
 
-  // Calcola dimensione aggregata considerando collegamenti (UE 2003/361/CE)
+  // Dimensione aggregata con imprese associate e collegate (Racc. 2003/361/CE, lib/dimensioneImpresa)
   const calcolaDimensioneAggregata = (): string => {
     if (!cliente) return ''
-    if (!cliente.ula && !cliente.ultimo_fatturato && !cliente.attivo_bilancio) return ''
-
-    let ulaTotal = cliente.ula || 0
-    let fatturatoTotal = cliente.ultimo_fatturato || 0
-    let attivoTotal = cliente.attivo_bilancio || 0
-
-    collegamenti.forEach(col => {
-      if (col.tipo_collegamento === 'COLLEGATA') {
-        const perc = (col.percentuale_partecipazione || 0) / 100
-        ulaTotal += (col.ula_collegata || 0) * perc
-        fatturatoTotal += (col.fatturato_collegato || 0) * perc
-        attivoTotal += (col.attivo_collegato || 0) * perc
-      } else if (col.tipo_collegamento === 'ASSOCIATA') {
-        ulaTotal += col.ula_collegata || 0
-        fatturatoTotal += col.fatturato_collegato || 0
-        attivoTotal += col.attivo_collegato || 0
-      }
-    })
-
-    const dimensioniOrdinate = ['MICRO', 'PICCOLA', 'MEDIA', 'GRANDE']
-    const getPeso = (dim: string) => dimensioniOrdinate.indexOf(dim)
-
-    let dimULA = 'MICRO'
-    if (ulaTotal >= 250) dimULA = 'GRANDE'
-    else if (ulaTotal >= 50) dimULA = 'MEDIA'
-    else if (ulaTotal >= 10) dimULA = 'PICCOLA'
-
-    let dimFatt = ''
-    if (fatturatoTotal > 0) {
-      if (fatturatoTotal > 50000000) dimFatt = 'GRANDE'
-      else if (fatturatoTotal > 10000000) dimFatt = 'MEDIA'
-      else if (fatturatoTotal > 2000000) dimFatt = 'PICCOLA'
-      else dimFatt = 'MICRO'
-    }
-
-    let dimAtt = ''
-    if (attivoTotal > 0) {
-      if (attivoTotal > 43000000) dimAtt = 'GRANDE'
-      else if (attivoTotal > 10000000) dimAtt = 'MEDIA'
-      else if (attivoTotal > 2000000) dimAtt = 'PICCOLA'
-      else dimAtt = 'MICRO'
-    }
-
-    let risultato = dimULA
-    if (dimFatt && getPeso(dimFatt) > getPeso(risultato)) risultato = dimFatt
-    if (dimAtt && getPeso(dimAtt) > getPeso(risultato)) risultato = dimAtt
-    return risultato
+    return dimensioneAggregata(
+      { ula: cliente.ula, fatturato: cliente.ultimo_fatturato, attivo: cliente.attivo_bilancio },
+      collegamenti.map(col => ({
+        tipo: col.tipo_collegamento,
+        percentuale: col.percentuale_partecipazione,
+        ula: col.ula_collegata,
+        fatturato: col.fatturato_collegato,
+        attivo: col.attivo_collegato
+      }))
+    ).dimensione || ''
   }
 
   const getDimensioneColor = (dim: string) => {
@@ -645,7 +609,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
                     {dimensioneCalc}
                   </span>
                 ) : (
-                  <span className="text-sm text-gray-500">Non calcolabile</span>
+                  <span className="text-sm text-gray-500">Non determinabile: servono le ULA e il fatturato o l'attivo</span>
                 )}
                 {collegamenti.length > 0 && dimensioneCalc && (
                   <span className="text-xs text-blue-600">
@@ -729,7 +693,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
                                   {collegamento.denominazione_collegata || 'Azienda collegata'}
                                 </h5>
                                 <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                  collegamento.tipo_collegamento === 'ASSOCIATA'
+                                  collegamento.tipo_collegamento === 'COLLEGATA'
                                     ? 'bg-green-100 text-green-800'
                                     : 'bg-blue-100 text-blue-800'
                                 }`}>
@@ -795,7 +759,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
                       <li>Azienda principale: {cliente.ula || 0} ULA, €{(cliente.ultimo_fatturato || 0).toLocaleString('it-IT')}</li>
                       {collegamenti.map((col, idx) => (
                         <li key={idx}>
-                          {col.denominazione_collegata}: {col.tipo_collegamento === 'ASSOCIATA' ? '100%' : `${col.percentuale_partecipazione}%`}
+                          {col.denominazione_collegata}: {col.tipo_collegamento === 'COLLEGATA' ? '100%' : `${col.percentuale_partecipazione}%`}
                           {' '}({col.ula_collegata || 0} ULA, €{(col.fatturato_collegato || 0).toLocaleString('it-IT')})
                         </li>
                       ))}

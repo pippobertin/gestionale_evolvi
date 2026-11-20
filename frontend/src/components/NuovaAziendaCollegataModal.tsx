@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { classificaDimensione } from '@/lib/dimensioneImpresa'
 import { X, Save, Building2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
@@ -37,18 +38,9 @@ export default function NuovaAziendaCollegataModal({ isOpen, onClose, onSave }: 
     }
   }, [formData.ula, formData.ultimo_fatturato, formData.attivo_bilancio])
 
-  const calcolaDimensione = (ula?: number, fatturato?: number, attivo?: number): string => {
-    if (!ula && !fatturato && !attivo) return ''
-
-    const ulaVal = ula || 0
-    const fatturatoVal = fatturato || 0
-    const attivoVal = attivo || 0
-
-    if (ulaVal < 10 && (fatturatoVal <= 2000000 || attivoVal <= 2000000)) return 'MICRO'
-    if (ulaVal < 50 && (fatturatoVal <= 10000000 || attivoVal <= 10000000)) return 'PICCOLA'
-    if (ulaVal < 250 && (fatturatoVal <= 50000000 || attivoVal <= 43000000)) return 'MEDIA'
-    return 'GRANDE'
-  }
+  // Stessa regola della colonna calcolata nel database (lib/dimensioneImpresa)
+  const calcolaDimensione = (ula?: number, fatturato?: number, attivo?: number): string =>
+    classificaDimensione(ula, fatturato, attivo) || ''
 
   const handleInputChange = (field: keyof NuovaAziendaData, value: any) => {
     setFormData(prev => ({

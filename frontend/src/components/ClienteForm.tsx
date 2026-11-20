@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { dimensioneAggregata } from '@/lib/dimensioneImpresa'
 import {
   X,
   Save,
@@ -444,96 +445,29 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
     setDimensioneCalcolataCorrente(nuovaDimensione)
   }, [formData.ula, formData.ultimo_fatturato, formData.attivo_bilancio, formData.tipo_collegamento, formData.percentuale_partecipazione, datiAziendaCollegata, collegamenti])
 
-  // Calcola dimensione considerando aziende collegate secondo UE 2003/361/CE
+  // Dimensione aggregata con imprese associate e collegate (Racc. 2003/361/CE, lib/dimensioneImpresa)
   const calcolaDimensioneAggregata = (ula?: number, fatturato?: number, attivo?: number): string => {
-    if (!ula && !fatturato && !attivo) return ''
+    const legami: Array<{ tipo: string | undefined; percentuale?: number; ula?: number; fatturato?: number; attivo?: number }> =
+      collegamenti.map(col => ({
+        tipo: col.tipo_collegamento,
+        percentuale: col.percentuale_partecipazione,
+        ula: col.ula_collegata,
+        fatturato: col.fatturato_collegato,
+        attivo: col.attivo_collegato
+      }))
 
-    let ulaTotal = ula || 0
-    let fatturatoTotal = fatturato || 0
-    let attivoTotal = attivo || 0
-
-
-    // Somma tutti i collegamenti aziendali
-    collegamenti.forEach(collegamento => {
-      if (collegamento.tipo_collegamento === 'COLLEGATA') {
-        // Per aziende collegate (25-49.99%): somma proporzionale alla partecipazione
-        const percentuale = (collegamento.percentuale_partecipazione || 0) / 100
-        ulaTotal += (collegamento.ula_collegata || 0) * percentuale
-        fatturatoTotal += (collegamento.fatturato_collegato || 0) * percentuale
-        attivoTotal += (collegamento.attivo_collegato || 0) * percentuale
-      } else if (collegamento.tipo_collegamento === 'ASSOCIATA') {
-        // Per aziende associate (≥50%): somma il 100%
-        ulaTotal += collegamento.ula_collegata || 0
-        fatturatoTotal += collegamento.fatturato_collegato || 0
-        attivoTotal += collegamento.attivo_collegato || 0
-      }
-    })
-
-    // Compatibilità con il vecchio sistema (se esiste ancora un collegamento singolo)
-    if (formData.tipo_collegamento !== 'AUTONOMA' && datiAziendaCollegata && collegamenti.length === 0) {
-      if (formData.tipo_collegamento === 'COLLEGATA') {
-        const percentuale = (formData.percentuale_partecipazione || 0) / 100
-        ulaTotal += (datiAziendaCollegata.ula || 0) * percentuale
-        fatturatoTotal += (datiAziendaCollegata.ultimo_fatturato || 0) * percentuale
-        attivoTotal += (datiAziendaCollegata.attivo_bilancio || 0) * percentuale
-      } else if (formData.tipo_collegamento === 'ASSOCIATA') {
-        ulaTotal += datiAziendaCollegata.ula || 0
-        fatturatoTotal += datiAziendaCollegata.ultimo_fatturato || 0
-        attivoTotal += datiAziendaCollegata.attivo_bilancio || 0
-      }
+    // Compatibilità con il vecchio collegamento singolo (solo se non ci sono collegamenti multipli)
+    if (formData.tipo_collegamento && formData.tipo_collegamento !== 'AUTONOMA' && datiAziendaCollegata && collegamenti.length === 0) {
+      legami.push({
+        tipo: formData.tipo_collegamento,
+        percentuale: formData.percentuale_partecipazione,
+        ula: datiAziendaCollegata.ula,
+        fatturato: datiAziendaCollegata.ultimo_fatturato,
+        attivo: datiAziendaCollegata.attivo_bilancio
+      })
     }
 
-
-    // Applica i limiti UE 2003/361/CE
-    // Strategia: classifica separatamente per ULA, Fatturato e Attivo
-    // Poi prendi la dimensione PIÙ GRANDE tra quelle calcolate
-    // Questo evita che un valore basso "salvi" la classificazione quando un altro è altissimo
-
-    const hasFatturato = fatturatoTotal > 0
-    const hasAttivo = attivoTotal > 0
-
-    // Classifica per ULA
-    let dimensionePerULA = ''
-    if (ulaTotal < 10) dimensionePerULA = 'MICRO'
-    else if (ulaTotal < 50) dimensionePerULA = 'PICCOLA'
-    else if (ulaTotal < 250) dimensionePerULA = 'MEDIA'
-    else dimensionePerULA = 'GRANDE'
-
-    // Classifica per Fatturato (se presente)
-    let dimensionePerFatturato = ''
-    if (hasFatturato) {
-      if (fatturatoTotal <= 2000000) dimensionePerFatturato = 'MICRO'
-      else if (fatturatoTotal <= 10000000) dimensionePerFatturato = 'PICCOLA'
-      else if (fatturatoTotal <= 50000000) dimensionePerFatturato = 'MEDIA'
-      else dimensionePerFatturato = 'GRANDE'
-    }
-
-    // Classifica per Attivo (se presente)
-    let dimensionePerAttivo = ''
-    if (hasAttivo) {
-      if (attivoTotal <= 2000000) dimensionePerAttivo = 'MICRO'
-      else if (attivoTotal <= 10000000) dimensionePerAttivo = 'PICCOLA'
-      else if (attivoTotal <= 43000000) dimensionePerAttivo = 'MEDIA'
-      else dimensionePerAttivo = 'GRANDE'
-    }
-
-    // Funzione helper per confrontare dimensioni
-    const dimensioniOrdinate = ['MICRO', 'PICCOLA', 'MEDIA', 'GRANDE']
-    const getPeso = (dim: string) => dimensioniOrdinate.indexOf(dim)
-
-    // Prendi la dimensione più grande tra quelle calcolate
-    let dimensioneCalcolata = dimensionePerULA // Partiamo sempre da ULA
-
-    if (dimensionePerFatturato && getPeso(dimensionePerFatturato) > getPeso(dimensioneCalcolata)) {
-      dimensioneCalcolata = dimensionePerFatturato
-    }
-
-    if (dimensionePerAttivo && getPeso(dimensionePerAttivo) > getPeso(dimensioneCalcolata)) {
-      dimensioneCalcolata = dimensionePerAttivo
-    }
-
-
-    return dimensioneCalcolata
+    return dimensioneAggregata({ ula, fatturato, attivo }, legami).dimensione || ''
   }
 
   const calcolaDimensione = (ula?: number, fatturato?: number, attivo?: number): string => {
@@ -1451,8 +1385,11 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <span className="text-lg font-bold text-blue-600">
-                    {dimensioneCalcolata || 'Non calcolabile'}
+                    {dimensioneCalcolata || 'Non determinabile'}
                   </span>
+                  {!dimensioneCalcolata && (
+                    <p className="text-xs text-gray-500 mt-1">Servono le ULA e almeno uno tra fatturato e attivo di bilancio.</p>
+                  )}
                   {dimensioneCalcolata && (
                     <p className="text-xs text-blue-600 mt-1">
                       {collegamenti.length > 0 ? (
@@ -1593,7 +1530,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
                                   {collegamento.denominazione_collegata || 'Azienda collegata'}
                                 </h5>
                                 <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                  collegamento.tipo_collegamento === 'ASSOCIATA'
+                                  collegamento.tipo_collegamento === 'COLLEGATA'
                                     ? 'bg-green-100 text-green-800'
                                     : 'bg-blue-100 text-blue-800'
                                 }`}>
@@ -1680,7 +1617,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
                       <li>Azienda principale: {formData.ula || 0} ULA, €{(formData.ultimo_fatturato || 0).toLocaleString()}</li>
                       {collegamenti.map((col, idx) => (
                         <li key={idx}>
-                          {col.denominazione_collegata}: {col.tipo_collegamento === 'ASSOCIATA' ? '100%' : `${col.percentuale_partecipazione}%`}
+                          {col.denominazione_collegata}: {col.tipo_collegamento === 'COLLEGATA' ? '100%' : `${col.percentuale_partecipazione}%`}
                           {' '}({col.ula_collegata || 0} ULA, €{(col.fatturato_collegato || 0).toLocaleString()})
                         </li>
                       ))}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, Save } from 'lucide-react'
 import NuovaAziendaCollegataModal from './NuovaAziendaCollegataModal'
+import { tipoCollegamentoPrevisto } from '@/lib/dimensioneImpresa'
 
 interface CollegamentoAziendale {
   id?: string
@@ -41,7 +42,7 @@ interface Props {
 const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, collegamentoInModifica, onReloadClienti, collegamentiEsistenti = [] }: Props) => {
   const [formData, setFormData] = useState<CollegamentoAziendale>({
     azienda_collegata_id: '',
-    tipo_collegamento: 'COLLEGATA',
+    tipo_collegamento: 'ASSOCIATA',
     percentuale_partecipazione: 0,
     diritti_voto: 0,
     influenza_dominante: false,
@@ -70,7 +71,7 @@ const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, c
     } else {
       setFormData({
         azienda_collegata_id: '',
-        tipo_collegamento: 'COLLEGATA',
+        tipo_collegamento: 'ASSOCIATA',
         percentuale_partecipazione: 0,
         diritti_voto: 0,
         influenza_dominante: false,
@@ -86,10 +87,14 @@ const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, c
       return
     }
 
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }))
+    setFormData(prev => {
+      const next = { ...prev, [field]: value }
+      // Il tipo segue la norma: collegata oltre il 50% o con influenza dominante, altrimenti associata
+      if (field === 'percentuale_partecipazione' || field === 'influenza_dominante') {
+        next.tipo_collegamento = tipoCollegamentoPrevisto(next.percentuale_partecipazione, next.influenza_dominante)
+      }
+      return next
+    })
   }
 
   const handleNuovaAziendaCreata = async (nuovaAzienda: Cliente) => {
@@ -118,14 +123,16 @@ const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, c
       return
     }
 
-    // Validazione coerenza tipo collegamento vs percentuale
-    if (formData.tipo_collegamento === 'ASSOCIATA' && formData.percentuale_partecipazione < 50) {
-      alert('Per aziende associate la partecipazione deve essere almeno 50%')
+    // Coerenza con la Raccomandazione 2003/361/CE (art. 3)
+    const tipoPrevisto = tipoCollegamentoPrevisto(formData.percentuale_partecipazione, formData.influenza_dominante)
+    if (formData.tipo_collegamento === 'ASSOCIATA' && formData.percentuale_partecipazione < 25) {
+      alert('Sotto il 25% di partecipazione l\'impresa è di norma autonoma e non va sommata (salvo le eccezioni dell\'art. 3 della Raccomandazione)')
       return
     }
-
-    if (formData.tipo_collegamento === 'COLLEGATA' && formData.percentuale_partecipazione >= 50) {
-      alert('Per aziende collegate la partecipazione deve essere inferiore al 50%')
+    if (formData.tipo_collegamento !== tipoPrevisto) {
+      alert(tipoPrevisto === 'COLLEGATA'
+        ? 'Con una partecipazione oltre il 50% o con influenza dominante l\'impresa è collegata (somma al 100%)'
+        : 'Fino al 50% di partecipazione e senza influenza dominante l\'impresa è associata (somma in proporzione)')
       return
     }
 
@@ -173,8 +180,9 @@ const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, c
               ⚖️ Normativa UE 2003/361/CE
             </h4>
             <p className="text-xs text-yellow-700">
-              <strong>Collegata:</strong> 25-49.99% partecipazione (calcolo proporzionale)<br/>
-              <strong>Associata:</strong> ≥50% partecipazione (calcolo 100%)
+              <strong>Associata:</strong> partecipazione dal 25% al 50%, senza controllo: i dati si sommano in proporzione alla quota<br/>
+              <strong>Collegata:</strong> oltre il 50% dei diritti di voto o influenza dominante: i dati si sommano al 100% e l'azienda rientra nell'impresa unica per il de minimis<br/>
+              Il tipo si imposta da solo in base a percentuale e influenza dominante.
             </p>
           </div>
 
@@ -221,8 +229,8 @@ const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, c
                 className="input"
                 required
               >
-                <option value="COLLEGATA">Collegata (25-49.99%)</option>
-                <option value="ASSOCIATA">Associata (≥50%)</option>
+                <option value="ASSOCIATA">Associata (25-50%)</option>
+                <option value="COLLEGATA">Collegata (oltre 50% o influenza dominante)</option>
               </select>
             </div>
 
@@ -243,8 +251,8 @@ const NuovoCollegamentoModal = ({ isOpen, onClose, onSave, clientiDisponibili, c
               />
               <p className="text-xs text-gray-500 mt-1">
                 {formData.tipo_collegamento === 'ASSOCIATA'
-                  ? 'Deve essere almeno 50% per aziende associate'
-                  : 'Deve essere tra 25% e 49.99% per aziende collegate'}
+                  ? 'Associata: dal 25% al 50%, somma in proporzione'
+                  : 'Collegata: oltre il 50% o con influenza dominante, somma al 100%'}
               </p>
             </div>
 
