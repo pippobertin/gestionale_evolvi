@@ -1,28 +1,22 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { cancellaCookieSessione, revocaSessioneDaToken, tokenDallaRichiesta } from '@/lib/sessioni'
 
 /**
  * POST /api/auth/logout
  *
- * Cancella il cookie di sessione `auth_token`. Le righe di
- * scadenze_bandi_sessioni non vengono eliminate: restano come
- * registro degli accessi (utente, data, IP, user agent).
- *
- * Nota: il JWT resta crittograficamente valido fino alla scadenza;
- * la revoca lato server è prevista con la chiusura del database (fase 3).
+ * Revoca la sessione nel database (il token non è più accettato da nessuna
+ * route, al più entro 30 secondi sulle altre istanze del server) e cancella il
+ * cookie. Le righe di scadenze_bandi_sessioni restano come registro degli
+ * accessi (utente, data, IP, user agent, metodo, revoca).
  */
-export async function POST() {
-  const response = NextResponse.json({
-    success: true,
-    message: 'Logout effettuato con successo'
-  })
+export async function POST(request: NextRequest) {
+  try {
+    await revocaSessioneDaToken(tokenDallaRichiesta(request))
+  } catch (error) {
+    console.error('Errore revoca sessione:', error)
+  }
 
-  response.cookies.set('auth_token', '', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 0,
-    path: '/'
-  })
-
+  const response = NextResponse.json({ success: true, message: 'Logout effettuato con successo' })
+  cancellaCookieSessione(response)
   return response
 }

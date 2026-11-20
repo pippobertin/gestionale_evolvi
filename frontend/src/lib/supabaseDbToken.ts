@@ -13,7 +13,10 @@ import jwt from 'jsonwebtoken'
  */
 
 export const DB_TOKEN_APP = 'gestionale_evolvi'
-const DB_TOKEN_TTL_SECONDS = 60 * 60 // 1 ora, rinnovato automaticamente dal browser
+// 15 minuti, rinnovato automaticamente dal browser quando ne mancano meno di 5:
+// dopo un logout o la disattivazione dell'utente un badge già rilasciato
+// resta utilizzabile al più per questo tempo.
+const DB_TOKEN_TTL_SECONDS = 15 * 60
 
 export function isDbTokenEnabled(): boolean {
   return !!process.env.SUPABASE_JWT_SECRET

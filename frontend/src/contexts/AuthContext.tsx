@@ -38,36 +38,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkSession = async () => {
     try {
+      // Il token di sessione vive solo nel cookie httpOnly: eventuali copie
+      // rimaste nel localStorage dalle versioni precedenti vengono eliminate.
+      localStorage.removeItem('auth_token')
+
       // Se c'è una sessione Google OAuth attiva
       if (session?.user) {
-        // Crea o ottieni utente dal database usando l'email di Google
         await handleGoogleUser(session.user)
         setLoading(false)
         return
       }
 
-      const token = localStorage.getItem('auth_token')
-      if (!token) {
-        setLoading(false)
-        return
-      }
-
-      // Verifica token con il backend
-      const response = await fetch('/api/auth/verify', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
+      // Sessione con email e password: il cookie viene inviato in automatico
+      const response = await fetch('/api/auth/verify', { cache: 'no-store' })
       if (response.ok) {
-        const userData = await response.json()
-        setUser(userData.user)
+        const data = await response.json()
+        // Chi deve ancora cambiare la password temporanea rifà il login
+        if (!data.requiresPasswordChange) setUser(data.user)
+        else setUser(null)
       } else {
-        localStorage.removeItem('auth_token')
+        setUser(null)
       }
     } catch (error) {
       console.error('Errore verifica sessione:', error)
-      localStorage.removeItem('auth_token')
     } finally {
       setLoading(false)
     }
@@ -83,15 +76,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Account non censito o disattivato: chiudi la sessione Google
         const { signOut } = await import('next-auth/react')
         await signOut({ redirect: false })
-        localStorage.removeItem('auth_token')
         setUser(null)
         return
       }
       const jwtData = await jwtResponse.json()
       resetDbToken()
-      if (jwtData.token) {
-        localStorage.setItem('auth_token', jwtData.token)
-      }
       if (jwtData.user) {
         setUser(jwtData.user)
       }
@@ -114,7 +103,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         resetDbToken()
-        localStorage.setItem('auth_token', data.token)
 
         // Only set user if password change is NOT required
         const requiresPasswordChange = data.requiresPasswordChange || false
@@ -151,7 +139,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Errore logout:', error)
     } finally {
-      localStorage.removeItem('auth_token')
       localStorage.removeItem('chatbot_history')
       resetDbToken()
       setUser(null)
@@ -160,16 +147,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const changePassword = async (currentPassword: string, newPassword: string) => {
     try {
-      const token = localStorage.getItem('auth_token')
-      if (!token) {
-        return { success: false, error: 'Non autenticato' }
-      }
-
       const response = await fetch('/api/auth/change-password', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ currentPassword, newPassword })
       })
@@ -178,6 +159,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         console.log('🎉 Password changed successfully')
+        // Prima del cambio il badge per il database veniva rifiutato: si richiede subito
+        resetDbToken()
 
         // Check if there's pending user data from first login
         const pendingUserData = localStorage.getItem('pending_user_data')

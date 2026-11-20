@@ -127,12 +127,10 @@ export default function ChatbotWidget() {
     setLoading(true)
 
     try {
-      const token = localStorage.getItem('auth_token')
       const res = await fetch('/api/chatbot', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ messages: updatedMessages }),
       })

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
-import jwt from 'jsonwebtoken'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
-import { getJwtSecret } from '@/lib/jwtAuth'
-
-const JWT_EXPIRES_IN = '7d'
+import { creaSessione, impostaCookieSessione } from '@/lib/sessioni'
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,41 +38,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Crea il token JWT
-    const token = jwt.sign(
-      {
-        userId: utente.id,
-        email: utente.email,
-        livello_permessi: utente.livello_permessi
-      },
-      getJwtSecret(),
-      { expiresIn: JWT_EXPIRES_IN }
-    )
-
     // Aggiorna ultimo accesso
     await supabase
       .from('scadenze_bandi_utenti')
       .update({ ultimo_accesso: new Date().toISOString() })
       .eq('id', utente.id)
 
-    // Crea sessione nel database
-    const userAgent = request.headers.get('user-agent') || ''
-    const forwardedFor = request.headers.get('x-forwarded-for')
-    const realIp = request.headers.get('x-real-ip')
-    const clientIp = forwardedFor?.split(',')[0] || realIp || '127.0.0.1'
-
-    const tokenHash = await bcrypt.hash(token, 10)
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 giorni
-
-    await supabase
-      .from('scadenze_bandi_sessioni')
-      .insert({
-        utente_id: utente.id,
-        token_hash: tokenHash,
-        expires_at: expiresAt.toISOString(),
-        user_agent: userAgent,
-        ip_address: clientIp
-      })
+    // Sessione revocabile nel database e token nel solo cookie httpOnly
+    const token = await creaSessione(utente, request, 'password')
 
     // Prepara dati utente (senza password_hash)
     const userData = {
@@ -91,21 +61,14 @@ export async function POST(request: NextRequest) {
     const requiresPasswordChange = utente.first_login_password_change || false
 
     // Create response with cookie
+    // Il token non viene restituito al codice del browser: vive solo nel cookie
     const response = NextResponse.json({
       success: true,
-      token,
       user: userData,
       requiresPasswordChange
     })
 
-    // Set auth_token as HTTP-only cookie for API routes
-    response.cookies.set('auth_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-      path: '/'
-    })
+    impostaCookieSessione(response, token)
 
     return response
 

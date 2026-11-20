@@ -1,90 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
-import jwt from 'jsonwebtoken'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
-import { getJwtSecret } from '@/lib/jwtAuth'
-
+import { verifyJWT } from '@/lib/jwtAuth'
+import { creaSessione, impostaCookieSessione } from '@/lib/sessioni'
 
 /**
  * GET /api/auth/google-jwt
- * Creates a JWT token for Google OAuth users so they can access
- * API routes that require auth_token cookie/header.
+ * Per chi è entrato con Google: apre (o riusa) la sessione del gestionale e
+ * imposta il cookie httpOnly `auth_token`. Il token non viene restituito al
+ * codice del browser. Il browser la chiama a ogni caricamento di pagina:
+ * se il cookie porta già una sessione valida della stessa persona, non ne
+ * viene creata un'altra.
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify the NextAuth Google session server-side
     const session = await getServerSession(authOptions)
+    const emailGoogle = session?.user?.email?.toLowerCase()
 
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'No active Google session' },
-        { status: 401 }
-      )
+    if (!emailGoogle) {
+      return NextResponse.json({ error: 'No active Google session' }, { status: 401 })
     }
 
-    // Find user in database
     const { data: utente, error } = await supabase
       .from('scadenze_bandi_utenti')
       .select('id, email, nome, cognome, livello_permessi, attivo')
-      .eq('email', session.user.email.toLowerCase())
+      .eq('email', emailGoogle)
       .eq('attivo', true)
       .single()
 
     if (error || !utente) {
-      return NextResponse.json(
-        { error: 'User not found or inactive' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'User not found or inactive' }, { status: 404 })
     }
 
-    // Create JWT (same format as /api/auth/login)
-    const token = jwt.sign(
-      {
-        userId: utente.id,
-        email: utente.email,
-        livello_permessi: utente.livello_permessi
-      },
-      getJwtSecret(),
-      { expiresIn: '7d' }
-    )
+    const userData = {
+      id: utente.id,
+      email: utente.email,
+      nome: utente.nome,
+      cognome: utente.cognome,
+      livello_permessi: utente.livello_permessi,
+      nome_completo: `${utente.nome} ${utente.cognome}`
+    }
 
-    // Update last access
+    // Sessione già aperta e valida per la stessa persona: si riusa
+    const esistente = await verifyJWT(request)
+    if (esistente && esistente.userId === utente.id) {
+      return NextResponse.json({ success: true, user: userData })
+    }
+
     await supabase
       .from('scadenze_bandi_utenti')
       .update({ ultimo_accesso: new Date().toISOString() })
       .eq('id', utente.id)
 
-    const response = NextResponse.json({
-      success: true,
-      token,
-      user: {
-        id: utente.id,
-        email: utente.email,
-        nome: utente.nome,
-        cognome: utente.cognome,
-        livello_permessi: utente.livello_permessi,
-        nome_completo: `${utente.nome} ${utente.cognome}`
-      }
-    })
+    const token = await creaSessione(utente, request, 'google')
+    const response = NextResponse.json({ success: true, user: userData })
+    impostaCookieSessione(response, token)
 
-    // Set auth_token HTTP-only cookie (same as /api/auth/login)
-    response.cookies.set('auth_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60,
-      path: '/'
-    })
-
-    console.log(`✅ JWT created for Google OAuth user: ${utente.email}`)
+    console.log(`✅ Sessione Google aperta per: ${utente.email}`)
     return response
 
   } catch (error: any) {
-    console.error('Error creating Google JWT:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    console.error('Error creating Google session:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

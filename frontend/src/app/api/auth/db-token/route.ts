@@ -13,6 +13,10 @@ export async function GET(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
   }
+  // Niente accesso al database finché la password temporanea non è stata cambiata
+  if (user.deve_cambiare_password) {
+    return NextResponse.json({ error: 'Cambio password obbligatorio' }, { status: 403 })
+  }
   if (!isDbTokenEnabled()) {
     return NextResponse.json({ error: 'Badge database non attivo' }, { status: 503 })
   }

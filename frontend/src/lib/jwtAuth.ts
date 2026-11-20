@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server'
-import jwt from 'jsonwebtoken'
-import { supabaseAdmin } from './supabaseAdmin'
+import { verificaSessione, tokenDallaRichiesta } from './sessioni'
 
 /**
  * Segreto per firmare e verificare i JWT dell'applicazione.
@@ -19,41 +18,30 @@ export interface JWTPayload {
   userId: string
   email: string
   livello_permessi: 'admin' | 'collaboratore'
+  /** Identificativo della sessione nel database (scadenze_bandi_sessioni.id) */
+  sid?: string
+  /** true finché l'utente non ha cambiato la password temporanea */
+  deve_cambiare_password?: boolean
 }
 
+/**
+ * Utente collegato, dal cookie di sessione (o dall'header Bearer).
+ * Verifica firma e scadenza del token, che la sessione esista e non sia stata
+ * revocata, e che l'utente sia attivo; il ruolo è sempre letto dal database.
+ */
 export async function verifyJWT(request: NextRequest): Promise<JWTPayload | null> {
   try {
-    // Cerca il token nel cookie o nell'header Authorization
-    const tokenFromCookie = request.cookies.get('auth_token')?.value
-    const authHeader = request.headers.get('authorization')
-    const tokenFromHeader = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null
-
-    const token = tokenFromCookie || tokenFromHeader
-    if (!token) {
-      return null
-    }
-
-    const decoded = jwt.verify(token, getJwtSecret()) as JWTPayload
-
-    // Verifica che l'utente esista ancora e sia attivo (ruolo sempre letto dal DB)
-    const { data: user, error } = await supabaseAdmin
-      .from('scadenze_bandi_utenti')
-      .select('id, email, livello_permessi, attivo')
-      .eq('id', decoded.userId)
-      .eq('attivo', true)
-      .single()
-
-    if (error || !user) {
-      return null
-    }
-
+    const sessione = await verificaSessione(tokenDallaRichiesta(request))
+    if (!sessione) return null
     return {
-      userId: user.id,
-      email: user.email,
-      livello_permessi: user.livello_permessi
+      userId: sessione.userId,
+      email: sessione.email,
+      livello_permessi: sessione.livello_permessi,
+      sid: sessione.sid,
+      deve_cambiare_password: sessione.deve_cambiare_password
     }
   } catch (error) {
-    console.error('[verifyJWT] Token non valido o errore di verifica')
+    console.error('[verifyJWT] Errore di verifica della sessione')
     return null
   }
 }

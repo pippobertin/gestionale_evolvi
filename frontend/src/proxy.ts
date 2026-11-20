@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import jwt from 'jsonwebtoken'
+import { verificaSessione, tokenDallaRichiesta } from '@/lib/sessioni'
 
 /**
  * Controllo centrale sulle API (fase 3, passaggio C).
  *
  * Ogni richiesta a /api/* deve portare una sessione valida del gestionale
  * (cookie httpOnly `auth_token` oppure header Authorization: Bearer).
- * Qui si verifica solo firma e scadenza del token; ruolo e stato dell'utente
- * restano verificati dalle singole route (verifyJWT / requireAdmin).
+ * Dal passaggio F si verifica anche che la sessione esista, non sia stata
+ * revocata (logout) e che l'utente sia attivo. Chi deve ancora cambiare la
+ * password temporanea può usare solo le route di autenticazione.
+ * Il ruolo resta verificato dalle singole route (requireAdmin).
  *
  * Eccezioni esplicite: route con un proprio meccanismo di autenticazione.
  */
@@ -27,37 +29,25 @@ function nonAutenticato() {
   return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   if (PUBBLICHE.some(p => pathname === p.prefisso.replace(/\/$/, '') || pathname.startsWith(p.prefisso))) {
     return NextResponse.next()
   }
 
-  const segreto = process.env.JWT_SECRET
-  if (!segreto) {
+  if (!process.env.JWT_SECRET) {
     return NextResponse.json({ error: 'Configurazione server incompleta' }, { status: 500 })
   }
 
-  const daCookie = request.cookies.get('auth_token')?.value
-  const header = request.headers.get('authorization')
-  const daHeader = header?.startsWith('Bearer ') ? header.substring(7) : null
-  const token = daCookie || daHeader
-  if (!token) return nonAutenticato()
+  const sessione = await verificaSessione(tokenDallaRichiesta(request))
+  if (!sessione) return nonAutenticato()
 
-  try {
-    jwt.verify(token, segreto)
-  } catch {
-    // Il cookie potrebbe essere scaduto ma l'header valido (o viceversa)
-    if (daHeader && daHeader !== daCookie) {
-      try {
-        jwt.verify(daHeader, segreto)
-        return NextResponse.next()
-      } catch {
-        return nonAutenticato()
-      }
-    }
-    return nonAutenticato()
+  if (sessione.deve_cambiare_password) {
+    return NextResponse.json(
+      { error: 'Cambio password obbligatorio', code: 'PASSWORD_CHANGE_REQUIRED' },
+      { status: 403 }
+    )
   }
 
   return NextResponse.next()

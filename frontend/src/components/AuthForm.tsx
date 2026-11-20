@@ -60,22 +60,9 @@ export default function AuthForm() {
     }
   }, [showPasswordChange])
 
-  // Clean up sessionStorage on component mount if user is already logged in
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('auth_token')
-      const pendingChange = sessionStorage.getItem('pendingPasswordChange')
-
-      console.log('Component mount - token:', !!token, 'pendingPasswordChange:', pendingChange)
-
-      // If user is already logged in and there's no pending password change, clean up
-      if (token && !pendingChange) {
-        sessionStorage.removeItem('pendingPasswordChange')
-        sessionStorage.removeItem('passwordChangeData')
-        console.log('Cleaned up old sessionStorage data')
-      }
-    }
-  }, [])
+  // I dati temporanei del cambio password restano in sessionStorage solo
+  // finché il cambio è in corso (il token di sessione non è più leggibile dal
+  // browser: vive solo nel cookie httpOnly).
 
   // Debug function to manually clear sessionStorage
   const clearPasswordChangeState = () => {

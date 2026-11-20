@@ -52,17 +52,8 @@ export default function UserManagement() {
 
   const fetchUsers = async () => {
     try {
-      // Ottieni il token JWT dal localStorage
-      const token = localStorage.getItem('auth_token')
-      if (!token) {
-        setError('Non autenticato - effettua nuovamente il login')
-        setLoading(false)
-        return
-      }
-
       const response = await fetch('/api/admin/users', {
         headers: {
-          'Authorization': `Bearer ${token}`
         }
       })
       const data = await response.json()
@@ -82,18 +73,10 @@ export default function UserManagement() {
   const updateUser = async (userId: string, updates: Partial<User>) => {
     setActionLoading(userId)
     try {
-      const token = localStorage.getItem('auth_token')
-      if (!token) {
-        setError('Non autenticato - effettua nuovamente il login')
-        setActionLoading(null)
-        return
-      }
-
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(updates)
       })
@@ -117,17 +100,9 @@ export default function UserManagement() {
   const deleteUser = async (userId: string) => {
     setActionLoading(userId)
     try {
-      const token = localStorage.getItem('auth_token')
-      if (!token) {
-        setError('Non autenticato - effettua nuovamente il login')
-        setActionLoading(null)
-        return
-      }
-
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -154,18 +129,10 @@ export default function UserManagement() {
 
     setActionLoading('creating')
     try {
-      const token = localStorage.getItem('auth_token')
-      if (!token) {
-        setError('Non autenticato - effettua nuovamente il login')
-        setActionLoading(null)
-        return
-      }
-
       const response = await fetch('/api/admin/users', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(newUserData)
       })

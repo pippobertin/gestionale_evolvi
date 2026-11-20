@@ -1,79 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
-import jwt from 'jsonwebtoken'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
-import { getJwtSecret } from '@/lib/jwtAuth'
+import { verifyJWT } from '@/lib/jwtAuth'
 
-
+/**
+ * GET /api/auth/verify
+ * Restituisce l'utente della sessione aperta (cookie httpOnly `auth_token`).
+ * 401 se la sessione manca, è scaduta o è stata revocata.
+ */
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Token mancante' },
-        { status: 401 }
-      )
+    const sessione = await verifyJWT(request)
+    if (!sessione) {
+      return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 })
     }
 
-    const token = authHeader.substring(7) // Rimuove 'Bearer '
-
-    // Verifica il token JWT
-    let decoded: any
-    try {
-      decoded = jwt.verify(token, getJwtSecret())
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Token non valido' },
-        { status: 401 }
-      )
-    }
-
-    // Verifica che l'utente esista ancora e sia attivo
     const { data: utente, error: userError } = await supabase
       .from('scadenze_bandi_utenti')
-      .select('*')
-      .eq('id', decoded.userId)
-      .eq('attivo', true)
+      .select('id, email, nome, cognome, livello_permessi')
+      .eq('id', sessione.userId)
       .single()
 
     if (userError || !utente) {
-      return NextResponse.json(
-        { error: 'Utente non trovato' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Utente non trovato' }, { status: 401 })
     }
 
-    // Prepara dati utente (senza password_hash)
-    const userData = {
-      id: utente.id,
-      email: utente.email,
-      nome: utente.nome,
-      cognome: utente.cognome,
-      livello_permessi: utente.livello_permessi,
-      nome_completo: `${utente.nome} ${utente.cognome}`
-    }
-
-    // Create response with cookie
-    const response = NextResponse.json({
+    return NextResponse.json({
       success: true,
-      user: userData
+      user: {
+        id: utente.id,
+        email: utente.email,
+        nome: utente.nome,
+        cognome: utente.cognome,
+        livello_permessi: utente.livello_permessi,
+        nome_completo: `${utente.nome} ${utente.cognome}`,
+        first_login_password_change: !!sessione.deve_cambiare_password
+      },
+      requiresPasswordChange: !!sessione.deve_cambiare_password
     })
-
-    // Set auth_token as HTTP-only cookie for API routes
-    response.cookies.set('auth_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-      path: '/'
-    })
-
-    return response
-
   } catch (error) {
-    console.error('Errore verifica token:', error)
-    return NextResponse.json(
-      { error: 'Errore interno del server' },
-      { status: 500 }
-    )
+    console.error('Errore verifica sessione:', error)
+    return NextResponse.json({ error: 'Errore interno del server' }, { status: 500 })
   }
 }

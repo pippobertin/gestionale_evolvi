@@ -259,9 +259,8 @@ export default function FaqContent() {
   useEffect(() => {
     const fetchFaq = async () => {
       try {
-        const token = localStorage.getItem('auth_token')
         const res = await fetch('/api/faq', {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: {}
         })
         const data = await res.json()
         if (data.success) {

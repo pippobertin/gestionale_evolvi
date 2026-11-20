@@ -171,7 +171,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
     try {
       console.log('Loading labels...')
       const response = await fetch('/api/gmail/labels', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+        headers: {}
       })
       const result = await response.json()
       console.log('Labels result:', result)
@@ -208,7 +208,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
       console.log('🔍 Loading messages with query:', combinedQuery)
 
       const response = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+        headers: {}
       })
       const result = await response.json()
       if (result.success) {
@@ -274,7 +274,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
       }
 
       const response = await fetch(`/api/gmail/messages/${messageId}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+        headers: {}
       })
       const result = await response.json()
       if (result.success) {
@@ -288,7 +288,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
               console.log('🔄 Auto-marking message as read after 1 second...')
               await fetch(`/api/gmail/messages/${messageId}/read`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+                headers: {}
               })
               // Update local state without refreshing the entire list
               setSelectedMessage(prev => prev ? {
@@ -333,7 +333,6 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
       // Prepare FormData for files or JSON for simple emails
       let requestBody: FormData | string
       let headers: Record<string, string> = {
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
       }
 
       if (composeData.attachments.length > 0) {
@@ -407,7 +406,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
   const markAsRead = async (messageId: string) => {
     await fetch(`/api/gmail/messages/${messageId}/markAsRead`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+      headers: {}
     })
     loadMessages(currentLabel)
   }
@@ -415,7 +414,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
   const starMessage = async (messageId: string) => {
     await fetch(`/api/gmail/messages/${messageId}/star`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+      headers: {}
     })
     loadMessages(currentLabel)
   }
@@ -429,7 +428,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
 
     const response = await fetch(url, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+      headers: {}
     })
 
     const result = await response.json()

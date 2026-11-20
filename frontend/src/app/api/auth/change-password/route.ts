@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
-import jwt from 'jsonwebtoken'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
-import { getJwtSecret } from '@/lib/jwtAuth'
+import { verifyJWT } from '@/lib/jwtAuth'
+import { dimenticaToken, revocaAltreSessioni, tokenDallaRichiesta } from '@/lib/sessioni'
 
 
 export async function POST(request: NextRequest) {
@@ -16,22 +16,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verifica il token JWT
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
+    // Utente della sessione aperta (cookie httpOnly)
+    const decoded = await verifyJWT(request)
+    if (!decoded) {
       return NextResponse.json(
-        { error: 'Token di autorizzazione richiesto' },
-        { status: 401 }
-      )
-    }
-
-    const token = authHeader.substring(7)
-    let decoded: any
-    try {
-      decoded = jwt.verify(token, getJwtSecret())
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Token non valido' },
+        { error: 'Sessione non valida: accedi di nuovo' },
         { status: 401 }
       )
     }
@@ -83,6 +72,13 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       throw updateError
+    }
+
+    // La sessione corrente passa subito ad accesso completo; le altre sessioni
+    // aperte dello stesso utente (altri browser, altri dispositivi) vengono chiuse.
+    dimenticaToken(tokenDallaRichiesta(request))
+    if (decoded.sid) {
+      await revocaAltreSessioni(utente.id, decoded.sid)
     }
 
     return NextResponse.json({
