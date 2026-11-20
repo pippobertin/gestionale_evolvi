@@ -29,11 +29,22 @@ export const VERSIONE_BACKUP = 1
 export const NOME_DRIVE = 'Gestionale Evolvi'
 export const CARTELLA_BACKUP = 'BACKUP GESTIONALE'
 
-/** Tabelle non esportate: sessioni di accesso e configurazioni con credenziali. */
+/**
+ * Tabelle non esportate:
+ * - sessioni di accesso e configurazioni con credenziali;
+ * - il vecchio client di posta IMAP (copia di una casella Gmail del novembre 2025,
+ *   non più usata dal codice): la posta è in Google Workspace e ha il suo backup.
+ *   La coda delle email inviate dal gestionale (scadenze_bandi_email_queue) resta inclusa.
+ */
 const TABELLE_ESCLUSE = new Set([
   'scadenze_bandi_sessioni',
+  'scadenze_bandi_system_settings',
   'scadenze_bandi_email_accounts',
-  'scadenze_bandi_system_settings'
+  'scadenze_bandi_email_messages',
+  'scadenze_bandi_email_attachments',
+  'scadenze_bandi_email_folders',
+  'scadenze_bandi_email_links',
+  'scadenze_bandi_email_sync_logs'
 ])
 
 /** Colonne con segreti, tolte dall'esportazione. */
