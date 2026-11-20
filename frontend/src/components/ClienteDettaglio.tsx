@@ -24,7 +24,6 @@ import {
 import { supabase } from '@/lib/supabase'
 import ReferentiManager from './ReferentiManager'
 import ContrattiEvolviManager from './ContrattiEvolviManager'
-import EvolviInvoicesContent from './EvolviInvoicesContent'
 import DocumentiAmministrativiManager from './DocumentiAmministrativiManager'
 import ContractTrackingPanel from './ContractTrackingPanel'
 import FormazioneManager from './formazione/FormazioneManager'
@@ -261,8 +260,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
   ]
 
   const evolviTabs = isEvolviClient ? [
-    { id: 'contratti_evolvi', label: 'Contratti Evolvi', icon: ClipboardCheck },
-    { id: 'fatturazione', label: 'Fatturazione', icon: Receipt }
+    { id: 'contratti_evolvi', label: 'Contratti Evolvi', icon: ClipboardCheck }
   ] : []
 
   const tabs = [...baseTabs, ...evolviTabs]
@@ -911,13 +909,6 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
               clienteId={cliente.id}
               clienteDenominazione={cliente.denominazione}
             />
-          </div>
-        )
-
-      case 'fatturazione':
-        return (
-          <div className="space-y-3">
-            <EvolviInvoicesContent clienteId={cliente.id} />
           </div>
         )
 

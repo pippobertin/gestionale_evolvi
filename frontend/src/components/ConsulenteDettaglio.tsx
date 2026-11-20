@@ -547,21 +547,14 @@ export default function ConsulenteDettaglio({ consulenteId, isOpen, onClose, onN
           </div>
         </div>
 
-        {/* Contratti & Fatturazione */}
+        {/* Contratti Evolvi */}
         <div>
           <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center">
-            <FileText className="w-3.5 h-3.5 mr-1.5" />Contratti & Fatturazione
+            <FileText className="w-3.5 h-3.5 mr-1.5" />Contratti Evolvi
           </h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard label="Contratti Evolvi" value={stats.contratti_evolvi.totale} subtitle={`${stats.contratti_evolvi.attivi} attivi`} icon={FileText} />
             <KpiCard label="Importo Annuale" value={formatEuro(stats.contratti_evolvi.importo_annuale_totale)} icon={Euro} />
-            <KpiCard label="Fatturato Totale" value={formatEuro(stats.fatture.importo_totale)} icon={Euro} color="text-blue-700" />
-            <KpiCard
-              label="Fatture Pagate"
-              value={`${stats.fatture.pagate}/${stats.fatture.totale}`}
-              subtitle={stats.fatture.scadute > 0 ? `${stats.fatture.scadute} scadute` : undefined}
-              color={stats.fatture.scadute > 0 ? 'text-red-600' : 'text-green-700'}
-            />
           </div>
         </div>
 

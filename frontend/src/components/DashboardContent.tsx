@@ -15,7 +15,6 @@ import {
   Eye
 } from 'lucide-react'
 import CalendarioScadenze from './CalendarioScadenze'
-import EvolviDashboardBilling from './EvolviDashboardBilling'
 
 interface Scadenza {
   id: string
@@ -545,9 +544,6 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
           </div>
         </div>
       </div>
-
-      {/* Fatturazione Evolvi */}
-      <EvolviDashboardBilling />
 
       {/* Mini Calendario */}
       <div className="bg-white rounded-lg shadow">

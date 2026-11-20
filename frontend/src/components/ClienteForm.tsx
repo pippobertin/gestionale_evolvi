@@ -156,7 +156,8 @@ interface ClienteFormProps {
 }
 
 export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNavigate }: ClienteFormProps) {
-  const { canDelete, user } = useAuth()
+  const { canDelete, user, isAdmin } = useAuth()
+  const [confermaNome, setConfermaNome] = useState('')
   const [formData, setFormData] = useState<Cliente>({
     denominazione: '',
     stato_fatturazione: 'Italia',
@@ -708,6 +709,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
   const handleOpenConvertModal = async () => {
     if (!cliente?.id) return
     setShowConvertModal(true)
+    setConfermaNome('')
     setConvertError(null)
     setConvertSuccess(null)
     setDependencyData(null)
@@ -1874,7 +1876,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
                 <span>Elimina Cliente</span>
               </button>
             )}
-            {cliente?.id && (
+            {cliente?.id && isAdmin() && (
               <button
                 onClick={handleOpenConvertModal}
                 className="bg-amber-600 hover:bg-amber-700 text-white font-medium px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -2081,6 +2083,21 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
                     </div>
                   )}
 
+                  {dependencyData.hasDependencies && (
+                    <div>
+                      <label className="block text-sm text-gray-700 mb-1">
+                        Per confermare scrivi la denominazione del cliente: <strong>{cliente?.denominazione}</strong>
+                      </label>
+                      <input
+                        type="text"
+                        value={confermaNome}
+                        onChange={(e) => setConfermaNome(e.target.value)}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        autoComplete="off"
+                      />
+                    </div>
+                  )}
+
                   {!dependencyData.hasDependencies && (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                       <p className="text-sm text-green-800">
@@ -2100,12 +2117,12 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
                     </button>
                     <button
                       onClick={handleConfirmConvert}
-                      className={`text-sm py-2 px-4 rounded-lg font-medium flex items-center space-x-2 transition-colors ${
+                      className={`text-sm py-2 px-4 rounded-lg font-medium flex items-center space-x-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                         dependencyData.hasDependencies
                           ? 'bg-red-600 hover:bg-red-700 text-white'
                           : 'bg-amber-600 hover:bg-amber-700 text-white'
                       }`}
-                      disabled={convertLoading}
+                      disabled={convertLoading || (dependencyData.hasDependencies && confermaNome.trim().toLowerCase() !== (cliente?.denominazione || '').trim().toLowerCase())}
                     >
                       {convertLoading ? (
                         <>

@@ -378,6 +378,7 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
     }
 
     setUploading(true)
+    const avvisiDrive: string[] = []
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
@@ -432,8 +433,9 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
 
         if (docError) throw docError
 
-        // Upload su Google Drive se connesso
-        if (session?.accessToken) {
+        // Copia su Google Drive nella cartella del bando (il server usa l'account di
+        // servizio: non serve che l'utente sia entrato con Google)
+        {
           try {
             setUploadProgress(prev => ({ ...prev, [fileName]: 75 }))
 
@@ -458,10 +460,13 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
               const driveResult = await driveResponse.json()
               console.log('✅ File caricato su Google Drive:', driveResult)
             } else {
-              console.error('❌ Errore upload Drive:', await driveResponse.text())
+              const dettaglio = await driveResponse.json().catch(() => ({}))
+              console.error('❌ Errore upload Drive:', dettaglio)
+              avvisiDrive.push(`${fileName}: ${dettaglio?.message || 'errore Drive'}`)
             }
           } catch (driveError) {
             console.error('❌ Errore Google Drive upload:', driveError)
+            avvisiDrive.push(`${fileName}: errore di connessione con Drive`)
           }
         }
 
@@ -485,6 +490,9 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
       }
     }
 
+    if (avvisiDrive.length > 0) {
+      alert(`Documenti salvati nel gestionale, ma non copiati su Google Drive:\n\n${avvisiDrive.join('\n')}`)
+    }
     setUploading(false)
     setUploadProgress({})
   }

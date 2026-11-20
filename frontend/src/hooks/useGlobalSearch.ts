@@ -9,12 +9,11 @@ export interface GlobalSearchResults {
   prospect: Array<{ id: string; denominazione: string; partita_iva?: string; email?: string; stato: string; motivo_congelamento?: string }>
   scadenze: Array<{ id: string; titolo: string; data_scadenza?: string; stato?: string; progetto_titolo?: string }>
   contratti: Array<{ id: string; numero_contratto: string; stato?: string; cliente_id?: string; cliente_denominazione?: string }>
-  fatture: Array<{ id: string; numero_fattura: string; stato_pagamento?: string; cliente_id?: string; cliente_denominazione?: string }>
 }
 
 const EMPTY_RESULTS: GlobalSearchResults = {
   clienti: [], bandi: [], progetti: [], prospect: [],
-  scadenze: [], contratti: [], fatture: [],
+  scadenze: [], contratti: [],
 }
 
 export function useGlobalSearch(query: string) {

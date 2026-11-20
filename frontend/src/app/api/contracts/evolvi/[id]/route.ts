@@ -161,12 +161,6 @@ export async function DELETE(
       .eq('entity_id', id)
       .eq('entity_type', 'CONTRATTO_EVOLVI')
 
-    // Elimina record correlati: fatture
-    await supabase
-      .from('scadenze_bandi_fatture_evolvi')
-      .delete()
-      .eq('contratto_evolvi_id', id)
-
     // Elimina il contratto
     const { error } = await supabase
       .from('scadenze_bandi_contratti_evolvi')

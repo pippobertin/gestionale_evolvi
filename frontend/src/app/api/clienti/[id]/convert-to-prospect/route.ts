@@ -1,5 +1,9 @@
 import { NextRequest } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
+import { requireAdmin } from '@/lib/jwtAuth'
+
+// Riservata agli amministratori: la riconversione cancella definitivamente i dati
+// collegati al cliente (contratti, progetti, documenti, formazione...).
 
 // GET: verifica dipendenze e determina scenario (A o B)
 export async function GET(
@@ -7,6 +11,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const admin = await requireAdmin(req)
+    if (!admin) {
+      return Response.json({ success: false, error: 'Operazione riservata agli amministratori' }, { status: 403 })
+    }
     const { id: clienteId } = await params
 
     // 1. Verifica che il cliente esista
@@ -102,9 +110,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const admin = await requireAdmin(req)
+    if (!admin) {
+      return Response.json({ success: false, error: 'Operazione riservata agli amministratori' }, { status: 403 })
+    }
     const { id: clienteId } = await params
     const body = await req.json()
-    const { force = false, utente = 'system' } = body
+    const { force = false } = body
+    // Autore reale dell'operazione (prima arrivava dal browser, di solito 'system')
+    const utente = admin.email
 
     // 1. Recupera il cliente
     const { data: cliente, error: clienteError } = await supabase

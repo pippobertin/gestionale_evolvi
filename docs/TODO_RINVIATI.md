@@ -47,10 +47,10 @@ Una pagina riservata agli admin, di facile lettura e con filtri (persona, period
 2. **Perimetro de minimis.** L'impresa unica è calcolata includendo le partecipazioni di minoranza ed escludendo le controllate, per effetto dell'errore precedente.
 3. **Notifiche delle scadenze.** Lo scheduler parte solo se un browser è aperto nella finestra giusta; la coda email si svuota solo a mano; le scadenze contrattuali non generano email; i responsabili per gruppo o per bando sono ignorati. Richiede un'attività pianificata vera (vedi Vercel Pro).
 4. **Conversione prospect FPI e Consulenti: già a posto (verificato il 20/11/2026).** Il vincolo ammette EVOLVI, SPOT, FPI, CONSULENTI e RIFIUTATO.
-5. **Rimozione della fatturazione Evolvi.** Deciso di eliminarla perché le fatture si emettono con il gestionale collegato allo SDI. Prima esportare le eventuali fatture presenti.
+5. **Rimozione della fatturazione Evolvi: fatto il 20/11/2026.** Tolte scheda Fatturazione del cliente, riquadro in dashboard, ricerca fatture, route di fatture e generazione rate, avvisi e statistiche. La tabella scadenze_bandi_evolvi_fatture (vuota) resta nel database: si può eliminare in seguito.
 6. **Contratto firmato: risolto il 20/11/2026.** "Registra contratto firmato" nei contratti di progetto e nei contratti Evolvi: file su Drive accanto al contratto approvato, data, canale, note, chi ha registrato; i solleciti si fermano.
-7. **Riconversione cliente in prospect.** Cancella fisicamente fatture, contratti, documenti, progetti e formazione del cliente; pulsante visibile a tutti.
-8. **Caricamento su Drive dei documenti dei bandi.** Cerca la cartella del bando nel posto sbagliato e quindi non funziona.
+7. **Riconversione cliente in prospect: limitata il 20/11/2026.** Solo amministratori (anche lato server), autore reale registrato, conferma scrivendo la denominazione se ci sono dati collegati. Cancella ancora fisicamente i dati: l'archiviazione arriva con la fase 4.
+8. **Caricamento su Drive dei documenti dei bandi: risolto il 20/11/2026.** La cartella si cerca in BANDI E PROGETTI > anno > bando; il caricamento non dipende più dall'accesso con Google; avviso se la copia su Drive non riesce.
 9. **Prospect: stato predefinito: risolto il 20/11/2026** (ora 'bozza').
 10. **Eventi di calendario: risolto il 20/11/2026.** Aggiunta la colonna updated_at richiesta dal trigger.
 11. **Tracking dei contratti di progetto ricostruito.** Le 12 righe ricostruite il 19/11/2026 dai PDF approvati su Drive hanno come destinatario l'email attuale del cliente e come data d'invio la creazione del PDF; se un invio di allora era fallito, il dato va corretto a mano.

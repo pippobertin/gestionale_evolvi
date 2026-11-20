@@ -444,3 +444,39 @@ export async function uploadFileToFolder(
     throw error
   }
 }
+/**
+ * Cartella di un bando nel Drive condiviso: "BANDI E PROGETTI" > <anno> > <nome bando>.
+ * L'anno è quello di creazione del bando, che il gestionale non salva: si cercano
+ * tutte le cartelle anno, dalla più recente. null se non trovata.
+ */
+export async function trovaCartellaBando(
+  accessToken: string,
+  sharedDriveId: string,
+  bandoName: string
+): Promise<string | null> {
+  const nome = bandoName.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+  const cartelleBandi = await listSharedDriveFiles(
+    accessToken,
+    sharedDriveId,
+    "name='BANDI E PROGETTI' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+  )
+  if (cartelleBandi.length === 0) return null
+
+  const anni = (await listSharedDriveFiles(
+    accessToken,
+    cartelleBandi[0].id!,
+    "mimeType='application/vnd.google-apps.folder' and trashed=false"
+  ))
+    .filter(f => /^\d{4}$/.test(f.name || ''))
+    .sort((a, b) => (b.name || '').localeCompare(a.name || ''))
+
+  for (const anno of anni) {
+    const trovate = await listSharedDriveFiles(
+      accessToken,
+      anno.id!,
+      `name='${nome}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+    )
+    if (trovate.length > 0) return trovate[0].id!
+  }
+  return null
+}

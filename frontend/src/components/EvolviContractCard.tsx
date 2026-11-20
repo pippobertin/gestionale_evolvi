@@ -89,7 +89,7 @@ export default function EvolviContractCard({ contract, onRefresh }: EvolviContra
 
   const handleDelete = async () => {
     const label = contract.numero_contratto || 'questa bozza'
-    if (!window.confirm(`Sei sicuro di voler eliminare il contratto "${label}"? Verranno eliminati anche i file su Google Drive e i record correlati (fatture, tracking, scadenze). Questa azione è irreversibile.`)) {
+    if (!window.confirm(`Sei sicuro di voler eliminare il contratto "${label}"? Verranno eliminati anche i file su Google Drive e i record correlati (tracking e scadenze). Questa azione è irreversibile.`)) {
       return
     }
     try {

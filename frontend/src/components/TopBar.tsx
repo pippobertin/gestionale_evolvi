@@ -124,18 +124,6 @@ const SEARCH_CATEGORIES: Array<{
       else onNavigate('clienti')
     },
   },
-  {
-    key: 'fatture',
-    label: 'Fatture',
-    icon: Receipt,
-    color: 'text-indigo-600',
-    getTitle: (item) => item.numero_fattura,
-    getSubtitle: (item) => [item.cliente_denominazione, item.stato_pagamento].filter(Boolean).join(' - ') || '',
-    navigate: (item, onNavigate) => {
-      if (item.cliente_id) onNavigate('clienti', { openClientId: item.cliente_id })
-      else onNavigate('clienti')
-    },
-  },
 ]
 
 // Converte il link di una notifica (es. "/clienti/{id}#formazione/fabbisogno")

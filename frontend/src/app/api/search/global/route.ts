@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
     const pattern = `%${sanitized}%`
 
-    const [clienti, bandi, progetti, prospect, scadenze, contratti, fatture] = await Promise.all([
+    const [clienti, bandi, progetti, prospect, scadenze, contratti] = await Promise.all([
       supabase
         .from('scadenze_bandi_clienti')
         .select('id, denominazione, partita_iva, email')
@@ -54,12 +54,6 @@ export async function GET(request: NextRequest) {
         .select('id, numero_contratto, stato, cliente_id, scadenze_bandi_clienti(denominazione)')
         .ilike('numero_contratto', pattern)
         .limit(5),
-
-      supabase
-        .from('scadenze_bandi_evolvi_fatture')
-        .select('id, numero_fattura, stato_pagamento, cliente_id, scadenze_bandi_clienti(denominazione)')
-        .ilike('numero_fattura', pattern)
-        .limit(5),
     ])
 
     const results = {
@@ -87,14 +81,7 @@ export async function GET(request: NextRequest) {
         stato: c.stato,
         cliente_id: c.cliente_id,
         cliente_denominazione: c.scadenze_bandi_clienti?.denominazione,
-      })),
-      fatture: (fatture.data || []).map((f: any) => ({
-        id: f.id,
-        numero_fattura: f.numero_fattura,
-        stato_pagamento: f.stato_pagamento,
-        cliente_id: f.cliente_id,
-        cliente_denominazione: f.scadenze_bandi_clienti?.denominazione,
-      })),
+      }))
     }
 
     const totalCount = Object.values(results).reduce((sum, arr) => sum + (arr as any[]).length, 0)

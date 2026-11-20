@@ -52,7 +52,6 @@ export async function GET(
     const [
       progettiRes,
       contrattiRes,
-      fattureRes,
       pianiRes,
       corsiRes,
       adesioniRes
@@ -64,10 +63,6 @@ export async function GET(
       supabase
         .from('scadenze_bandi_contratti_evolvi')
         .select('id, importo_annuale, importo_totale, stato')
-        .in('cliente_id', clienteIds),
-      supabase
-        .from('scadenze_bandi_evolvi_fatture')
-        .select('id, importo_totale, stato_pagamento')
         .in('cliente_id', clienteIds),
       supabase
         .from('scadenze_bandi_piani_formativi')
@@ -85,7 +80,8 @@ export async function GET(
 
     const progetti = progettiRes.data
     const contratti = contrattiRes.data
-    const fatture = fattureRes.data
+    // Fatturazione Evolvi rimossa il 20/11/2026 (le fatture si emettono dal gestionale collegato allo SDI)
+    const fatture: any[] = []
     const piani = pianiRes.data
     const corsi = corsiRes.data
     const adesioni = adesioniRes.data

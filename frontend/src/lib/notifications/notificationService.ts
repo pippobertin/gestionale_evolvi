@@ -216,43 +216,6 @@ export class NotificationService {
   }
 
   /**
-   * Processa notifiche per fatture Evolvi in scadenza e scadute
-   */
-  static async processEvolviInvoiceNotifications(): Promise<void> {
-    try {
-      console.log('🔄 Processamento notifiche fatture Evolvi...')
-      const today = new Date().toISOString().split('T')[0]
-      const in15Days = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-
-      // Fatture in scadenza nei prossimi 15 giorni
-      const { data: fatturePending, error: pendingError } = await supabase
-        .from('scadenze_bandi_evolvi_fatture')
-        .select('*, scadenze_bandi_clienti(denominazione, email)')
-        .eq('stato_pagamento', 'PENDING')
-        .gte('data_scadenza_pagamento', today)
-        .lte('data_scadenza_pagamento', in15Days)
-
-      if (pendingError) throw pendingError
-
-      // Fatture scadute non pagate - aggiorna stato
-      const { data: fattureOverdue, error: overdueError } = await supabase
-        .from('scadenze_bandi_evolvi_fatture')
-        .update({ stato_pagamento: 'OVERDUE' })
-        .eq('stato_pagamento', 'PENDING')
-        .lt('data_scadenza_pagamento', today)
-        .select()
-
-      if (overdueError) {
-        console.error('Errore aggiornamento fatture scadute:', overdueError)
-      }
-
-      console.log(`📋 Fatture in scadenza: ${fatturePending?.length || 0}, Scadute aggiornate: ${fattureOverdue?.length || 0}`)
-    } catch (error) {
-      console.error('❌ Errore processamento fatture Evolvi:', error)
-    }
-  }
-
-  /**
    * Processa notifiche per contratti Evolvi in scadenza
    */
   static async processEvolviContractExpiryNotifications(): Promise<void> {

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { findOrCreateSharedDrive, listSharedDriveFiles, uploadFileToSharedDrive } from '@/lib/googleDrive'
+import { findOrCreateSharedDrive, listSharedDriveFiles, uploadFileToSharedDrive, trovaCartellaBando } from '@/lib/googleDrive'
 import { getValidGoogleToken } from '@/lib/googleAuth'
 
 export async function POST(req: NextRequest) {
@@ -39,27 +39,14 @@ export async function POST(req: NextRequest) {
       }, { status: 404 })
     }
 
-    // 2. Trova cartella bando
-    let bandoFolderId: string
-    try {
-      const existingBandoFolders = await listSharedDriveFiles(
-        googleAccessToken,
-        sharedDriveId,
-        `name='${bandoName}' and mimeType='application/vnd.google-apps.folder'`
-      )
-
-      if (existingBandoFolders.length > 0) {
-        bandoFolderId = existingBandoFolders[0].id!
-        console.log('📁 Cartella bando trovata:', bandoFolderId)
-      } else {
-        return Response.json({
-          success: false,
-          message: `Cartella bando "${bandoName}" non trovata. Crea prima il bando.`
-        }, { status: 404 })
-      }
-    } catch (error: any) {
-      console.error('📁 Errore ricerca cartella bando:', error)
-      throw error
+    // 2. Trova cartella bando: BANDI E PROGETTI > <anno> > <nome bando>
+    //    (prima la cercava nella radice del Drive condiviso e non la trovava mai)
+    const bandoFolderId = await trovaCartellaBando(googleAccessToken, sharedDriveId, bandoName)
+    if (!bandoFolderId) {
+      return Response.json({
+        success: false,
+        message: `Cartella del bando "${bandoName}" non trovata in BANDI E PROGETTI.`
+      }, { status: 404 })
     }
 
     // 3. Trova cartella categoria (NORMATIVA o ALLEGATI)
@@ -70,7 +57,7 @@ export async function POST(req: NextRequest) {
       const existingCategoryFolders = await listSharedDriveFiles(
         googleAccessToken,
         bandoFolderId,
-        `name='${categoryFolderName}' and mimeType='application/vnd.google-apps.folder'`
+        `name='${categoryFolderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
       )
 
       if (existingCategoryFolders.length > 0) {
@@ -107,7 +94,7 @@ export async function POST(req: NextRequest) {
           fileId: uploadResult.id,
           fileName: uploadResult.name,
           webViewLink: uploadResult.webViewLink,
-          folderPath: `Drive Condivisi > Gestionale Evolvi > ${bandoName} > ${categoryFolderName} > ${fileName}`
+          folderPath: `Drive Condivisi > Gestionale Evolvi > BANDI E PROGETTI > ${bandoName} > ${categoryFolderName} > ${fileName}`
         }
       })
 
