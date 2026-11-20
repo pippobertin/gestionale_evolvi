@@ -82,6 +82,23 @@ Legenda stato: **C'è** = già presente; **Parziale** = esiste qualcosa da adatt
 4. **Valore delle registrazioni nel gestionale.** Il Modello parla di checklist "firmate, anche digitalmente". Va chiarito se una conferma registrata nel gestionale (utente autenticato, data, ora, registro non modificabile) vale come firma ai fini del Modello, o se serve un PDF firmato digitalmente.
 5. **Permessi per cliente.** Il G25 chiede permessi distinti per cliente: va chiarito se basta per i clienti concorrenti sullo stesso bando o se si estende a tutti.
 
+## Domande di Chiara al consulente che incidono sul gestionale
+
+Dal documento con le domande sulla Parte Generale e sulla Parte Speciale (le risposte del consulente sono da acquisire). Il disegno delle funzioni indicate va fissato solo dopo le risposte.
+
+| Domanda | Effetto sul gestionale |
+|---|---|
+| 5. Un unico report semestrale all'OdV su modello standard, compilato da ciascuno per la propria parte | Il gestionale può produrre la parte di ciascuno già compilata dai dati registrati (domande, rendiconti, deroghe, conflitti, deleghe, segnalatori) |
+| 8. Definizione di contatto "rilevante" con la PA | Decide che cosa si registra nel registro dei contatti e con quali campi |
+| 8 e 13. Più clienti sullo stesso bando: clausola contrattuale invece dell'esclusiva; stesso RP ammesso, REV non coinvolto nelle altre pratiche | La regola automatica diventa: avviso sempre; REV della pratica diverso dai referenti delle pratiche concorrenti; RP comune ammesso con annotazione |
+| 8. CreditSafe: scaricare il report e salvarlo come traccia della qualifica | Fase di qualifica nella scheda cliente: report caricato con data, esito delle liste UE, eventuale decisione dell'AU |
+| 12 e 18. Qualifica di professionisti e segnalatori (documento, partita IVA, albo, liste UE, notizie pubbliche, DSAN di onorabilità e conflitti) | Checklist di qualifica diversa per società e professionisti, con i documenti richiesti per ciascuna voce |
+| 14 e 19. Checklist di uscita anche per collaboratori e tirocinanti; tirocinante con accesso al gestionale da febbraio ad aprile 2027 | Utenti con data di scadenza dell'accesso e profilo limitato; revoca automatica alla scadenza (oggi la disattivazione è manuale) |
+| 15. Delega del cliente a BLMProject, in piattaforma intestata a Chiara con il suo SPID, ed elenco interno delle persone autorizzate | Registro delle deleghe con cliente, piattaforma, titolare dell'accesso, persone autorizzate, durata e documento di mandato |
+| 16. Backup e test di ripristino; "avendo tutto su Google non serve un backup diverso" | Il gestionale non è su Google ma su Supabase: serve comunque una copia periodica su un sistema diverso e un test di ripristino documentato |
+| 4. Casella OdV sul dominio aziendale, accessibile a chi amministra Workspace | Stesso tema per il gestionale: l'OdV avrà un profilo in sola lettura, ma l'amministratore tecnico vede tutto; da considerare nella scelta del canale whistleblowing |
+| 21. Processo per le soluzioni di IA sviluppate (scheda di rischio, test, approvazione) | Si applica anche al gestionale stesso (gap G20) |
+
 ## Collegamento con il lavoro di Stefano
 
 Le procedure P01-P17 sono, di fatto, il disegno dei processi che il documento di Stefano poneva come primo passo: una pratica di finanza agevolata con le sue fasi, i documenti richiesti in ciascuna fase (il "controlla" di Stefano coincide con le checklist del Modello), le deroghe e gli accordi telefonici registrati come documenti tracciati, i dati esposti al cervello aziendale. Conviene trattare i due lavori come uno solo.
