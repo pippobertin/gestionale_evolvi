@@ -1,50 +1,26 @@
 # Punto di ripresa del lavoro
 
-Aggiornato venerdì 20/11/2026, per la ripresa di lunedì 23/11/2026. Branch di lavoro `claude/stoic-hawking-mf8eph`.
+Branch di lavoro `claude/stoic-hawking-mf8eph`.
 
 ## Dove siamo
 
-**In produzione** (`main`, commit `deedb33`, gestionale.blmproject.com), provato e confermato:
+Aggiornato il 23/11/2026. **In produzione** (`main`), provato e confermato:
 
-- fasi 1-3 della sicurezza (database chiuso, sessioni revocabili, cookie httpOnly);
-- utenti con accesso a termine; backup mensile esportabile, con registro delle prove di ripristino;
-- fase 4A: registro delle operazioni non modificabile, con vista sintetica per chi non è tecnico e vista completa;
-- fase 4B: ripristino delle eliminazioni dal registro, file compresi (cartella `_cestino` su Drive);
-- fase 4C: ruoli admin, collaboratore, collaboratore limitato e OdV; matrice dei permessi configurabile dagli amministratori; "chi genera non approva", con deroga motivata; area dell'OdV in sola lettura;
-- pratica di finanza agevolata guidata, passaggi A e B: fasi incarico, progettazione, controllo pre-invio, invio e inviata, con ordine di lavoro generato dal modello in Drive (cartella MODELLI); REV diverso da RP; integrazioni, rendiconti e rettifiche; promemoria in calendario e segnalazione dei ritardi ogni mattina.
+- fasi 1-4 della sicurezza e della tracciabilità (database chiuso, registro delle operazioni, ripristino, ruoli e permessi configurabili, area dell'OdV);
+- utenti con accesso a termine; backup mensile con registro delle prove di ripristino;
+- pratica di finanza agevolata guidata, passaggi A e B;
+- Registri 231 (menu Modello 231, in sola lettura anche per l'OdV):
+  - passaggio 1: qualifica delle controparti (M.01), dichiarazioni degli interessi (M.04), registro dei conflitti;
+  - passaggio 2: deleghe dei clienti con persone autorizzate e riesame semestrale; checklist di ingresso e uscita (M.06), con promemoria in calendario e uscita automatica dagli elenchi delle deleghe per chi viene disattivato o ha l'accesso scaduto;
+  - passaggio 3: segnalatori (qualifica, accordo con clausola 231 approvato dall'AU) e compensi (attestazione, fattura, autorizzazione dell'AU, pagamento); registro delle deroghe, con quelle già registrate dal gestionale.
 
-**Fatto il 20/11, già attivo nel database:** annullate le 861 email arretrate della coda (stato `annullata`). La coda tornerà a riempirsi finché non si ricollega la casella Gmail di sistema.
+Le email arretrate della coda sono annullate; la coda si riempie di nuovo finché non si ricollega la casella Gmail di sistema.
 
-**In anteprima, da provare lunedì** (commit `d2e5490`), Registri 231, passaggio 1:
-https://gestionale-evolvi-git-claude-st-06f946-filippo-bertins-projects.vercel.app
+I dati di prova (delega "restart" su AAAAPIPPO, utente "Prova Uscita", segnalatore Daniele Bedetti e simili) restano di proposito: servono come esempio per formare i colleghi.
 
-- Qualifica delle controparti (modulo M.01): checklist distinta per società e persona fisica, allegati su Drive in `MODELLO 231/Qualifiche/<anno>`, scadenza a 12 mesi per i rapporti continuativi, anomalie decise dall'AU.
-- Dichiarazioni degli interessi (modulo M.04): ognuno dichiara per sé, la dichiarazione resa non si modifica (si presenta una variazione), la valuta l'AU o un altro amministratore se è dell'AU. All'OdV arriva solo il riepilogo; il contenuto non entra nel registro delle operazioni.
-- Registro dei conflitti, con misure e decisione dell'AU.
-- Voce "Modello 231" nel menu laterale; scheda "Qualifiche, interessi e conflitti" in sola lettura nell'area dell'OdV.
+## Da dove riprendere
 
-Le tabelle sono già create nel database di produzione (migrazioni `20261121_registri_231_a` e `20261121_registro_dichiarazioni_riservate`, con script di annullamento). Prima della pubblicazione manca solo l'interfaccia.
-
-## Cosa provare lunedì
-
-L'anteprima scrive nel database di produzione: i dati di prova si possono eliminare dopo il test, ma nel registro delle operazioni resta traccia che sono esistiti.
-
-L'AU è Chiara Canzi (impostazione `utente_au`). Solo lei decide anomalie, valutazioni e conflitti; Filippo, come altro amministratore, decide soltanto quando la persona coinvolta è Chiara. Con l'account di Filippo "In attesa della decisione" è quindi il comportamento corretto.
-
-1. **Account di Filippo, voce Modello 231.**
-   - Qualifiche: creare una scheda per una società e una per una persona fisica; controllare che la checklist cambi; caricare un allegato e trovarlo su Drive; salvare una scheda senza anomalie (rapporto continuativo, deve comparire la scadenza) e una con anomalia (deve restare in attesa dell'AU, senza pulsante per decidere).
-   - Dichiarazioni: compilare la propria; dopo l'invio non deve essere modificabile; deve comparire l'elenco di chi non ha ancora dichiarato; sulla propria dichiarazione non deve esserci il pulsante di valutazione.
-   - Conflitti: annotarne uno di prova collegato a una pratica; se riguarda Chiara si decide, altrimenti resta in attesa.
-2. **Account di Chiara:** decidere l'anomalia della qualifica, valutare la dichiarazione di Filippo, decidere il conflitto. Una valutazione con esito "conflitto annotato" deve creare la riga corrispondente nel registro dei conflitti.
-3. **"utente prova" (ruolo OdV):** nuova scheda in sola lettura, nessun pulsante per creare o decidere; delle dichiarazioni si vedono solo chi, quando, l'esito e il numero di casi. Nel Registro attività le nuove voci hanno etichette leggibili.
-
-Se tutto va bene: "anteprima testata, tutto ok, pubblica su main".
-
-## Da dove riprendere dopo la pubblicazione
-
-1. **Registri 231, passaggio 2:** deleghe dei clienti con le persone autorizzate (PR.03 §4.2); checklist di ingresso e uscita del personale (modulo M.06), collegate alla disattivazione degli utenti e all'accesso a termine.
-2. **Registri 231, passaggio 3:** segnalatori (accordi, attestazione prima del pagamento, compensi) e registro delle deroghe.
-3. **Report semestrale all'OdV** precompilato (scadenze 31/07 e 31/01).
+1. **Report semestrale all'OdV** precompilato con i dati dei registri (modulo M.05, scadenze 31/07 e 31/01).
 
 ## Rinviati, da decidere
 
