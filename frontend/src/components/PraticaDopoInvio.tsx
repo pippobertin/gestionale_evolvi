@@ -207,7 +207,7 @@ export default function PraticaDopoInvio({ progettoId, dati, ricarica, invia, oc
                 <div className="flex flex-wrap gap-x-2 items-center">
                   <strong>{r.descrizione}</strong>
                   <Scadenza data={r.scadenza} conclusa={!!r.data_invio} />
-                  {r.segnalato_ritardo_il && !r.data_invio && <span className="text-red-700 inline-flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> ritardo segnalato all'amministratrice unica e all'Organismo di Vigilanza</span>}
+                  {r.segnalato_ritardo_il && !r.data_invio && <span className="text-red-700 inline-flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> ritardo segnalato all&apos;amministratrice unica e all&apos;Organismo di Vigilanza</span>}
                   {haPermesso('elementi.elimina') && !r.data_invio && (
                     <button type="button" title="Elimina" onClick={() => elimina('rendiconti', r.id)} className="text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
                   )}
@@ -282,7 +282,7 @@ export default function PraticaDopoInvio({ progettoId, dati, ricarica, invia, oc
       <section className="rounded-lg border border-gray-200 bg-white p-3">
         <h4 className="text-sm font-semibold text-gray-900 mb-1">Rettifiche dopo l&apos;invio</h4>
         <p className="text-[11px] text-gray-500 mb-2">
-          Un errore emerso dopo l&apos;invio si corregge solo con rettifica formale (portale o PEC). La registrazione avvisa l'amministratrice unica e l'Organismo di Vigilanza nel registro attività.
+          Un errore emerso dopo l&apos;invio si corregge solo con rettifica formale (portale o PEC). La registrazione avvisa l&apos;amministratrice unica e l&apos;Organismo di Vigilanza nel registro attività.
         </p>
         {dati.rettifiche.length > 0 && (
           <ul className="text-xs space-y-1 mb-2">
@@ -308,7 +308,7 @@ export default function PraticaDopoInvio({ progettoId, dati, ricarica, invia, oc
             <label className="text-xs text-gray-600">Documento (facoltativo)<input type="file" className="text-xs block" onChange={e => setNuovaRettifica({ ...nuovaRettifica, file: e.target.files?.[0] || null })} /></label>
             <div className="flex gap-1 md:col-span-3">
               <button type="button" disabled={occupato || !nuovaRettifica.errore.trim()}
-                onClick={async () => { const r = await invia('rettifica', `/api/pratiche/${progettoId}/rettifiche`, nuovaRettifica, 'Rettifica registrata e segnalata all'amministratrice unica e all'Organismo di Vigilanza'); if (r) setNuovaRettifica(null) }}
+                onClick={async () => { const r = await invia('rettifica', `/api/pratiche/${progettoId}/rettifiche`, nuovaRettifica, "Rettifica registrata e segnalata all'amministratrice unica e all'Organismo di Vigilanza"); if (r) setNuovaRettifica(null) }}
                 className="px-2 py-1 text-xs bg-blue-600 text-white rounded disabled:opacity-40">Registra</button>
               <button type="button" onClick={() => setNuovaRettifica(null)} className="px-2 py-1 text-xs border rounded">Annulla</button>
             </div>
