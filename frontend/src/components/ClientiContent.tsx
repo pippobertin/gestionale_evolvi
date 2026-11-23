@@ -67,6 +67,9 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
   const [showDettaglio, setShowDettaglio] = useState(false)
   const [selectedCliente, setSelectedCliente] = useState<Cliente | undefined>(undefined)
   const [selectedClienteId, setSelectedClienteId] = useState<string>('')
+  // Scheda del cliente da cui si è aperta la modifica: chiusa la modifica si torna lì
+  const tornaA = useRef<{ id: string; tab?: string } | null>(null)
+  const [schedaModifica, setSchedaModifica] = useState<string | undefined>(undefined)
   const [dettaglioInitialTab, setDettaglioInitialTab] = useState<string | undefined>(undefined)
   const [dettaglioInitialSubTab, setDettaglioInitialSubTab] = useState<string | undefined>(undefined)
 
@@ -208,6 +211,8 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
   // Funzioni per gestire i modali
   const handleNuovoCliente = () => {
     setSelectedCliente(undefined)
+    tornaA.current = null
+    setSchedaModifica(undefined)
     setShowForm(true)
   }
 
@@ -235,6 +240,15 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
   const handleCloseForm = () => {
     setShowForm(false)
     setSelectedCliente(undefined)
+    if (tornaA.current) riapriScheda(tornaA.current.id, tornaA.current.tab)
+  }
+
+  const riapriScheda = (id: string, tab?: string) => {
+    tornaA.current = null
+    setSelectedClienteId(id)
+    setDettaglioInitialTab(tab)
+    setDettaglioInitialSubTab(undefined)
+    setShowDettaglio(true)
   }
 
   const handleCloseDettaglio = () => {
@@ -291,8 +305,10 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
     ).dimensione || ''
   }
 
-  const handleEditFromDettaglio = (cliente: Cliente) => {
+  const handleEditFromDettaglio = (cliente: Cliente, tab?: string) => {
     setShowDettaglio(false)
+    tornaA.current = { id: cliente.id, tab }
+    setSchedaModifica(tab)
     setSelectedCliente(cliente)
     setShowForm(true)
   }
@@ -774,6 +790,9 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
         onClose={handleCloseForm}
         onSave={handleSaveCliente}
         onNavigate={onNavigate}
+        initialTab={schedaModifica}
+        onSaved={(id) => { if (!showDettaglio) riapriScheda(id, schedaModifica) }}
+        onDeleted={() => { tornaA.current = null }}
       />
 
       <ClienteDettaglio

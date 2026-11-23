@@ -48,7 +48,7 @@ interface Progetto {
   updated_at: string
 }
 
-export default function ProgettiContent({ initialFilter, onNavigate }: { initialFilter?: string; onNavigate?: (page: string, params?: any) => void }) {
+export default function ProgettiContent({ initialFilter, onNavigate, openProgettoId }: { initialFilter?: string; onNavigate?: (page: string, params?: any) => void; openProgettoId?: string }) {
   const [progetti, setProgetti] = useState<Progetto[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -56,6 +56,7 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
   const [filtroStato, setFiltroStato] = useState<string>('tutti')
   const [filtroEnte, setFiltroEnte] = useState<string>('tutti')
   const [progettoInModifica, setProgettoInModifica] = useState<Progetto | null>(null)
+  const [nuovoProgetto, setNuovoProgetto] = useState(false)
   const [selectedProgettiForDelete, setSelectedProgettiForDelete] = useState<Set<string>>(new Set())
   const [isSelectMode, setIsSelectMode] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -206,6 +207,13 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
   useEffect(() => {
     fetchProgetti()
   }, [])
+
+  // Apertura diretta di un progetto (dalla scheda del cliente o dal cruscotto)
+  useEffect(() => {
+    if (!openProgettoId || progetti.length === 0) return
+    const p = progetti.find(x => x.id === openProgettoId)
+    if (p) setProgettoInModifica(p)
+  }, [openProgettoId, progetti])
 
   // Aggiorna il filtro di ricerca quando viene passato un filtro iniziale
   useEffect(() => {
@@ -528,7 +536,7 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
     <div className="space-y-3">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-sm font-semibold text-gray-900">Gestione Progetti</h1>
+        <h1 className="text-sm font-semibold text-gray-900">Progetti</h1>
         <div className="flex items-center gap-3">
           {isSelectMode ? (
             <>
@@ -554,11 +562,21 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
           ) : (
             <>
               <button
+                type="button"
                 onClick={() => setIsSelectMode(true)}
-                className="bg-gradient-to-br from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg"
+                className="text-sm text-gray-600 hover:text-gray-900 px-2 py-1.5 rounded-lg flex items-center gap-1"
+                title="Seleziona più progetti per eliminarli"
               >
                 <CheckSquare className="w-4 h-4" />
                 Seleziona
+              </button>
+              <button
+                type="button"
+                onClick={() => setNuovoProgetto(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Nuovo progetto
               </button>
             </>
           )}
@@ -797,6 +815,17 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
       </div>
 
 
+
+      {/* Nuovo progetto: cliente e bando si scelgono nel modulo */}
+      {nuovoProgetto && (
+        <ProgettoForm
+          onClose={() => setNuovoProgetto(false)}
+          onProgettoCreated={() => {
+            setNuovoProgetto(false)
+            fetchProgetti()
+          }}
+        />
+      )}
 
       {/* Modal modifica progetto */}
       {progettoInModifica && (

@@ -289,7 +289,7 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
 
   // Un clic sulla riga apre la pratica (o il cliente); le scadenze generali aprono lo scadenzario
   const apri = (s: Scadenza) => {
-    if (s.progetto_id && s.progetto_codice && s.progetto_codice !== 'N/D') onNavigate('progetti', { clienteFilter: s.progetto_codice })
+    if (s.progetto_id) onNavigate('progetti', { openProgettoId: s.progetto_id })
     else if (s.cliente_id) onNavigate('clienti', { openClientId: s.cliente_id })
     else onNavigate('scadenze', { date: s.data_scadenza })
   }

@@ -155,9 +155,13 @@ interface ClienteFormProps {
   onClose: () => void
   onSave: () => void
   onNavigate?: (page: string, params?: any) => void
+  initialTab?: string
+  /** Chiamata dopo il salvataggio con l'identificativo del cliente (per tornare alla sua scheda) */
+  onSaved?: (clienteId: string) => void
+  onDeleted?: () => void
 }
 
-export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNavigate }: ClienteFormProps) {
+export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNavigate, initialTab, onSaved, onDeleted }: ClienteFormProps) {
   const { canDelete, user, isAdmin } = useAuth()
   const [confermaNome, setConfermaNome] = useState('')
   const [formData, setFormData] = useState<Cliente>({
@@ -191,6 +195,14 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
   const [dependencyLoading, setDependencyLoading] = useState(false)
   const [convertError, setConvertError] = useState<string | null>(null)
   const [convertSuccess, setConvertSuccess] = useState<{ prospectId: string; scenario: string } | null>(null)
+
+  // Si apre sulla stessa scheda da cui si è premuto Modifica
+  useEffect(() => {
+    if (isOpen) {
+      const schede = ['anagrafica', 'contatti', 'legale', 'dimensionamento', 'gestione']
+      setCurrentTab(initialTab && schede.includes(initialTab) ? initialTab : 'anagrafica')
+    }
+  }, [isOpen, initialTab])
 
   useEffect(() => {
     if (cliente) {
@@ -610,6 +622,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
 
       setShowDeleteConfirm(false)
       alert('Cliente eliminato con successo')
+      onDeleted?.()
       onSave() // Ricarica la lista
       onClose() // Chiude il modal
     } catch (error) {
@@ -714,6 +727,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
 
       onSave()
       onClose()
+      if (clienteIdSalvato) onSaved?.(clienteIdSalvato)
     } catch (error: any) {
       console.error('Errore nel salvataggio:', error?.message || error?.details || error?.hint || error)
       alert(`Errore nel salvataggio: ${error?.message || error?.details || 'Errore sconosciuto'}`)
@@ -729,8 +743,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
     { id: 'contatti', label: 'Contatti', icon: Mail },
     { id: 'legale', label: 'Legale Rappresentante', icon: User },
     { id: 'dimensionamento', label: 'Dimensionamento', icon: Users },
-    { id: 'gestione', label: 'Gestione', icon: FileText },
-    { id: 'documenti', label: 'Documenti', icon: FolderOpen }
+    { id: 'gestione', label: 'Gestione', icon: FileText }
   ]
 
 
@@ -783,6 +796,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
 
   const handleCloseConvertModal = () => {
     if (convertSuccess) {
+      onDeleted?.()
       onSave() // ricarica la lista clienti
       onClose()
     }
@@ -794,6 +808,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
 
   const handleGoToProspect = () => {
     if (convertSuccess && onNavigate) {
+      onDeleted?.()
       onSave()
       onClose()
       onNavigate('prospect', { openProspectId: convertSuccess.prospectId })

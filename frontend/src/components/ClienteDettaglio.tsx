@@ -19,9 +19,11 @@ import {
   ClipboardCheck,
   GraduationCap,
   Briefcase,
-  Trophy
+  Trophy,
+  Target as IconaProgetti,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import ClienteProgettiScadenze from './ClienteProgettiScadenze'
 import ReferentiManager from './ReferentiManager'
 import ContrattiEvolviManager from './ContrattiEvolviManager'
 import DocumentiAmministrativiManager from './DocumentiAmministrativiManager'
@@ -110,7 +112,7 @@ interface ClienteDettaglioProps {
   clienteId: string
   isOpen: boolean
   onClose: () => void
-  onEdit: (cliente: Cliente) => void
+  onEdit: (cliente: Cliente, tab?: string) => void
   onNavigate?: (page: string, params?: any) => void
   onClienteDeleted?: () => void
   initialTab?: string
@@ -121,7 +123,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
   const [cliente, setCliente] = useState<Cliente | null>(null)
   const [riconosciuta, setRiconosciuta] = useState<{ r: DimensioneRiconosciuta; n: number } | null>(null)
   const [loading, setLoading] = useState(true)
-  const [currentTab, setCurrentTab] = useState('anagrafica')
+  const [currentTab, setCurrentTab] = useState('progetti')
   const [collegamenti, setCollegamenti] = useState<CollegamentoAziendale[]>([])
   const [loadingCollegamenti, setLoadingCollegamenti] = useState(false)
 
@@ -133,12 +135,11 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
     }
   }, [isOpen, clienteId])
 
-  // Apertura su un tab specifico (es. da una notifica)
+  // Apertura su un tab specifico (es. da una notifica o al ritorno dalla modifica);
+  // altrimenti la prima scheda, Progetti e scadenze
   useEffect(() => {
-    if (isOpen && initialTab) {
-      setCurrentTab(initialTab)
-    }
-  }, [isOpen, initialTab])
+    if (isOpen) setCurrentTab(initialTab || 'progetti')
+  }, [isOpen, initialTab, clienteId])
 
   const fetchCliente = async (silenzioso = false) => {
     if (!silenzioso) setLoading(true)
@@ -254,6 +255,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
   const isEvolviClient = cliente.categoria_evolvi === 'EVOLVI'
 
   const baseTabs = [
+    { id: 'progetti', label: 'Progetti e scadenze', icon: IconaProgetti },
     { id: 'anagrafica', label: 'Dati Anagrafici', icon: Building2 },
     { id: 'contatti', label: 'Contatti', icon: Mail },
     { id: 'legale', label: 'Legale Rappresentante', icon: User },
@@ -273,19 +275,22 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
 
   const renderTabContent = () => {
     switch (currentTab) {
+      case 'progetti':
+        return <ClienteProgettiScadenze cliente={cliente} onNavigate={onNavigate} />
+
       case 'anagrafica':
         return (
           <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Denominazione</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.denominazione || '-'}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Numero Azienda</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.numero_azienda || '-'}
                 </div>
               </div>
@@ -294,19 +299,19 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Partita IVA</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.partita_iva || '-'}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Codice Fiscale</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.codice_fiscale || '-'}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">REA</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.rea || '-'}
                 </div>
               </div>
@@ -315,7 +320,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Codice ATECO 2025</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.ateco_2025 || '-'}
                 </div>
                 {cliente.ateco_descrizione && (
@@ -326,7 +331,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Data Costituzione</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.data_costituzione ? new Date(cliente.data_costituzione).toLocaleDateString('it-IT') : '-'}
                 </div>
               </div>
@@ -335,7 +340,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Estremi iscrizione al RUNTS</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.estremi_iscrizione_runts || '-'}
                 </div>
               </div>
@@ -350,19 +355,19 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Coordinate Bancarie (IBAN)</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.coordinate_bancarie || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Banca/Filiale</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.banca_filiale || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Codice SDI</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.sdi || '-'}
                   </div>
                 </div>
@@ -378,31 +383,31 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Indirizzo</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.indirizzo_fatturazione || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">CAP</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.cap_fatturazione || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Città</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.citta_fatturazione || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Provincia</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.provincia_fatturazione || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Stato</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.stato_fatturazione || '-'}
                   </div>
                 </div>
@@ -423,25 +428,25 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.email || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">PEC</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.pec || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.telefono || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Sito Web</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.sito_web || '-'}
                   </div>
                 </div>
@@ -470,43 +475,43 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.legale_rappresentante_nome || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Cognome</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.legale_rappresentante_cognome || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Codice Fiscale</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.legale_rappresentante_codice_fiscale || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data di Nascita</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.legale_rappresentante_data_nascita ? new Date(cliente.legale_rappresentante_data_nascita).toLocaleDateString('it-IT') : '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Luogo di Nascita</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.legale_rappresentante_luogo_nascita || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Provincia di Nascita</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.legale_rappresentante_provincia_nascita || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nazionalità</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.legale_rappresentante_nazionalita || '-'}
                   </div>
                 </div>
@@ -522,25 +527,25 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Indirizzo</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.legale_rappresentante_indirizzo || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">CAP</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.legale_rappresentante_cap || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Città</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.legale_rappresentante_citta || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Provincia</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.legale_rappresentante_provincia || '-'}
                   </div>
                 </div>
@@ -556,19 +561,19 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.legale_rappresentante_email || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {cliente.legale_rappresentante_telefono || '-'}
                   </div>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Note</label>
-                  <div className="input bg-gray-50 cursor-not-allowed min-h-[60px]">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 whitespace-pre-wrap min-h-[2rem]">
                     {cliente.legale_rappresentante_note || '-'}
                   </div>
                 </div>
@@ -592,19 +597,19 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">ULA (Unità Lavorative Annue)</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.ula || '-'}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ultimo Fatturato (€)</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.ultimo_fatturato ? cliente.ultimo_fatturato.toLocaleString('it-IT') : '-'}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Attivo di Bilancio (€)</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.attivo_bilancio ? cliente.attivo_bilancio.toLocaleString('it-IT') : '-'}
                 </div>
               </div>
@@ -640,19 +645,19 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Numero Dipendenti</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.numero_dipendenti || 0}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Numero Volontari</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.numero_volontari || 0}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Numero Collaboratori</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.numero_collaboratori || 0}
                 </div>
               </div>
@@ -661,13 +666,13 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Matricola INPS</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.matricola_inps || '-'}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">PAT INAIL</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.pat_inail || '-'}
                 </div>
               </div>
@@ -797,7 +802,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {cliente.categoria_evolvi === 'CLIENTE_SPOT' ? 'Spot' :
                    cliente.categoria_evolvi === 'EVOLVI' ? 'Evolvi' :
                    cliente.categoria_evolvi === 'FPI' ? 'FPI' :
@@ -809,13 +814,13 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Scadenza Evolvi</label>
-                    <div className="input bg-gray-50 cursor-not-allowed">
+                    <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                       {cliente.scadenza_evolvi ? new Date(cliente.scadenza_evolvi).toLocaleDateString('it-IT') : '-'}
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Durata Evolvi</label>
-                    <div className="input bg-gray-50 cursor-not-allowed">
+                    <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                       {cliente.durata_evolvi || '-'}
                     </div>
                   </div>
@@ -877,14 +882,14 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione</label>
-              <div className="input bg-gray-50 cursor-not-allowed min-h-[60px]">
+              <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 whitespace-pre-wrap min-h-[2rem]">
                 {cliente.descrizione || '-'}
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Note libere</label>
-              <div className="input bg-gray-50 cursor-not-allowed min-h-[60px]">
+              <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 whitespace-pre-wrap min-h-[2rem]">
                 {cliente.note || '-'}
               </div>
             </div>
@@ -957,11 +962,12 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
           </div>
           <div className="flex items-center space-x-1.5">
             <button
-              onClick={() => onEdit(cliente)}
-              className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
-              title="Modifica cliente"
+              type="button"
+              onClick={() => onEdit(cliente, currentTab)}
+              className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors inline-flex items-center gap-1.5 text-sm font-medium"
+              title="Modifica i dati del cliente"
             >
-              <Edit className="w-4 h-4" />
+              <Edit className="w-4 h-4" /> Modifica
             </button>
             <button
               onClick={onClose}

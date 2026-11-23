@@ -125,7 +125,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'bandi-esterni':
         return <BandiEsterniManager />
       case 'progetti':
-        return <ProgettiContent initialFilter={navigationParams?.clienteFilter} onNavigate={onNavigate} />
+        return <ProgettiContent initialFilter={navigationParams?.clienteFilter} openProgettoId={navigationParams?.openProgettoId} onNavigate={onNavigate} />
       case 'email':
         return (
           <div className="overflow-hidden -m-4 h-[calc(100%+2rem)] w-[calc(100%+2rem)]">

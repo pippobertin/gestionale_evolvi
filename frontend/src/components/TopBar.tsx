@@ -82,7 +82,7 @@ const SEARCH_CATEGORIES: Array<{
     color: 'text-green-600',
     getTitle: (item) => item.titolo_progetto,
     getSubtitle: (item) => [item.codice_progetto, item.cliente_denominazione].filter(Boolean).join(' - ') || '',
-    navigate: (item, onNavigate) => onNavigate('progetti', { clienteFilter: item.codice_progetto }),
+    navigate: (item, onNavigate) => onNavigate('progetti', { openProgettoId: item.id }),
   },
   {
     key: 'prospect',
