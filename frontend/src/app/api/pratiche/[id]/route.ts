@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   const pratica = await datiPratica(id)
   if (!pratica) return NextResponse.json({ error: 'Pratica non trovata' }, { status: 404 })
 
-  const [stato, passaggi, ordini, contatti, verifiche, utenti, voci, au, tracking, integrazioni, rendiconti, rettifiche] = await Promise.all([
+  const [stato, passaggi, ordini, contatti, verifiche, utenti, voci, au, tracking, integrazioni, rendiconti, rettifiche, vista] = await Promise.all([
     supabaseAdmin.rpc('gestionale_stato_pratica', { p_progetto: id }),
     supabaseAdmin.from('scadenze_bandi_pratica_passaggi').select('*').eq('progetto_id', id).order('quando', { ascending: false }),
     supabaseAdmin.from('scadenze_bandi_ordini_lavoro').select('*').eq('progetto_id', id).order('created_at', { ascending: false }),
@@ -34,7 +34,8 @@ export async function GET(request: NextRequest, { params }: Params) {
       .eq('entity_type', 'PROGETTO').eq('entity_id', id).order('created_at', { ascending: false }).limit(1),
     supabaseAdmin.from('scadenze_bandi_integrazioni').select('*').eq('progetto_id', id).order('scadenza', { ascending: true }),
     supabaseAdmin.from('scadenze_bandi_rendiconti').select('*').eq('progetto_id', id).order('scadenza', { ascending: true }),
-    supabaseAdmin.from('scadenze_bandi_rettifiche').select('*').eq('progetto_id', id).order('data_rilevazione', { ascending: false })
+    supabaseAdmin.from('scadenze_bandi_rettifiche').select('*').eq('progetto_id', id).order('data_rilevazione', { ascending: false }),
+    supabaseAdmin.from('scadenze_bandi_progetti_view').select('stato_calcolato').eq('id', id).maybeSingle()
   ])
   if (stato.error) return NextResponse.json({ error: stato.error.message }, { status: 500 })
 
@@ -55,7 +56,8 @@ export async function GET(request: NextRequest, { params }: Params) {
       rp_id: pratica.rp_id, rev_id: pratica.rev_id, pratica_propria: pratica.pratica_propria,
       trasmissione: pratica.trasmissione, motivazione_stesso_bando: pratica.motivazione_stesso_bando,
       data_invio: pratica.data_invio, scadenza_rendicontazione: pratica.scadenza_rendicontazione_finale || null, bando: pratica.scadenze_bandi_bandi?.nome || '',
-      cliente: pratica.scadenze_bandi_clienti?.denominazione || '', cliente_id: pratica.cliente_id
+      cliente: pratica.scadenze_bandi_clienti?.denominazione || '', cliente_id: pratica.cliente_id,
+      stato_calcolato: vista.data?.stato_calcolato || null
     },
     stato: stato.data,
     passaggi: passaggi.data || [],

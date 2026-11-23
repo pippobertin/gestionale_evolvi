@@ -179,7 +179,7 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
   // --- Action handlers ---
 
   const handleQualifica = () => {
-    updateStato('qualificato', 'Prospect qualificato — Gruppo 2 completo')
+    updateStato('qualificato', 'Prospect qualificato: qualificazione completa')
   }
 
   const handlePortaInDecisione = () => {
@@ -373,13 +373,13 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Denominazione</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {prospect.denominazione || '-'}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Numero Prospect</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {prospect.numero_prospect || '-'}
                 </div>
               </div>
@@ -388,19 +388,19 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Partita IVA</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {prospect.partita_iva || '-'}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Codice Fiscale</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {prospect.codice_fiscale || '-'}
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Settore</label>
-                <div className="input bg-gray-50 cursor-not-allowed">
+                <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                   {prospect.settore || '-'}
                 </div>
               </div>
@@ -415,25 +415,25 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {prospect.email || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">PEC</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {prospect.pec || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {prospect.telefono || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Sito Web</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {prospect.sito_web || '-'}
                   </div>
                 </div>
@@ -449,25 +449,25 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Indirizzo</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {prospect.indirizzo || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">CAP</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {prospect.cap || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Citta</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {prospect.citta || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Provincia</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {prospect.provincia || '-'}
                   </div>
                 </div>
@@ -483,19 +483,19 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Dimensione</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {prospect.dimensione || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Numero Dipendenti</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {prospect.numero_dipendenti ?? '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ultimo Fatturato</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {formatCurrency(prospect.ultimo_fatturato)}
                   </div>
                 </div>
@@ -512,25 +512,25 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-                    <div className="input bg-gray-50 cursor-not-allowed">
+                    <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                       {prospect.legale_rappresentante_nome || '-'}
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Cognome</label>
-                    <div className="input bg-gray-50 cursor-not-allowed">
+                    <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                       {prospect.legale_rappresentante_cognome || '-'}
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <div className="input bg-gray-50 cursor-not-allowed">
+                    <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                       {prospect.legale_rappresentante_email || '-'}
                     </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
-                    <div className="input bg-gray-50 cursor-not-allowed">
+                    <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                       {prospect.legale_rappresentante_telefono || '-'}
                     </div>
                   </div>
@@ -547,13 +547,13 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Fonte Acquisizione</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {FONTI_ACQUISIZIONE.find(f => f.value === prospect.fonte_acquisizione)?.label || prospect.fonte_acquisizione || '-'}
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Assegnato a</label>
-                  <div className="input bg-gray-50 cursor-not-allowed">
+                  <div className="py-1.5 text-sm text-gray-900 border-b border-gray-100 min-h-[2rem]">
                     {prospect.assegnato_a || '-'}
                   </div>
                 </div>
@@ -806,8 +806,8 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
                   <h4 className="font-medium text-blue-900 mb-1">Qualifica</h4>
                   <p className="text-sm text-blue-700 mb-4">
                     {isGruppo2Complete(prospect)
-                      ? 'Il Gruppo 2 (Qualificazione) e completo. Puoi qualificare il prospect.'
-                      : 'Completa il Gruppo 2 (Qualificazione) nella prequalifica per abilitare questa azione.'}
+                      ? 'La parte Qualificazione della prequalifica è completa. Puoi qualificare il prospect.'
+                      : 'Completa la parte Qualificazione della prequalifica per abilitare questa azione.'}
                   </p>
                   <button
                     onClick={handleQualifica}
@@ -839,7 +839,7 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
                   <p className="text-sm text-purple-700 mb-4">
                     {isGruppo3Complete(prospect) && isGruppo4Complete(prospect)
                       ? 'Valutazione ed Esito completi. Puoi portare il prospect in decisione.'
-                      : 'Completa Valutazione (Gruppo 3) ed Esito (Gruppo 4) nella prequalifica.'}
+                      : 'Completa le parti Valutazione ed Esito della prequalifica.'}
                   </p>
                   <button
                     onClick={handlePortaInDecisione}
@@ -1090,6 +1090,27 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
 
           {/* Content */}
           <div className="p-4 overflow-y-auto flex-1">
+            {/* Prossimo passo: in cima a ogni scheda, non solo in Azioni */}
+            {(() => {
+              const passo =
+                prospect.stato === 'bozza' ? (isGruppo2Complete(prospect)
+                  ? { testo: 'La parte Qualificazione della prequalifica è completa: puoi qualificare il prospect.', azione: 'Qualifica', fai: handleQualifica }
+                  : { testo: 'Compila la parte Qualificazione della prequalifica.', azione: 'Apri la prequalifica', fai: () => { setPrequalificaScrollTo(undefined); setShowPrequalificaForm(true) } })
+                : prospect.stato === 'qualificato' ? (isGruppo3Complete(prospect) && isGruppo4Complete(prospect)
+                  ? { testo: 'Valutazione ed esito sono completi: porta il prospect in decisione.', azione: 'Porta in decisione', fai: handlePortaInDecisione }
+                  : { testo: 'Completa le parti Valutazione ed Esito della prequalifica.', azione: 'Apri la prequalifica', fai: () => { setPrequalificaScrollTo(3); setShowPrequalificaForm(true) } })
+                : prospect.stato === 'in_decisione' ? { testo: 'Se la decisione è positiva, prendi in carico il prospect.', azione: 'Prendi in carico', fai: handlePrendiInCarico }
+                : prospect.stato === 'preso_in_carico' ? { testo: 'Il prospect è preso in carico: convertilo in cliente.', azione: 'Converti in cliente', fai: () => setShowConversionModal(true) }
+                : null
+              if (!passo) return null
+              return (
+                <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex flex-wrap items-center gap-3">
+                  <span className="text-sm text-blue-900 flex-1"><strong>Prossimo passo:</strong> {passo.testo}</span>
+                  <button type="button" disabled={actionLoading} onClick={passo.fai}
+                    className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg disabled:opacity-50">{passo.azione}</button>
+                </div>
+              )
+            })()}
             {renderTabContent()}
           </div>
         </div>

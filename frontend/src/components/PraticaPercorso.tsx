@@ -43,13 +43,44 @@ function Requisito({ ok, testo }: { ok: boolean; testo: string }) {
   )
 }
 
-function Sezione({ titolo, children, evidenza = false, fisso = false }: { titolo: string; children: React.ReactNode; evidenza?: boolean; fisso?: boolean }) {
+function Sezione({ titolo, children, evidenza = false, fisso = false, aperta = true, completata = false }: { titolo: string; children: React.ReactNode; evidenza?: boolean; fisso?: boolean; aperta?: boolean; completata?: boolean }) {
+  const [mostra, setMostra] = useState(aperta)
+  useEffect(() => { setMostra(aperta) }, [aperta])
+  if (fisso) {
+    return (
+      <section className={`rounded-lg border p-3 ${evidenza ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'} sticky top-0 z-20 shadow-md`}>
+        <h4 className="text-sm font-semibold text-gray-900 mb-2">{titolo}</h4>
+        {children}
+      </section>
+    )
+  }
   return (
-    <section className={`rounded-lg border p-3 ${evidenza ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'} ${fisso ? 'sticky top-0 z-20 shadow-md' : ''}`}>
-      <h4 className="text-sm font-semibold text-gray-900 mb-2">{titolo}</h4>
-      {children}
+    <section className={`rounded-lg border ${evidenza ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white'}`}>
+      <button type="button" onClick={() => setMostra(!mostra)} className="w-full px-3 py-2 flex items-center gap-2 text-left">
+        {completata && <Check className="w-4 h-4 text-green-600 shrink-0" />}
+        <h4 className="text-sm font-semibold text-gray-900 flex-1">{titolo}</h4>
+        <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${mostra ? 'rotate-90' : ''}`} />
+      </button>
+      {mostra && <div className="px-3 pb-3">{children}</div>}
     </section>
   )
+}
+
+const COSA_FARE: Record<string, string> = {
+  incarico: 'Assegna responsabile della pratica e revisore, poi fai firmare il contratto o confermare dal cliente l\'ordine di lavoro (sezione Incarico qui sotto).',
+  progettazione: 'Prepara la domanda. Quando è pronta passa al controllo: lo farà il revisore.',
+  controllo_preinvio: 'Il revisore compila e conferma la checklist pre-invio (sezione Controllo pre-invio e invio).',
+  invio: 'Registra la conferma scritta del cliente, chi trasmette la domanda (con la delega se trasmette BLM) e, dopo l\'invio, la ricevuta.'
+}
+const DOPO_INVIO = [
+  { id: 'DECRETO_ATTESO', etichetta: 'In attesa del decreto' },
+  { id: 'DECRETO_RICEVUTO', etichetta: 'Decreto ricevuto' },
+  { id: 'ACCETTATO', etichetta: 'Accettato' },
+  { id: 'IN_CORSO', etichetta: 'In corso' },
+  { id: 'COMPLETATO', etichetta: 'Chiuso' }
+]
+const STATO_CONTRATTO: Record<string, string> = {
+  DRAFT: 'bozza da approvare', APPROVED: 'approvato, da inviare', SENT: 'inviato al cliente', SIGNED: 'firmato', REMINDED: 'sollecitato'
 }
 
 export default function PraticaPercorso({ progettoId }: { progettoId: string }) {
@@ -57,6 +88,7 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
   const [dati, setDati] = useState<Dati | null>(null)
   const [errore, setErrore] = useState('')
   const [messaggio, setMessaggio] = useState('')
+  const [deroga, setDeroga] = useState<string | null>(null)
   const [inCorso, setInCorso] = useState<string | null>(null)
 
   // moduli
@@ -146,6 +178,9 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
       { ok: stato.ricevuta_ok, testo: 'Ricevuta di invio' }
     ] : []
   const tuttiOk = requisiti.every(r => r.ok)
+  const fase = pratica.fase as string
+  const prima = (f: string) => indice < FASI.findIndex(x => x.id === f)
+  const dopo = (f: string) => indice > FASI.findIndex(x => x.id === f)
 
   const campo = 'w-full px-2 py-1.5 border border-gray-300 rounded text-sm'
 
@@ -169,6 +204,7 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
         </ol>
         {successiva ? (
           <div>
+            {COSA_FARE[fase] && <p className="text-sm text-gray-900 mb-2"><strong>Cosa fare ora:</strong> {COSA_FARE[fase]}</p>}
             <p className="text-xs text-gray-600 mb-1">Per passare a <strong>{successiva.etichetta}</strong>:</p>
             <ul className="space-y-0.5 mb-2">{requisiti.map((r, i) => <Requisito key={i} {...r} />)}</ul>
             <div className="flex flex-wrap gap-2">
@@ -179,13 +215,22 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
               </button>
               {!tuttiOk && isAdmin() && (
                 <button type="button" disabled={inCorso !== null}
-                  onClick={() => {
-                    const motivo = window.prompt(`Mancano dei requisiti. Per passare comunque a "${successiva.etichetta}" scrivi il motivo della deroga (almeno 15 caratteri). Resterà nella cronologia e nel registro, visibile all'Organismo di Vigilanza.`)
-                    if (motivo && motivo.trim().length >= 15) cambiaFase(successiva.id, motivo.trim())
-                  }}
+                  onClick={() => setDeroga(deroga === null ? '' : null)}
                   className="px-3 py-1.5 text-sm border border-amber-400 text-amber-800 rounded hover:bg-amber-50">
                   Passa in deroga (amministratore)
                 </button>
+              )}
+              {deroga !== null && (
+                <div className="w-full p-2 bg-amber-50 border border-amber-200 rounded space-y-1">
+                  <p className="text-xs text-amber-900">Mancano dei requisiti. Per passare comunque a «{successiva.etichetta}» scrivi il motivo della deroga: resterà nella cronologia e nel registro, visibile all&apos;Organismo di Vigilanza.</p>
+                  <textarea className={campo} rows={2} value={deroga} onChange={e => setDeroga(e.target.value)} placeholder="Motivo (almeno 15 caratteri)" />
+                  <div className="flex gap-2">
+                    <button type="button" disabled={deroga.trim().length < 15 || inCorso !== null}
+                      onClick={() => { cambiaFase(successiva.id, deroga.trim()); setDeroga(null) }}
+                      className="px-3 py-1 text-sm bg-amber-600 text-white rounded disabled:opacity-40">Passa in deroga</button>
+                    <button type="button" onClick={() => setDeroga(null)} className="px-3 py-1 text-sm border rounded">Annulla</button>
+                  </div>
+                </div>
               )}
               {precedente && pratica.fase !== 'inviata' && (
                 <button type="button" disabled={inCorso !== null} onClick={() => cambiaFase(precedente.id)}
@@ -196,7 +241,21 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
             </div>
           </div>
         ) : (
-          <p className="text-sm text-green-700">Domanda inviata{pratica.data_invio ? ` il ${dataIt(pratica.data_invio)}` : ''}. Da qui prosegue con lo stato del progetto (decreto atteso, ricevuto, accettato).</p>
+          <div>
+            <p className="text-sm text-green-700 mb-2">Domanda inviata{pratica.data_invio ? ` il ${dataIt(pratica.data_invio)}` : ''}.</p>
+            <ol className="flex flex-wrap items-center gap-1 mb-1">
+              {DOPO_INVIO.map((f, i) => {
+                const attuale = DOPO_INVIO.findIndex(x => x.id === pratica.stato_calcolato)
+                return (
+                  <li key={f.id} className="flex items-center gap-1">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${i < attuale ? 'bg-green-100 text-green-800' : i === attuale ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{f.etichetta}</span>
+                    {i < DOPO_INVIO.length - 1 && <ChevronRight className="w-3 h-3 text-gray-400" />}
+                  </li>
+                )
+              })}
+            </ol>
+            <p className="text-xs text-gray-600">Lo stato avanza da solo con le date della scheda Scadenze (decreto, accettazione, avvio); quando il progetto è concluso si indica in Dati del progetto.</p>
+          </div>
         )}
       </Sezione>
 
@@ -206,7 +265,8 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
       )}
 
       {/* Ruoli */}
-      <Sezione titolo="Responsabile di pratica e revisore">
+      <Sezione titolo={pratica.rp_id && pratica.rev_id ? `Responsabile della pratica (${nomi[pratica.rp_id] || ''}) e revisore (${nomi[pratica.rev_id] || ''})` : 'Responsabile della pratica e revisore: da assegnare'}
+        aperta={fase === 'incarico' || !pratica.rp_id || !pratica.rev_id} completata={!!(pratica.rp_id && pratica.rev_id)}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <label className="text-xs text-gray-600">Responsabile della pratica
             <select className={campo} value={pratica.rp_id || ''} disabled={inCorso !== null}
@@ -232,7 +292,7 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
 
       {/* Stesso bando */}
       {stato.concorrenti?.length > 0 && (
-        <Sezione titolo="Altre pratiche sullo stesso bando">
+        <Sezione titolo="Altre pratiche sullo stesso bando" aperta={fase === 'incarico'}>
           <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mb-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>
@@ -261,10 +321,10 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
       )}
 
       {/* Incarico */}
-      <Sezione titolo="Incarico: contratto o ordine di lavoro">
+      <Sezione titolo="Incarico: contratto o ordine di lavoro" aperta={fase === 'incarico'} completata={dopo('incarico')}>
         <p className="text-xs text-gray-700 mb-2">
           Contratto di progetto: {dati.contratto
-            ? (dati.contratto.signed_contract_received ? <span className="text-green-700 font-medium">firmato e registrato</span> : <span>stato {dati.contratto.overall_status}, non ancora firmato</span>)
+            ? (dati.contratto.signed_contract_received ? <span className="text-green-700 font-medium">firmato e registrato</span> : <span>{STATO_CONTRATTO[dati.contratto.overall_status] || dati.contratto.overall_status}, non ancora firmato</span>)
             : 'nessuno'}. Per i clienti con accordo quadro (Metodo Evolvi) basta l&apos;ordine di lavoro confermato.
         </p>
         {dati.ordini.length > 0 && (
@@ -339,7 +399,7 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
       </Sezione>
 
       {/* Controllo e invio */}
-      <Sezione titolo="Controllo pre-invio e invio">
+      <Sezione titolo="Controllo pre-invio e invio" aperta={fase === 'controllo_preinvio' || fase === 'invio'} completata={fase === 'inviata'}>
         <div className="space-y-3">
           <div>
             <p className="text-xs font-medium text-gray-800 mb-1">Checklist pre-invio del revisore</p>
@@ -432,7 +492,7 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
       </Sezione>
 
       {/* Contatti con la PA */}
-      <Sezione titolo="Contatti rilevanti con la PA e gli enti">
+      <Sezione titolo={`Contatti rilevanti con la PA e gli enti (${dati.contatti.length})`} aperta={false}>
         <p className="text-[11px] text-gray-500 mb-2">
           Richieste formali di chiarimento, modifica, proroga o variazione; comunicazioni su esiti, controlli e rendicontazione; incontri.
           Non vanno annotate le telefonate solo informative sul bando.
@@ -485,7 +545,7 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
       </Sezione>
 
       {/* Cronologia */}
-      <Sezione titolo="Cronologia dei passaggi">
+      <Sezione titolo="Cronologia dei passaggi" aperta={false}>
         {dati.passaggi.length === 0 ? (
           <p className="text-xs text-gray-500">Nessun passaggio ancora.</p>
         ) : (

@@ -71,14 +71,14 @@ interface Cliente {
 
 interface ProgettoFormProps {
   onClose: () => void
-  onProgettoCreated: () => void
+  onProgettoCreated: (progettoId?: string) => void
   onDelete?: (progettoId: string) => void
   bando?: Bando
   cliente?: Cliente
   progetto?: any // Per modifica esistente
 }
 
-type TabType = 'pratica' | 'email' | 'generale' | 'importi' | 'scadenze' | 'documenti' | 'avanzate'
+type TabType = 'pratica' | 'email' | 'dati' | 'generale' | 'importi' | 'scadenze' | 'documenti' | 'avanzate'
 
 // I documenti ereditati dal bando puntano al file originale nell'archivio dei
 // bandi; quelli caricati nel progetto stanno nell'archivio dei progetti.
@@ -88,7 +88,8 @@ function bucketDocumentoProgetto(doc: { categoria?: string; inherited_from_bando
 
 export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, bando, cliente, progetto }: ProgettoFormProps) {
   // Pratica non ancora inviata: si apre sul percorso della pratica
-  const [activeTab, setActiveTab] = useState<TabType>(progetto?.fase && progetto.fase !== 'inviata' ? 'pratica' : 'generale')
+  const [activeTab, setActiveTab] = useState<TabType>(progetto ? 'pratica' : 'dati')
+  const [erroreDati, setErroreDati] = useState('')
   // Nuova pratica registrata dopo l'invio della domanda (parte dalla fase "inviata")
   const [giaInviata, setGiaInviata] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -751,7 +752,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
     }
 
     setFormData(prev => ({ ...prev, codice_progetto: codiceGenerato }))
-    console.log(`✅ Codice progetto generato: ${codiceGenerato}`)
+    return codiceGenerato
   }
 
   // Funzione per salvare le date effettive delle scadenze impostate dall'utente
@@ -1182,11 +1183,20 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const mancanti = [!formData.bando_id && 'bando', !formData.cliente_id && 'cliente', !formData.titolo_progetto?.trim() && 'titolo'].filter(Boolean)
+    if (mancanti.length) {
+      setErroreDati(`Per salvare indica: ${mancanti.join(', ')}.`)
+      setActiveTab('dati')
+      return
+    }
+    setErroreDati('')
     setLoading(true)
+    // Codice del progetto: se manca lo genera il gestionale
+    const codiceProgetto = formData.codice_progetto?.trim() || await generateCodiceProgetto()
 
     try {
       // Prepara i dati per il salvataggio, convertendo stringhe vuote a null per le date
-      const dataToSave = { ...formData }
+      const dataToSave = { ...formData, codice_progetto: codiceProgetto }
 
       // Rimuovi il campo eventi_progetto che non esiste nel database
       delete (dataToSave as any).eventi_progetto
@@ -1348,44 +1358,8 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
         console.log('📋 Dati progetto per contratto:', projectDataForContract)
 
-        // Verifica che il progetto sia effettivamente salvato prima di aprire il modal
-        console.log('📋 Progetto creato con ID:', projectResult.id, '- Verifica salvataggio...')
-
-        // Verifica immediata del progetto nel database
-        const verifyProject = async (attempts = 0) => {
-          try {
-            const { data: projectCheck, error: checkError } = await supabase
-              .from('scadenze_bandi_progetti')
-              .select('id, titolo_progetto')
-              .eq('id', projectResult.id)
-              .single()
-
-            if (checkError || !projectCheck) {
-              if (attempts < 5) {
-                console.log(`🔄 Tentativo ${attempts + 1}/5 - Progetto non ancora disponibile, riprovo...`)
-                setTimeout(() => verifyProject(attempts + 1), 1000)
-                return
-              } else {
-                console.error('❌ Progetto non trovato dopo 5 tentativi')
-                alert('Progetto salvato ma errore apertura modal contratto. Riprova dalla lista progetti.')
-                onProgettoCreated()
-                onClose()
-                return
-              }
-            }
-
-            console.log('✅ Progetto verificato nel database:', projectCheck.titolo_progetto)
-            setSavedProjectData(projectDataForContract)
-            setShowContractModal(true)
-          } catch (error) {
-            console.error('❌ Errore verifica progetto:', error)
-            alert('Errore verifica progetto salvato')
-            onProgettoCreated()
-            onClose()
-          }
-        }
-
-        verifyProject()
+        setSavedProjectData(projectDataForContract)
+        setShowContractModal(true)
 
         // Non chiudiamo ancora il form, lo chiuderemo dopo il contratto
       } else {
@@ -1402,29 +1376,28 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
   }
 
   // Gestione modal contratto
+  // Chiuso il contratto si apre il progetto appena creato, sul percorso della pratica
   const handleContractModalClose = () => {
+    const id = savedProjectData?.id
     setShowContractModal(false)
     setSavedProjectData(null)
-    // Ora chiudiamo il form e aggiorniamo la lista
-    onProgettoCreated()
+    onProgettoCreated(id)
     onClose()
   }
 
   const handleContractSuccess = () => {
-    // Callback quando contratto inviato con successo
+    const id = savedProjectData?.id
     setShowContractModal(false)
     setSavedProjectData(null)
-    onProgettoCreated()
+    onProgettoCreated(id)
     onClose()
   }
 
   const tabs = [
     ...(progetto ? [{ id: 'pratica', label: 'Percorso pratica', icon: ListChecks }, { id: 'email', label: 'Email', icon: Mail }] : []),
-    { id: 'generale', label: 'Informazioni Generali', icon: Building2 },
-    { id: 'importi', label: 'Importi e Contributi', icon: Euro },
-    { id: 'scadenze', label: 'Scadenze e Date', icon: Calendar },
-    { id: 'documenti', label: 'Documenti', icon: FileText },
-    { id: 'avanzate', label: 'Impostazioni Avanzate', icon: User }
+    { id: 'dati', label: 'Dati del progetto', icon: Building2 },
+    { id: 'scadenze', label: 'Scadenze', icon: Calendar },
+    { id: 'documenti', label: 'Documenti', icon: FileText }
   ]
 
   return (
@@ -1451,6 +1424,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                 return (
                   <button
                     key={tab.id}
+                    type="button"
                     onClick={() => setActiveTab(tab.id as TabType)}
                     className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap ${
                       activeTab === tab.id
@@ -1477,8 +1451,9 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                 <EmailCorrelate progettoId={progetto.id} />
               )}
 
-              {activeTab === 'generale' && (
+              {activeTab === 'dati' && (
                 <div className="space-y-3">
+                  {erroreDati && <div className="p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">{erroreDati}</div>}
                   {!progetto && (
                     <label className="flex items-start gap-2 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-2">
                       <input type="checkbox" className="mt-0.5" checked={giaInviata} onChange={e => setGiaInviata(e.target.checked)} />
@@ -1545,14 +1520,13 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Codice Progetto *
+                        Codice progetto <span className="text-xs text-gray-400">(se vuoto si genera da solo)</span>
                       </label>
                       <div className="flex gap-2">
                         <input
                           type="text"
                           value={formData.codice_progetto}
                           onChange={(e) => setFormData({ ...formData, codice_progetto: e.target.value })}
-                          required
                           className="flex-1 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                         <button
@@ -1601,32 +1575,30 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                     />
                   </div>
 
-                  {/* Stato */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Stato Progetto *
-                    </label>
-                    <select
-                      value={formData.stato}
-                      onChange={(e) => setFormData({ ...formData, stato: e.target.value as any })}
-                      className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="DECRETO_ATTESO">Decreto Atteso</option>
-                      <option value="DECRETO_RICEVUTO">Decreto Ricevuto</option>
-                      <option value="ACCETTATO">Accettato</option>
-                      <option value="IN_CORSO">In Corso</option>
-                      <option value="COMPLETATO">Completato</option>
-                    </select>
-                  </div>
+                  {/* Stato: lo calcola il gestionale dalle date; a mano si indica solo la chiusura */}
+                  {progetto && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                      <div className="text-gray-700">
+                        Stato: <strong>{({ DECRETO_ATTESO: 'In attesa del decreto', DECRETO_RICEVUTO: 'Decreto ricevuto', ACCETTATO: 'Accettato', IN_CORSO: 'In corso', COMPLETATO: 'Chiuso', SCADUTO: 'Scaduto' } as Record<string, string>)[formData.stato === 'COMPLETATO' ? 'COMPLETATO' : (progetto.stato_calcolato || progetto.stato)] || (progetto.stato_calcolato || progetto.stato)}</strong>
+                        <span className="text-xs text-gray-500"> · calcolato dalle date del decreto e delle scadenze</span>
+                      </div>
+                      <label className="mt-2 inline-flex items-center gap-2 text-gray-800">
+                        <input type="checkbox" checked={formData.stato === 'COMPLETATO'}
+                          onChange={(e) => setFormData({ ...formData, stato: (e.target.checked ? 'COMPLETATO' : (progetto.stato && progetto.stato !== 'COMPLETATO' ? progetto.stato : 'IN_CORSO')) as any })} />
+                        Il progetto è concluso
+                      </label>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {activeTab === 'importi' && (
-                <div className="space-y-3">
+              {activeTab === 'dati' && (
+                <div className="space-y-3 pt-2 border-t border-gray-100">
+                  <h3 className="text-sm font-semibold text-gray-900">Importi</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Importo Totale Progetto (€) *
+                        Importo totale del progetto (€)
                       </label>
                       <input
                         type="number"
@@ -1640,7 +1612,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Contributo Ammesso (€) *
+                        Contributo ammesso (€)
                       </label>
                       <input
                         type="number"
@@ -1710,193 +1682,106 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
               {activeTab === 'scadenze' && (
                 <div className="space-y-3">
+                  {/* Opzioni */}
+                  <div className="space-y-4">
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={formData.proroga_richiedibile}
+                        onChange={(e) => setFormData({ ...formData, proroga_richiedibile: e.target.checked })}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="font-medium text-gray-900">Il bando consente di chiedere una proroga</span>
+                    </label>
+                  </div>
+
+
                   {/* Date Principali */}
 
-                  {/* Sezione Eventi Dinamici del Bando */}
+                  {/* Eventi del bando: data prevista e, se diversa, quella effettiva */}
                   {eventiDelBando.length > 0 && (
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                      <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-blue-600" />
-                        Eventi del Bando
-                      </h3>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Per ogni evento del bando, puoi specificare la data di avvenimento effettiva per questo progetto.
-                        Le scadenze concatenate verranno ricalcolate automaticamente in base a queste date reali,
-                        permettendo di identificare eventuali ritardi rispetto alle tempistiche previste.
-                      </p>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {eventiDelBando.map((evento) => (
-                          <div key={evento.id} className="space-y-3">
-                            <div className="bg-white p-3 rounded border">
-                              <h4 className="font-medium text-gray-900 mb-1">{evento.nome}</h4>
-                              {evento.descrizione && (
-                                <p className="text-xs text-gray-500 mb-3">{evento.descrizione}</p>
-                              )}
-
-                              {/* Data calcolata dal bando (read-only) */}
-                              <div className="mb-3">
-                                <label className="block text-xs font-medium text-gray-600 mb-1">
-                                  Data dal Bando (calcolata)
-                                </label>
-                                <input
-                                  type="date"
-                                  value={dateCalcolateBando[evento.id] || ''}
-                                  readOnly
-                                  className="w-full p-2 text-sm border border-gray-200 rounded bg-gray-50 text-gray-600"
-                                />
-                              </div>
-
-                              {/* Data specifica del progetto (editabile) - solo se non è l'evento base fisso */}
-                              {evento.nome !== 'Avvio Progetto' && evento.tipo !== 'base_progetto' && (
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                                    Data Effettiva (opzionale)
-                                  </label>
-                                  <input
-                                    type="date"
-                                    value={formData.eventi_progetto[evento.id] || dateCalcolateBando[evento.id] || ''}
-                                    onChange={(e) => {
-                                      const nuoviEventi = {
-                                        ...formData.eventi_progetto,
-                                        [evento.id]: e.target.value
-                                      }
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        eventi_progetto: nuoviEventi
-                                      }))
-                                    }}
-                                    className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder={dateCalcolateBando[evento.id] || "Data dal bando"}
-                                  />
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    Viene usata automaticamente la data dal bando. Modifica solo se la data effettiva è diversa.
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                    <div className="bg-white border border-gray-200 rounded-lg">
+                      <div className="px-3 py-2 border-b border-gray-100">
+                        <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2"><Calendar className="w-4 h-4 text-blue-600" /> Eventi del bando</h3>
+                        <p className="text-xs text-gray-500">Vale la data prevista dal bando; scrivi la data effettiva solo se è diversa. Le scadenze collegate si ricalcolano da sole.</p>
                       </div>
-
-                      {eventiDelBando.length === 0 && (
-                        <div className="text-center py-4 text-gray-500">
-                          <Calendar className="mx-auto h-8 w-8 text-gray-400" />
-                          <p className="mt-2 text-sm">Nessun evento configurato per questo bando</p>
-                        </div>
-                      )}
+                      <table className="min-w-full text-sm">
+                        <thead className="text-xs text-gray-500"><tr>
+                          <th className="px-3 py-1.5 text-left font-medium">Evento</th>
+                          <th className="px-3 py-1.5 text-left font-medium">Prevista dal bando</th>
+                          <th className="px-3 py-1.5 text-left font-medium">Effettiva (se diversa)</th>
+                        </tr></thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {eventiDelBando.map((evento) => {
+                            const fisso = evento.nome === 'Avvio Progetto' || evento.tipo === 'base_progetto'
+                            return (
+                              <tr key={evento.id}>
+                                <td className="px-3 py-1.5 text-gray-900">{evento.nome}{evento.descrizione && <div className="text-xs text-gray-500">{evento.descrizione}</div>}</td>
+                                <td className="px-3 py-1.5 text-gray-700 whitespace-nowrap">{dateCalcolateBando[evento.id] ? new Date(dateCalcolateBando[evento.id]).toLocaleDateString('it-IT') : '—'}</td>
+                                <td className="px-3 py-1.5">
+                                  {fisso ? <span className="text-xs text-gray-400">data di partenza</span> : (
+                                    <input
+                                      type="date"
+                                      value={formData.eventi_progetto[evento.id] || ''}
+                                      onChange={(e) => {
+                                        const nuoviEventi = { ...formData.eventi_progetto, [evento.id]: e.target.value }
+                                        setFormData(prev => ({ ...prev, eventi_progetto: nuoviEventi }))
+                                      }}
+                                      className="p-1.5 text-sm border border-gray-300 rounded"
+                                    />
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
 
-
-
-                  {/* Scadenze Esistenti */}
+                  {/* Scadenze del progetto: prevista e "fatta il" */}
                   {scadenzeSalvate.length > 0 && (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                      <h4 className="font-medium text-gray-900 mb-1">Scadenze calcolate dal template</h4>
-                      <div className="space-y-4">
-                        {scadenzeSalvate.map((scadenza) => (
-                          <div key={scadenza.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                            {/* Header della scadenza */}
-                            <div className="flex justify-between items-start mb-3">
-                              <div>
-                                <h5 className="font-medium text-gray-900">{scadenza.titolo}</h5>
-                                {scadenza.note && (
-                                  <p className="text-xs text-gray-600 mt-1">{scadenza.note}</p>
-                                )}
-                              </div>
-                              <span className="text-sm text-gray-500">
-                                {scadenza.data_scadenza && !isNaN(new Date(scadenza.data_scadenza).getTime())
-                                  ? new Date(scadenza.data_scadenza).toLocaleDateString('it-IT')
-                                  : 'Data non valida'
-                                }
-                              </span>
-                            </div>
-
-                            {/* Campo Data Effettiva */}
-                            <div className="border-t border-gray-100 pt-3">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Data Effettiva *
-                              </label>
-                              <div className="flex gap-2 items-start">
-                                <div className="flex-1">
-                                  <div className="flex gap-2 items-center mb-1">
-                                    <input
-                                      type="date"
-                                      value={dateEffettiveScadenze[scadenza.id] || ''}
-                                      onChange={(e) => {
-                                        setDateEffettiveScadenze(prev => ({
-                                          ...prev,
-                                          [scadenza.id]: e.target.value
-                                        }))
-                                      }}
-                                      className={`flex-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                                        dateEffettiveScadenze[scadenza.id] &&
-                                        scadenza.data_scadenza &&
-                                        !isNaN(new Date(scadenza.data_scadenza).getTime()) &&
-                                        new Date(dateEffettiveScadenze[scadenza.id]) > new Date(scadenza.data_scadenza)
-                                          ? 'bg-red-50 border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500'
-                                          : 'border-gray-300'
-                                      }`}
-                                      placeholder="Inserisci la data di avvenimento effettiva"
-                                    />
-                                    {dateEffettiveScadenze[scadenza.id] &&
-                                      scadenza.data_scadenza &&
-                                      !isNaN(new Date(scadenza.data_scadenza).getTime()) &&
-                                      new Date(dateEffettiveScadenze[scadenza.id]) > new Date(scadenza.data_scadenza) && (
-                                      <div className="text-red-500" title="Scadenza sforata">
-                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                        </svg>
-                                      </div>
-                                    )}
-                                    {dateEffettiveScadenze[scadenza.id] && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setDateEffettiveScadenze(prev => {
-                                            const updated = { ...prev }
-                                            delete updated[scadenza.id]
-                                            return updated
-                                          })
-                                        }}
-                                        className="text-gray-400 hover:text-red-500"
-                                        title="Rimuovi data effettiva"
-                                      >
-                                        <X className="w-4 h-4" />
-                                      </button>
-                                    )}
-                                  </div>
-
-                                  {/* Pulsante Conferma Data Teorica */}
-                                  {!dateEffettiveScadenze[scadenza.id] && scadenza.data_scadenza && !isNaN(new Date(scadenza.data_scadenza).getTime()) && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const dataCalcolata = new Date(scadenza.data_scadenza).toISOString().split('T')[0]
-                                        setDateEffettiveScadenze(prev => ({
-                                          ...prev,
-                                          [scadenza.id]: dataCalcolata
-                                        }))
-                                      }}
-                                      className="w-full text-sm px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-md hover:bg-green-100 transition-colors flex items-center justify-center gap-2"
-                                    >
-                                      <CheckCircle className="w-4 h-4" />
-                                      Conferma data teorica ({new Date(scadenza.data_scadenza).toLocaleDateString('it-IT')})
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                              <p className="text-xs text-gray-500 mt-1">
-                                {!dateEffettiveScadenze[scadenza.id]
-                                  ? 'Clicca "Conferma data teorica" per usare la data calcolata, oppure inserisci manualmente una data diversa.'
-                                  : 'Data confermata. Le scadenze successive verranno ricalcolate automaticamente basandosi su questa data.'
-                                }
-                              </p>
-                            </div>
-                          </div>
-                        ))}
+                    <div className="bg-white border border-gray-200 rounded-lg">
+                      <div className="px-3 py-2 border-b border-gray-100">
+                        <h3 className="text-sm font-semibold text-gray-900">Scadenze del progetto</h3>
+                        <p className="text-xs text-gray-500">Quando una scadenza è rispettata, indica il giorno in «Fatta il». In rosso le date successive alla scadenza.</p>
                       </div>
+                      <table className="min-w-full text-sm">
+                        <thead className="text-xs text-gray-500"><tr>
+                          <th className="px-3 py-1.5 text-left font-medium">Scadenza</th>
+                          <th className="px-3 py-1.5 text-left font-medium">Prevista</th>
+                          <th className="px-3 py-1.5 text-left font-medium">Fatta il</th>
+                        </tr></thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {scadenzeSalvate.map((scadenza) => {
+                            const valida = scadenza.data_scadenza && !isNaN(new Date(scadenza.data_scadenza).getTime())
+                            const fatta = dateEffettiveScadenze[scadenza.id]
+                            const tardi = fatta && valida && new Date(fatta) > new Date(scadenza.data_scadenza)
+                            return (
+                              <tr key={scadenza.id}>
+                                <td className="px-3 py-1.5 text-gray-900">{scadenza.titolo}{scadenza.note && <div className="text-xs text-gray-500">{scadenza.note}</div>}</td>
+                                <td className="px-3 py-1.5 text-gray-700 whitespace-nowrap">{valida ? new Date(scadenza.data_scadenza).toLocaleDateString('it-IT') : '—'}</td>
+                                <td className="px-3 py-1.5 whitespace-nowrap">
+                                  <input
+                                    type="date"
+                                    value={fatta || ''}
+                                    onChange={(e) => {
+                                      const v = e.target.value
+                                      setDateEffettiveScadenze(prev => {
+                                        const nuovo = { ...prev }
+                                        if (v) nuovo[scadenza.id] = v
+                                        else delete nuovo[scadenza.id]
+                                        return nuovo
+                                      })
+                                    }}
+                                    className={`p-1.5 text-sm border rounded ${tardi ? 'bg-red-50 border-red-300 text-red-900' : 'border-gray-300'}`}
+                                  />
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </div>
@@ -2173,13 +2058,14 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                 </div>
               )}
 
-              {activeTab === 'avanzate' && (
-                <div className="space-y-3">
+              {activeTab === 'dati' && (
+                <div className="space-y-3 pt-2 border-t border-gray-100">
+                  <h3 className="text-sm font-semibold text-gray-900">Altre informazioni</h3>
                   {/* Referente Interno */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Referente Interno
+                        Referente interno
                       </label>
                       <input
                         type="text"
@@ -2191,7 +2077,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Email Referente Interno
+                        Email del referente interno
                       </label>
                       <input
                         type="email"
@@ -2202,23 +2088,10 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                     </div>
                   </div>
 
-                  {/* Opzioni */}
-                  <div className="space-y-4">
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={formData.proroga_richiedibile}
-                        onChange={(e) => setFormData({ ...formData, proroga_richiedibile: e.target.checked })}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="font-medium text-gray-900">Proroga Richiedibile</span>
-                    </label>
-                  </div>
-
                   {/* Note */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Note Progetto
+                      Note sul progetto
                     </label>
                     <textarea
                       value={formData.note_progetto}
@@ -2244,7 +2117,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
               <div className="flex justify-between items-center">
                 {/* Pulsante Elimina (solo nel tab avanzate per progetti esistenti) */}
                 <div>
-                  {activeTab === 'avanzate' && progetto && onDelete ? (
+                  {progetto && onDelete ? (
                     <button
                       type="button"
                       onClick={() => {
@@ -2264,14 +2137,17 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                 </div>
 
                 {/* Pulsanti standard */}
-                <div className="flex gap-3">
+                <div className="flex gap-3 items-center">
+                  {(activeTab === 'pratica' || activeTab === 'email') && (
+                    <span className="text-xs text-gray-500 max-w-xs text-right">In questa scheda le modifiche si salvano subito. «Salva modifiche» serve per dati, scadenze e documenti.</span>
+                  )}
                   <button
                     type="button"
                     onClick={onClose}
                     className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                     disabled={loading}
                   >
-                    Annulla
+                    {progetto ? 'Chiudi' : 'Annulla'}
                   </button>
                   <button
                     type="submit"

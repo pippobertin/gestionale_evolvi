@@ -121,7 +121,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'clienti':
         return <ClientiContent onNavigate={onNavigate} navigationParams={navigationParams} />
       case 'bandi':
-        return <BandiContent initialFilter={navigationParams?.filter} />
+        return <BandiContent initialFilter={navigationParams?.filter} onNavigate={onNavigate} />
       case 'bandi-esterni':
         return <BandiEsterniManager />
       case 'progetti':

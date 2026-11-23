@@ -57,6 +57,7 @@ export default function ProgettiContent({ initialFilter, onNavigate, openProgett
   const [filtroEnte, setFiltroEnte] = useState<string>('tutti')
   const [progettoInModifica, setProgettoInModifica] = useState<Progetto | null>(null)
   const [nuovoProgetto, setNuovoProgetto] = useState(false)
+  const [daAprire, setDaAprire] = useState<string | null>(null)
   const [selectedProgettiForDelete, setSelectedProgettiForDelete] = useState<Set<string>>(new Set())
   const [isSelectMode, setIsSelectMode] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -214,6 +215,13 @@ export default function ProgettiContent({ initialFilter, onNavigate, openProgett
     const p = progetti.find(x => x.id === openProgettoId)
     if (p) setProgettoInModifica(p)
   }, [openProgettoId, progetti])
+
+  // Progetto appena creato: si apre sul percorso della pratica appena è nell'elenco
+  useEffect(() => {
+    if (!daAprire) return
+    const p = progetti.find(x => x.id === daAprire)
+    if (p) { setProgettoInModifica(p); setDaAprire(null) }
+  }, [daAprire, progetti])
 
   // Aggiorna il filtro di ricerca quando viene passato un filtro iniziale
   useEffect(() => {
@@ -820,8 +828,9 @@ export default function ProgettiContent({ initialFilter, onNavigate, openProgett
       {nuovoProgetto && (
         <ProgettoForm
           onClose={() => setNuovoProgetto(false)}
-          onProgettoCreated={() => {
+          onProgettoCreated={(id) => {
             setNuovoProgetto(false)
+            if (id) setDaAprire(id)
             fetchProgetti()
           }}
         />

@@ -41,7 +41,7 @@ interface Bando {
   updated_at: string
 }
 
-export default function BandiContent({ initialFilter }: { initialFilter?: string } = {}) {
+export default function BandiContent({ initialFilter, onNavigate }: { initialFilter?: string; onNavigate?: (page: string, params?: any) => void } = {}) {
   const [bandi, setBandi] = useState<Bando[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -215,10 +215,12 @@ export default function BandiContent({ initialFilter }: { initialFilter?: string
     setShowProgettoModal(true)
   }
 
-  const handleProgettoCreated = () => {
+  const handleProgettoCreated = (progettoId?: string) => {
     fetchBandi() // Ricarica per aggiornare contatori progetti
     setShowProgettoModal(false)
     setProgettoFromBando(null)
+    // Il progetto appena creato si apre sul percorso della pratica
+    if (progettoId) onNavigate?.('progetti', { openProgettoId: progettoId })
   }
 
 

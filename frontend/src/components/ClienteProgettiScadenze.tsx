@@ -104,7 +104,7 @@ export default function ClienteProgettiScadenze({ cliente, onNavigate }: Props) 
         <ProgettoForm
           cliente={{ id: cliente.id, denominazione: cliente.denominazione, partita_iva: cliente.partita_iva || '', codice_fiscale: cliente.codice_fiscale || '' }}
           onClose={() => setNuovo(false)}
-          onProgettoCreated={() => { setNuovo(false); carica() }}
+          onProgettoCreated={(id) => { setNuovo(false); if (id && onNavigate) onNavigate('progetti', { openProgettoId: id }); else carica() }}
         />
       )}
     </div>
