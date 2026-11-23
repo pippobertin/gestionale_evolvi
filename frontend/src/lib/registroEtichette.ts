@@ -110,7 +110,8 @@ const ETICHETTE_TABELLA: Record<string, string> = {
   scadenze_bandi_segnalatori: 'Segnalatori',
   scadenze_bandi_compensi_segnalatori: 'Compensi dei segnalatori',
   scadenze_bandi_deroghe: 'Registro delle deroghe',
-  scadenze_bandi_report_odv: 'Report semestrale all\'OdV'
+  scadenze_bandi_report_odv: 'Report semestrale all\'OdV',
+  scadenze_bandi_email_archiviate: 'Email archiviate'
 }
 
 export function etichettaTabella(tabella: string | null | undefined): string {

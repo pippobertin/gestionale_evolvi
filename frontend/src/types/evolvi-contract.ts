@@ -119,6 +119,7 @@ export const TIPI_DOCUMENTO = [
   { value: 'CERT_ANTIMAFIA', label: 'Certificato Antimafia', categoria: 'CERTIFICAZIONI' },
   { value: 'DURC', label: 'DURC', categoria: 'CERTIFICAZIONI' },
   { value: 'ISCRIZIONE_RUNTS', label: 'Iscrizione RUNTS', categoria: 'CERTIFICAZIONI' },
+  { value: 'EMAIL', label: 'Email archiviata', categoria: 'EMAIL' },
   { value: 'ALTRO', label: 'Altro', categoria: 'ALTRO' }
 ]
 
@@ -128,6 +129,7 @@ export const CATEGORIE_DOCUMENTO = [
   { value: 'IDENTITA', label: 'Identità' },
   { value: 'CERTIFICAZIONI', label: 'Certificazioni' },
   { value: 'BILANCI', label: 'Bilanci' },
+  { value: 'EMAIL', label: 'Email' },
   { value: 'ALTRO', label: 'Altro' }
 ]
 

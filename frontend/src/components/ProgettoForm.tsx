@@ -18,6 +18,7 @@ import {
   Download,
   AlertCircle,
   ListChecks,
+  Mail,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { syncContributoDaProgetto } from '@/lib/contributi/syncFromProgetto'
@@ -26,6 +27,7 @@ import DocumentPreviewModal from './DocumentPreviewModal'
 import ContractModal from './ContractModal'
 import ContractTrackingWidget from './ContractTrackingWidget'
 import PraticaPercorso from './PraticaPercorso'
+import EmailCorrelate from './EmailCorrelate'
 import NoteCollegateBox from './NoteCollegateBox'
 import { spostaNelCestino } from '@/lib/cestinoArchivi'
 
@@ -76,7 +78,7 @@ interface ProgettoFormProps {
   progetto?: any // Per modifica esistente
 }
 
-type TabType = 'pratica' | 'generale' | 'importi' | 'scadenze' | 'documenti' | 'avanzate'
+type TabType = 'pratica' | 'email' | 'generale' | 'importi' | 'scadenze' | 'documenti' | 'avanzate'
 
 // I documenti ereditati dal bando puntano al file originale nell'archivio dei
 // bandi; quelli caricati nel progetto stanno nell'archivio dei progetti.
@@ -1418,7 +1420,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
   }
 
   const tabs = [
-    ...(progetto ? [{ id: 'pratica', label: 'Percorso pratica', icon: ListChecks }] : []),
+    ...(progetto ? [{ id: 'pratica', label: 'Percorso pratica', icon: ListChecks }, { id: 'email', label: 'Email', icon: Mail }] : []),
     { id: 'generale', label: 'Informazioni Generali', icon: Building2 },
     { id: 'importi', label: 'Importi e Contributi', icon: Euro },
     { id: 'scadenze', label: 'Scadenze e Date', icon: Calendar },
@@ -1470,6 +1472,10 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
             <div className="flex-1 overflow-y-auto p-4">
               {activeTab === 'pratica' && progetto && (
                 <PraticaPercorso progettoId={progetto.id} />
+              )}
+
+              {activeTab === 'email' && progetto && (
+                <EmailCorrelate progettoId={progetto.id} />
               )}
 
               {activeTab === 'generale' && (

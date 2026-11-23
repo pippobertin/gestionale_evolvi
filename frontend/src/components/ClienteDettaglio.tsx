@@ -25,6 +25,7 @@ import { supabase } from '@/lib/supabase'
 import ReferentiManager from './ReferentiManager'
 import ContrattiEvolviManager from './ContrattiEvolviManager'
 import DocumentiAmministrativiManager from './DocumentiAmministrativiManager'
+import EmailCorrelate from './EmailCorrelate'
 import ContractTrackingPanel from './ContractTrackingPanel'
 import FormazioneManager from './formazione/FormazioneManager'
 import ContributiOttenutiManager from './ContributiOttenutiManager'
@@ -259,6 +260,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
     { id: 'dimensionamento', label: 'Dimensionamento', icon: Users },
     { id: 'gestione', label: 'Gestione', icon: FileText },
     { id: 'doc_amministrativi', label: 'Doc. Amministrativi', icon: Shield },
+    { id: 'email', label: 'Email', icon: Mail },
     { id: 'formazione', label: 'Formazione', icon: GraduationCap },
     { id: 'contributi', label: 'Contributi Ottenuti', icon: Trophy }
   ]
@@ -903,6 +905,13 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
         return (
           <div className="space-y-3">
             <DocumentiAmministrativiManager clienteId={cliente.id} />
+          </div>
+        )
+
+      case 'email':
+        return (
+          <div className="space-y-3">
+            <EmailCorrelate clienteId={cliente.id} />
           </div>
         )
 

@@ -87,7 +87,8 @@ const OGGETTI: Record<string, string> = {
   scadenze_bandi_segnalatori: 'il segnalatore',
   scadenze_bandi_compensi_segnalatori: 'il compenso del segnalatore',
   scadenze_bandi_deroghe: 'la deroga',
-  scadenze_bandi_report_odv: "il report semestrale all'OdV"
+  scadenze_bandi_report_odv: "il report semestrale all'OdV",
+  scadenze_bandi_email_archiviate: "l'archiviazione di un'email"
 }
 
 const CAMPI: Record<string, string> = {
