@@ -55,7 +55,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       rp_id: pratica.rp_id, rev_id: pratica.rev_id, pratica_propria: pratica.pratica_propria,
       trasmissione: pratica.trasmissione, motivazione_stesso_bando: pratica.motivazione_stesso_bando,
       data_invio: pratica.data_invio, scadenza_rendicontazione: pratica.scadenza_rendicontazione_finale || null, bando: pratica.scadenze_bandi_bandi?.nome || '',
-      cliente: pratica.scadenze_bandi_clienti?.denominazione || ''
+      cliente: pratica.scadenze_bandi_clienti?.denominazione || '', cliente_id: pratica.cliente_id
     },
     stato: stato.data,
     passaggi: passaggi.data || [],
