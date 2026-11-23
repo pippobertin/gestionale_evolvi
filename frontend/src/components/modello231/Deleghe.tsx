@@ -8,7 +8,7 @@ import { Avvisi, campo, dataIt, oggi, useRegistro } from './comune'
 /**
  * Registro delle deleghe dei clienti (PR.03 §4.2): chi può operare su quale
  * piattaforma per conto di quale cliente. Nessuno usa SPID, password o OTP di un
- * altro: se la delega è solo dell'AU, i colleghi preparano e l'AU inserisce o invia.
+ * altro: se la delega è solo dell'amministratrice unica, i colleghi preparano e l'amministratrice unica inserisce o invia.
  */
 const TIPI: Record<string, string> = { delega_piattaforma: 'Delega in piattaforma', mandato: 'Mandato scritto', procura: 'Procura' }
 const SEI_MESI = 182 * 24 * 3600 * 1000

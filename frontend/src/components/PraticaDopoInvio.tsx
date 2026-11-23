@@ -8,7 +8,7 @@ import { CalendarService } from '@/lib/notifications/calendarService'
 /**
  * Pratica dopo l'invio (Modello 231, PR.01 §4.2-4.3): integrazioni richieste
  * dall'ente con controllo a quattro occhi, rendicontazione (cumulo, checklist
- * di RP e REV, firma, ricevuta), rettifiche segnalate ad AU e OdV.
+ * di RP e REV, firma, ricevuta), rettifiche segnalate all'amministratrice unica e all'Organismo di Vigilanza.
  */
 
 type Props = {
@@ -198,7 +198,7 @@ export default function PraticaDopoInvio({ progettoId, dati, ricarica, invia, oc
         <h4 className="text-sm font-semibold text-gray-900 mb-1">Rendicontazione</h4>
         <p className="text-[11px] text-gray-500 mb-2">
           Prima dell&apos;invio: dichiarazione del cliente sugli altri contributi e sul cumulo, checklist del responsabile e del revisore,
-          firma del cliente o di un delegato BLM (delega archiviata, AU informata), ricevuta.
+          firma del cliente o di un delegato BLM (delega archiviata, Amministratrice unica informata), ricevuta.
         </p>
         {dati.rendiconti.length > 0 && (
           <ul className="space-y-3 mb-2">
@@ -207,7 +207,7 @@ export default function PraticaDopoInvio({ progettoId, dati, ricarica, invia, oc
                 <div className="flex flex-wrap gap-x-2 items-center">
                   <strong>{r.descrizione}</strong>
                   <Scadenza data={r.scadenza} conclusa={!!r.data_invio} />
-                  {r.segnalato_ritardo_il && !r.data_invio && <span className="text-red-700 inline-flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> ritardo segnalato ad AU e OdV</span>}
+                  {r.segnalato_ritardo_il && !r.data_invio && <span className="text-red-700 inline-flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> ritardo segnalato all'amministratrice unica e all'Organismo di Vigilanza</span>}
                   {haPermesso('elementi.elimina') && !r.data_invio && (
                     <button type="button" title="Elimina" onClick={() => elimina('rendiconti', r.id)} className="text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
                   )}
@@ -229,7 +229,7 @@ export default function PraticaDopoInvio({ progettoId, dati, ricarica, invia, oc
                 <ChecklistRendiconto r={r} chi="rev" />
                 {/* Firma */}
                 {r.firmatario
-                  ? <p className="text-gray-700">Firma: {r.firmatario === 'cliente' ? 'il cliente' : 'un delegato BLM'}{r.firmatario === 'delegato_blm' && <> · <Collegamento url={r.delega_file_url} testo="delega" />{r.au_informata ? ' · AU informata' : <span className="text-red-700"> · AU da informare</span>}</>}</p>
+                  ? <p className="text-gray-700">Firma: {r.firmatario === 'cliente' ? 'il cliente' : 'un delegato BLM'}{r.firmatario === 'delegato_blm' && <> · <Collegamento url={r.delega_file_url} testo="delega" />{r.au_informata ? ' · Amministratrice unica informata' : <span className="text-red-700"> · amministratrice unica da informare</span>}</>}</p>
                   : modulo?.voce === r.id && mod.azione === 'firma' ? (
                     <div className="flex flex-wrap items-end gap-2">
                       <label className="text-gray-600">Chi firma
@@ -239,7 +239,7 @@ export default function PraticaDopoInvio({ progettoId, dati, ricarica, invia, oc
                       </label>
                       {mod.extra.firmatario === 'delegato_blm' && (<>
                         <label className="text-gray-600">Delega<input type="file" className="text-xs block" onChange={e => setModulo({ ...mod, file: e.target.files?.[0] || null })} /></label>
-                        <label className="flex items-center gap-1 text-gray-700"><input type="checkbox" checked={mod.extra.au_informata === 'true'} onChange={e => setModulo({ ...mod, extra: { ...mod.extra, au_informata: String(e.target.checked) } })} /> AU informata</label>
+                        <label className="flex items-center gap-1 text-gray-700"><input type="checkbox" checked={mod.extra.au_informata === 'true'} onChange={e => setModulo({ ...mod, extra: { ...mod.extra, au_informata: String(e.target.checked) } })} /> Amministratrice unica informata</label>
                       </>)}
                       <button type="button" disabled={occupato} onClick={() => azione('rendiconti', r.id, 'firma', { firmatario: mod.extra.firmatario || 'cliente', au_informata: mod.extra.au_informata || 'false', file: mod.file }, 'Firma registrata')} className="px-2 py-1 bg-green-600 text-white rounded disabled:opacity-40">Registra</button>
                       <button type="button" onClick={() => setModulo(null)} className="px-2 py-1 border rounded">Annulla</button>
@@ -282,7 +282,7 @@ export default function PraticaDopoInvio({ progettoId, dati, ricarica, invia, oc
       <section className="rounded-lg border border-gray-200 bg-white p-3">
         <h4 className="text-sm font-semibold text-gray-900 mb-1">Rettifiche dopo l&apos;invio</h4>
         <p className="text-[11px] text-gray-500 mb-2">
-          Un errore emerso dopo l&apos;invio si corregge solo con rettifica formale (portale o PEC). La registrazione avvisa AU e OdV nel registro attività.
+          Un errore emerso dopo l&apos;invio si corregge solo con rettifica formale (portale o PEC). La registrazione avvisa l'amministratrice unica e l'Organismo di Vigilanza nel registro attività.
         </p>
         {dati.rettifiche.length > 0 && (
           <ul className="text-xs space-y-1 mb-2">
@@ -308,7 +308,7 @@ export default function PraticaDopoInvio({ progettoId, dati, ricarica, invia, oc
             <label className="text-xs text-gray-600">Documento (facoltativo)<input type="file" className="text-xs block" onChange={e => setNuovaRettifica({ ...nuovaRettifica, file: e.target.files?.[0] || null })} /></label>
             <div className="flex gap-1 md:col-span-3">
               <button type="button" disabled={occupato || !nuovaRettifica.errore.trim()}
-                onClick={async () => { const r = await invia('rettifica', `/api/pratiche/${progettoId}/rettifiche`, nuovaRettifica, 'Rettifica registrata e segnalata ad AU e OdV'); if (r) setNuovaRettifica(null) }}
+                onClick={async () => { const r = await invia('rettifica', `/api/pratiche/${progettoId}/rettifiche`, nuovaRettifica, 'Rettifica registrata e segnalata all'amministratrice unica e all'Organismo di Vigilanza'); if (r) setNuovaRettifica(null) }}
                 className="px-2 py-1 text-xs bg-blue-600 text-white rounded disabled:opacity-40">Registra</button>
               <button type="button" onClick={() => setNuovaRettifica(null)} className="px-2 py-1 text-xs border rounded">Annulla</button>
             </div>

@@ -360,7 +360,7 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
   const tabs = [
     { id: 'anagrafica', label: 'Anagrafica', icon: Building2 },
     { id: 'prequalifica', label: 'Prequalifica', icon: ClipboardCheck },
-    { id: 'timeline', label: 'Timeline', icon: Clock },
+    { id: 'timeline', label: 'Cronologia', icon: Clock },
     { id: 'azioni', label: 'Azioni', icon: Zap }
   ]
 

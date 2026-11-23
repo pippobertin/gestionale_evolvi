@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { vociVisibili } from '@/lib/navigazione'
 
 interface SidebarProps {
   activeItem: string
@@ -37,7 +38,7 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
   const [isPinned, setIsPinned] = useState(true)
   const [isHovered, setIsHovered] = useState(false)
   const [inboxNoteCount, setInboxNoteCount] = useState(0)
-  const { isAdmin } = useAuth()
+  const { user } = useAuth()
 
   useEffect(() => {
     let cancelled = false
@@ -54,33 +55,23 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
     }
 
     fetchInboxCount()
-    const interval = window.setInterval(fetchInboxCount, 30000)
+    // Ogni 3 minuti (prima ogni 30 secondi, e di nuovo a ogni cambio di pagina)
+    const interval = window.setInterval(fetchInboxCount, 180000)
 
     return () => {
       cancelled = true
       window.clearInterval(interval)
     }
-  }, [activeItem])
+  }, [])
 
-  const allMenuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home, adminOnly: false, badge: 0 },
-    { id: 'scadenze', label: 'Scadenzario', icon: Calendar, adminOnly: false, badge: 0 },
-    { id: 'prospect', label: 'Prospect', icon: UserPlus, adminOnly: false, badge: 0 },
-    { id: 'clienti', label: 'Clienti', icon: Users, adminOnly: false, badge: 0 },
-    { id: 'bandi', label: 'Bandi', icon: FileText, adminOnly: false, badge: 0 },
-    { id: 'bandi-esterni', label: 'Bandi esterni', icon: Landmark, adminOnly: false, badge: 0 },
-    { id: 'progetti', label: 'Progetti', icon: Target, adminOnly: false, badge: 0 },
-    { id: 'email', label: 'Email', icon: Mail, adminOnly: false, badge: 0 },
-    { id: 'note-inbox', label: 'Inbox Note', icon: Inbox, adminOnly: false, badge: inboxNoteCount },
-    { id: 'interrogazioni', label: 'Interrogazioni', icon: Search, adminOnly: false, badge: 0 },
-    { id: 'consulenti', label: 'Segnalatori', icon: Building, adminOnly: false, badge: 0 },
-    { id: 'reports', label: 'Reports', icon: BarChart3, adminOnly: false, badge: 0 },
-    { id: 'modello231', label: 'Modello 231', icon: ShieldCheck, adminOnly: false, badge: 0 },
-    { id: 'settings', label: 'Impostazioni', icon: Settings, adminOnly: false, badge: 0 },
-    { id: 'faq', label: 'FAQ', icon: HelpCircle, adminOnly: false, badge: 0 }
-  ]
-
-  const menuItems = allMenuItems.filter(item => !item.adminOnly || isAdmin())
+  const ICONE: Record<string, typeof Home> = {
+    dashboard: Home, scadenze: Calendar, email: Mail, 'note-inbox': Inbox, prospect: UserPlus, clienti: Users,
+    consulenti: Building, bandi: FileText, 'bandi-esterni': Landmark, progetti: Target, interrogazioni: Search,
+    reports: BarChart3, modello231: ShieldCheck, settings: Settings, faq: HelpCircle
+  }
+  const menuItems = vociVisibili(user?.livello_permessi).map(v => ({
+    ...v, icon: ICONE[v.id] || FileText, badge: v.id === 'note-inbox' ? inboxNoteCount : 0
+  }))
 
   const shouldShowExpanded = isPinned || isHovered
   const effectiveWidth = shouldShowExpanded ? 'w-56' : 'w-16'
@@ -139,17 +130,16 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
       {/* Navigation */}
       <nav className="flex-1 py-4 overflow-y-auto">
         <div className="px-2">
-          {shouldShowExpanded && (
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">
-              Menu Principale
-            </p>
-          )}
           <ul className="space-y-1">
-            {menuItems.map((item) => {
+            {menuItems.map((item, indice) => {
               const Icon = item.icon
               const hasBadge = item.badge > 0
+              const nuovoGruppo = item.gruppo && item.gruppo !== menuItems[indice - 1]?.gruppo
               return (
                 <li key={item.id}>
+                  {nuovoGruppo && (shouldShowExpanded
+                    ? <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mt-4 mb-1 px-3">{item.gruppo}</p>
+                    : <div className="border-t border-gray-800 my-2 mx-2" />)}
                   <button
                     onClick={() => setActiveItem(item.id)}
                     className={`sidebar-item w-full text-left group relative ${

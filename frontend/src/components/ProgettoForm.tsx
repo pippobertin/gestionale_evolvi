@@ -165,8 +165,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
   useEffect(() => {
     const initializeForm = async () => {
-      await loadBandi()
-      await loadClienti()
+      await Promise.all([loadBandi(), loadClienti()])
 
       if (progetto) {
         // Modifica progetto esistente - pre-popola tutti i campi
@@ -1905,23 +1904,6 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
 
               {activeTab === 'documenti' && (
                 <div className="space-y-3">
-                  {/* Google Drive Status */}
-                  {(
-                    <div className="border rounded-lg p-4 bg-green-50 border-green-200">
-                      <div className="flex items-center gap-3">
-                        <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                        <div>
-                          <h4 className="text-sm font-medium">
-                            ✅ Google Drive connesso (Service Account)
-                          </h4>
-                          <p className="text-xs text-gray-600 mt-1">
-                            La struttura cartelle viene creata automaticamente nei Drive Condivisi.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   {/* Info Section per allegati ereditati */}
                   {!progetto && documenti.some(doc => doc.inherited_from_bando) && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -2178,7 +2160,7 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                   {/* Contract Tracking - solo per progetti esistenti */}
                   {progetto && (
                     <div className="mt-6">
-                      <h4 className="font-medium text-gray-900 mb-3">Tracking Contratto</h4>
+                      <h4 className="font-medium text-gray-900 mb-3">Stato del contratto</h4>
                       <ContractTrackingWidget
                         key={versioneTracking}
                         entityType="PROGETTO"

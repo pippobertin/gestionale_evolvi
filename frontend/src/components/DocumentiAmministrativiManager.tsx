@@ -472,7 +472,7 @@ export default function DocumentiAmministrativiManager({ clienteId }: DocumentiA
             </div>
 
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Tags (separati da virgola)</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Etichette (separate da virgola)</label>
               <input
                 type="text"
                 value={uploadForm.tags}

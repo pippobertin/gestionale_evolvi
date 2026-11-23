@@ -34,6 +34,9 @@ export default function Modello231Content({ solaLettura = false }: { solaLettura
           <h1 className="text-lg font-semibold text-gray-900">Modello 231</h1>
         </div>
       )}
+      {!solaLettura && (
+        <p className="text-xs text-gray-500">I registri previsti dal Modello 231. OdV è l&apos;Organismo di Vigilanza; le decisioni spettano all&apos;amministratrice unica.</p>
+      )}
       <nav className="flex flex-wrap gap-1 border-b border-gray-200">
         {SCHEDE.map(s => {
           const Icona = s.icona

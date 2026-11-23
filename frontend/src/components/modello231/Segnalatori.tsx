@@ -7,8 +7,8 @@ import { Avvisi, campo, dataIt, oggi, useRegistro } from './comune'
 
 /**
  * Segnalatori e compensi (PR.02 §4.3). Il segnalatore ha una qualifica (M.01) e
- * un accordo con clausola 231 (M.03) approvato dall'AU; ogni compenso passa da
- * attestazione della prestazione, fattura, autorizzazione dell'AU e pagamento.
+ * un accordo con clausola 231 (M.03) approvato dall'amministratrice unica; ogni compenso passa da
+ * attestazione della prestazione, fattura, autorizzazione dell'amministratrice unica e pagamento.
  */
 const euro = (n: any) => (n === null || n === undefined ? '' : Number(n).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }))
 
@@ -16,9 +16,9 @@ function statoQualifica(q: any): { testo: string; ok: boolean } {
   if (!q) return { testo: 'Qualifica mancante', ok: false }
   if (q.scade_il && q.scade_il < oggi()) return { testo: `Qualifica scaduta il ${dataIt(q.scade_il)}`, ok: false }
   if (q.esito === 'nessuna_anomalia') return { testo: `Qualificato il ${dataIt(q.compilata_il)}, nessuna anomalia`, ok: true }
-  if (q.decisione === 'procedere' || q.decisione === 'procedere_cautele') return { testo: `Qualificato con anomalia, l'AU ha deciso di procedere`, ok: true }
-  if (q.decisione === 'non_procedere') return { testo: 'Qualifica: l\'AU ha deciso di non procedere', ok: false }
-  return { testo: 'Qualifica con anomalia in attesa dell\'AU', ok: false }
+  if (q.decisione === 'procedere' || q.decisione === 'procedere_cautele') return { testo: `Qualificato con anomalia, l'amministratrice unica ha deciso di procedere`, ok: true }
+  if (q.decisione === 'non_procedere') return { testo: 'Qualifica: l\'amministratrice unica ha deciso di non procedere', ok: false }
+  return { testo: 'Qualifica con anomalia in attesa dell\'amministratrice unica', ok: false }
 }
 
 const vuotoSegnalatore = () => ({ nome: '', forma: 'persona', codice_fiscale: '', partita_iva: '', email: '', cliente_id: '', qualifica_id: '', accordo_data: '', accordo_scade_il: '', clausola_231: false, compenso_previsto: '', nota: '' })
@@ -94,8 +94,8 @@ export default function Segnalatori({ solaLettura = false }: { solaLettura?: boo
     <div className="space-y-3">
       <Avvisi errore={errore} messaggio={messaggio} />
       <p className="text-sm text-gray-600">
-        Chi presenta clienti in cambio di un compenso: prima la qualifica e l&apos;accordo scritto con la clausola 231, approvato dall&apos;AU.
-        Ogni compenso si paga solo dopo che qualcuno ha attestato la prestazione e l&apos;AU ha autorizzato il pagamento (se ha attestato l&apos;AU,
+        Chi presenta clienti in cambio di un compenso: prima la qualifica e l&apos;accordo scritto con la clausola 231, approvato dall&apos;amministratrice unica.
+        Ogni compenso si paga solo dopo che qualcuno ha attestato la prestazione e l&apos;amministratrice unica ha autorizzato il pagamento (se ha attestato l&apos;amministratrice unica,
         autorizza un altro amministratore). Il pagamento avviene con bonifico tracciabile e si registra qui.
       </p>
       {gestisce && !nuovo && (
@@ -135,7 +135,7 @@ export default function Segnalatori({ solaLettura = false }: { solaLettura?: boo
                   {(s.accordo_allegati || []).map((a: any) => a.url && <a key={a.id || a.nome} href={a.url} target="_blank" rel="noreferrer" className="text-blue-600 inline-flex items-center gap-0.5 ml-2"><Paperclip className="w-3 h-3" />{a.nome}</a>)}
                 </div>
                 <div className={`text-xs ${approvato && !scaduto ? 'text-green-700' : 'text-amber-700'}`}>
-                  {approvato ? `Accordo approvato dall'AU (${dati.nomi[s.accordo_approvato_da] || ''}, ${dataIt(s.accordo_approvato_il)})${scaduto ? ', ma scaduto' : ''}` : 'Accordo da approvare'}
+                  {approvato ? `Accordo approvato dall'amministratrice unica (${dati.nomi[s.accordo_approvato_da] || ''}, ${dataIt(s.accordo_approvato_il)})${scaduto ? ', ma scaduto' : ''}` : 'Accordo da approvare'}
                 </div>
                 {s.nota && <div className="text-xs text-gray-500 italic">{s.nota}</div>}
               </div>
@@ -144,7 +144,7 @@ export default function Segnalatori({ solaLettura = false }: { solaLettura?: boo
                   {!approvato && dati.puoDecidere && (
                     <button type="button" disabled={inCorso || !pronto} title={pronto ? '' : 'Servono accordo firmato, data e clausola 231'}
                       onClick={() => { if (confirm('Approvare l\'accordo con il segnalatore?')) { const f = new FormData(); f.append('azione', 'approva'); invia(`/api/231/segnalatori/${s.id}`, 'PATCH', f, 'Accordo approvato') } }}
-                      className="px-2 py-1 text-xs bg-gray-800 text-white rounded disabled:opacity-40 inline-flex items-center gap-1"><Check className="w-3 h-3" /> Approva l&apos;accordo (AU)</button>
+                      className="px-2 py-1 text-xs bg-gray-800 text-white rounded disabled:opacity-40 inline-flex items-center gap-1"><Check className="w-3 h-3" /> Approva l&apos;accordo (amministratrice unica)</button>
                   )}
                   {gestisce && <button type="button" className="px-2 py-1 text-xs border rounded" onClick={() => { setFile(null); setModifica({ id: s.id, qualifica_id: s.qualifica_id || '', accordo_data: s.accordo_data || '', accordo_scade_il: s.accordo_scade_il || '', clausola_231: s.clausola_231, compenso_previsto: s.compenso_previsto || '', nota: s.nota || '' }) }}>Qualifica e accordo</button>}
                   {gestisce && <button type="button" className="px-2 py-1 text-xs border rounded" onClick={() => setSegnalazione({ segnalatore_id: s.id, cliente_id: '', progetto_id: '', data_segnalazione: oggi(), descrizione: '', importo: '', base_calcolo: '' })}>+ Segnalazione</button>}
@@ -155,7 +155,7 @@ export default function Segnalatori({ solaLettura = false }: { solaLettura?: boo
 
             {modifica?.id === s.id && (
               <div className="space-y-2">
-                {approvato && <p className="text-xs text-amber-700">Se cambi data, scadenza, compenso, clausola o documento dell&apos;accordo, l&apos;AU dovrà approvarlo di nuovo.</p>}
+                {approvato && <p className="text-xs text-amber-700">Se cambi data, scadenza, compenso, clausola o documento dell&apos;accordo, l&apos;amministratrice unica dovrà approvarlo di nuovo.</p>}
                 {formSegnalatore(modifica, setModifica, false)}
                 <div className="flex gap-2">
                   <button type="button" disabled={inCorso}
@@ -245,7 +245,7 @@ export default function Segnalatori({ solaLettura = false }: { solaLettura?: boo
                               : puoAutorizzare(c)
                                 ? <button type="button" disabled={inCorso || !c.fattura_numero} title={c.fattura_numero ? '' : 'Manca la fattura'} className="px-2 py-0.5 bg-gray-800 text-white rounded disabled:opacity-40"
                                     onClick={() => { if (confirm(`Autorizzare il pagamento di ${euro(c.importo)} a ${s.nome}?`)) inviaPasso(c, 'autorizza', {}, null, 'Pagamento autorizzato') }}>Autorizza il pagamento</button>
-                                : <span className="text-amber-700">{c.attestata_da ? 'in attesa dell\'AU' : 'dopo l\'attestazione'}</span>}
+                                : <span className="text-amber-700">{c.attestata_da ? 'in attesa dell\'amministratrice unica' : 'dopo l\'attestazione'}</span>}
                           </td>
                           <td className="py-1 whitespace-nowrap">
                             {c.pagato_il

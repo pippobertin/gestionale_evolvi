@@ -1,5 +1,6 @@
 'use client'
 
+import { useAuth } from '@/contexts/AuthContext'
 import { useState, useRef, useEffect } from 'react'
 import { MessageCircle, X, Send, RotateCcw } from 'lucide-react'
 
@@ -8,7 +9,8 @@ interface Message {
   content: string
 }
 
-const STORAGE_KEY = 'chatbot_history'
+// Cronologia per utente: su un computer condiviso ognuno vede solo la propria
+const chiaveCronologia = (utenteId?: string) => `chatbot_history_${utenteId || 'anonimo'}`
 
 function renderMarkdown(text: string) {
   const lines = text.split('\n')
@@ -78,6 +80,8 @@ function renderMarkdown(text: string) {
 }
 
 export default function ChatbotWidget() {
+  const { user } = useAuth()
+  const STORAGE_KEY = chiaveCronologia(user?.id)
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -85,17 +89,16 @@ export default function ChatbotWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Restore from localStorage on mount
+  // Restore from localStorage on mount (e al cambio di utente)
   useEffect(() => {
     try {
+      localStorage.removeItem('chatbot_history') // vecchia cronologia condivisa
       const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) {
-        setMessages(JSON.parse(saved))
-      }
+      setMessages(saved ? JSON.parse(saved) : [])
     } catch {
       // ignore parse errors
     }
-  }, [])
+  }, [STORAGE_KEY])
 
   // Persist to localStorage on change
   useEffect(() => {

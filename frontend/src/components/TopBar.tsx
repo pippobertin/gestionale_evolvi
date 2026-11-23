@@ -27,6 +27,7 @@ import { useGoogleDriveStatus } from '@/hooks/useGoogleDriveStatus'
 import { useUnreadEmailCount } from '@/hooks/useUnreadEmailCount'
 import { useNotifications } from '@/hooks/useNotifications'
 import { useGlobalSearch, type GlobalSearchResults } from '@/hooks/useGlobalSearch'
+import { ETICHETTE_RUOLO } from '@/lib/ruoli'
 
 interface TopBarProps {
   title: string
@@ -159,7 +160,7 @@ function parseNotificationLink(link: string): { page: string; params?: any } | n
 
 export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarProps) {
   const { user, logout, isAdmin } = useAuth()
-  const { isConnected: isGoogleDriveConnected, loading: googleDriveLoading } = useGoogleDriveStatus()
+  const { isConnected: isGoogleDriveConnected, loading: googleDriveLoading } = useGoogleDriveStatus(user?.livello_permessi === 'admin')
   const { count: unreadEmailCount, loading: emailLoading } = useUnreadEmailCount()
   const { notifications, unreadCount, loading: notificationsLoading, markAsRead, markAllAsRead } = useNotifications()
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -332,47 +333,27 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
 
         {/* Right side - Actions */}
         <div className="flex items-center space-x-4">
-          {/* Google Drive Status */}
-          <div className="flex items-center space-x-2">
-            {googleDriveLoading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            ) : (
-              <>
-                {isGoogleDriveConnected ? (
-                  <div className="flex items-center space-x-2 bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-1.5 rounded-lg border border-emerald-400">
-                    <Cloud className="w-4 h-4 text-emerald-200 drop-shadow" />
-                    <span className="text-xs font-bold text-white drop-shadow-sm">Drive connesso</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2 bg-red-600 px-3 py-1.5 rounded-lg border border-red-500">
-                    <CloudOff className="w-4 h-4 text-white" />
-                    <span className="text-xs font-bold text-white drop-shadow-sm">Drive disconnesso</span>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+          {/* Account Google dello studio (Drive): avviso solo agli amministratori e solo se c'è un problema */}
+          {isAdmin() && !googleDriveLoading && !isGoogleDriveConnected && (
+            <button type="button" onClick={() => onNavigate?.('settings')} title="Apri le impostazioni per ricollegare l'account Google dello studio"
+              className="flex items-center space-x-2 bg-red-600 px-3 py-1.5 rounded-lg border border-red-500">
+              <CloudOff className="w-4 h-4 text-white" />
+              <span className="text-xs font-bold text-white drop-shadow-sm">Drive non collegato</span>
+            </button>
+          )}
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-2">
-            {/* Help */}
-            <button className="p-2.5 hover:bg-white/20 rounded-lg transition-colors duration-200 group">
+            {/* Aiuto */}
+            <button type="button" onClick={() => onNavigate?.('faq')} title="Aiuto" className="p-2.5 hover:bg-white/20 rounded-lg transition-colors duration-200 group">
               <HelpCircle className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
-            </button>
-
-            {/* Theme Toggle */}
-            <button className="p-2.5 hover:bg-white/20 rounded-lg transition-colors duration-200 group">
-              <Moon className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
             </button>
 
             {/* Email */}
             <button
-              onClick={() => {
-                console.log('📧 Email button clicked, navigating to email page')
-                onNavigate?.('email')
-              }}
+              onClick={() => onNavigate?.('email')}
               className="p-2.5 hover:bg-white/20 rounded-lg transition-colors duration-200 group relative"
-              title="Centro Email"
+              title="Email"
             >
               <Mail className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
               {!emailLoading && unreadEmailCount > 0 && (
@@ -496,7 +477,7 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
                 <div className="hidden md:block text-left">
                   <p className="font-bold text-sm text-white drop-shadow-sm">{user?.nome_completo}</p>
                   <p className="text-white text-xs font-bold drop-shadow-sm">
-                    {user?.livello_permessi === 'admin' ? 'Amministratore' : 'Collaboratore'}
+                    {user?.livello_permessi ? ETICHETTE_RUOLO[user.livello_permessi] : ''}
                   </p>
                 </div>
                 <ChevronDown className="w-4 h-4 text-white/75 group-hover:text-white transition-colors" />
@@ -516,35 +497,30 @@ export default function TopBar({ title, breadcrumb = [], onNavigate }: TopBarPro
                         <p className="text-gray-900 font-medium">{user?.nome_completo}</p>
                         <p className="text-gray-600 text-sm">{user?.email}</p>
                         <p className="text-gray-500 text-xs">
-                          {user?.livello_permessi === 'admin' ? 'Amministratore' : 'Collaboratore'}
+                          {user?.livello_permessi ? ETICHETTE_RUOLO[user.livello_permessi] : ''}
                         </p>
                       </div>
                     </div>
                   </div>
                   <div className="py-2">
-                    <button className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 w-full text-left transition-colors">
-                      <User className="w-4 h-4" />
-                      <span>Profilo Utente</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onNavigate?.('settings')
+                        setShowUserMenu(false)
+                      }}
+                      className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 w-full text-left transition-colors"
+                    >
+                      {isAdmin() ? <Settings className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                      <span>{isAdmin() ? 'Profilo e impostazioni' : 'Il mio profilo'}</span>
                     </button>
-                    {isAdmin() && (
-                      <button
-                        onClick={() => {
-                          onNavigate?.('settings')
-                          setShowUserMenu(false)
-                        }}
-                        className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 w-full text-left transition-colors"
-                      >
-                        <Settings className="w-4 h-4" />
-                        <span>Impostazioni</span>
-                      </button>
-                    )}
                     <hr className="my-2" />
                     <button
                       onClick={handleLogout}
                       className="flex items-center space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 w-full text-left transition-colors"
                     >
                       <LogOut className="w-4 h-4" />
-                      <span>Logout</span>
+                      <span>Esci</span>
                     </button>
                   </div>
                 </div>

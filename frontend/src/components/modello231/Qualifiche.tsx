@@ -8,7 +8,7 @@ import { Avvisi, campo, dataIt, useRegistro } from './comune'
 /**
  * Qualifica delle controparti (modulo M.01, PR.06 §4.1): una scheda per ogni
  * nuovo cliente, partner, fornitore, consulente o segnalatore, rinnovata ogni
- * 12 mesi per i rapporti continuativi. Le anomalie le decide l'AU per iscritto.
+ * 12 mesi per i rapporti continuativi. Le anomalie le decide l'amministratrice unica per iscritto.
  */
 
 const TIPI: Record<string, string> = {
@@ -51,7 +51,7 @@ export default function Qualifiche({ solaLettura = false }: { solaLettura?: bool
       chiave: v.chiave, etichetta: v.etichetta, fatto: !!nuova.verifiche[v.chiave]?.fatto, nota: nuova.verifiche[v.chiave]?.nota || ''
     }))))
     for (const f of nuova.file) form.append('file', f)
-    const ok = await invia('/api/231/qualifiche', 'POST', form, nuova.esito === 'anomalia' ? 'Scheda registrata: l\'anomalia è in attesa della decisione dell\'AU' : 'Scheda di qualifica registrata')
+    const ok = await invia('/api/231/qualifiche', 'POST', form, nuova.esito === 'anomalia' ? 'Scheda registrata: l\'anomalia è in attesa della decisione dell\'amministratrice unica' : 'Scheda di qualifica registrata')
     if (ok) setNuova(null)
   }
 
@@ -60,14 +60,14 @@ export default function Qualifiche({ solaLettura = false }: { solaLettura?: bool
       <Avvisi errore={errore} messaggio={messaggio} />
       <p className="text-sm text-gray-600">
         Una scheda per ogni nuovo cliente, partner, fornitore, consulente o segnalatore, prima del contratto; per i rapporti continuativi
-        si rinnova ogni 12 mesi. Le anomalie le decide l&apos;AU per iscritto{dati.auId ? ` (${dati.nomi[dati.auId] || ''})` : ''}.
+        si rinnova ogni 12 mesi. Le anomalie le decide l&apos;amministratrice unica per iscritto{dati.auId ? ` (${dati.nomi[dati.auId] || ''})` : ''}.
       </p>
 
       {(daDecidere.length > 0 || daRinnovare.length > 0) && (
         <div className="p-2 bg-amber-50 border border-amber-200 rounded text-sm text-amber-900 flex gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
           <span>
-            {daDecidere.length > 0 && <>{daDecidere.length} schede con anomalia in attesa della decisione dell&apos;AU. </>}
+            {daDecidere.length > 0 && <>{daDecidere.length} schede con anomalia in attesa della decisione dell&apos;amministratrice unica. </>}
             {daRinnovare.length > 0 && <>{daRinnovare.length} schede da rinnovare entro 30 giorni o già scadute.</>}
           </span>
         </div>
@@ -138,7 +138,7 @@ export default function Qualifiche({ solaLettura = false }: { solaLettura?: bool
           </label>
           <div className="flex flex-wrap gap-3 items-start">
             <label className="flex items-center gap-1 text-sm"><input type="radio" checked={nuova.esito === 'nessuna_anomalia'} onChange={() => setNuova({ ...nuova, esito: 'nessuna_anomalia' })} /> Nessuna anomalia</label>
-            <label className="flex items-center gap-1 text-sm"><input type="radio" checked={nuova.esito === 'anomalia'} onChange={() => setNuova({ ...nuova, esito: 'anomalia' })} /> Anomalia rilevata (la decide l&apos;AU)</label>
+            <label className="flex items-center gap-1 text-sm"><input type="radio" checked={nuova.esito === 'anomalia'} onChange={() => setNuova({ ...nuova, esito: 'anomalia' })} /> Anomalia rilevata (la decide l&apos;amministratrice unica)</label>
             {nuova.esito === 'anomalia' && <input className={campo} placeholder="Descrivi l'anomalia" value={nuova.anomalia} onChange={e => setNuova({ ...nuova, anomalia: e.target.value })} />}
           </div>
           <div className="flex gap-2">
@@ -186,7 +186,7 @@ export default function Qualifiche({ solaLettura = false }: { solaLettura?: bool
                       : <div>
                           <span className="text-amber-800">Anomalia: {s.anomalia}</span>
                           {s.decisione
-                            ? <div className="text-gray-700">Decisione dell&apos;AU: <strong>{DECISIONI[s.decisione]}</strong>, {dati.nomi[s.decisa_da] || ''} il {dataIt(s.decisa_il)}{s.decisione_motivazione && <> · {s.decisione_motivazione}</>}</div>
+                            ? <div className="text-gray-700">Decisione dell&apos;amministratrice unica: <strong>{DECISIONI[s.decisione]}</strong>, {dati.nomi[s.decisa_da] || ''} il {dataIt(s.decisa_il)}{s.decisione_motivazione && <> · {s.decisione_motivazione}</>}</div>
                             : dati.puoDecidere && !solaLettura
                               ? decisione?.id === s.id
                                 ? <div className="flex flex-wrap gap-1 mt-1">
@@ -198,8 +198,8 @@ export default function Qualifiche({ solaLettura = false }: { solaLettura?: bool
                                       onClick={async () => { const ok = await invia(`/api/231/qualifiche/${s.id}`, 'PATCH', { decisione: dec.decisione, motivazione: dec.motivazione }, 'Decisione registrata'); if (ok) setDecisione(null) }}
                                       className="px-2 py-0.5 bg-gray-800 text-white rounded disabled:opacity-40">Registra</button>
                                   </div>
-                                : <button type="button" onClick={() => setDecisione({ id: s.id, decisione: 'procedere_cautele', motivazione: '' })} className="mt-1 px-2 py-0.5 border border-amber-400 text-amber-800 rounded">Decidi (AU)</button>
-                              : <div className="text-amber-700">In attesa della decisione dell&apos;AU</div>}
+                                : <button type="button" onClick={() => setDecisione({ id: s.id, decisione: 'procedere_cautele', motivazione: '' })} className="mt-1 px-2 py-0.5 border border-amber-400 text-amber-800 rounded">Decidi (amministratrice unica)</button>
+                              : <div className="text-amber-700">In attesa della decisione dell&apos;amministratrice unica</div>}
                         </div>}
                   </td>
                   <td className="px-3 py-1.5 text-xs whitespace-nowrap">

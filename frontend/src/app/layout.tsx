@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import SessionProvider from '@/components/SessionProvider'
-import AutoSchedulerProvider from '@/components/AutoSchedulerProvider'
 import DisableNumberInputScroll from '@/components/DisableNumberInputScroll'
 
 export const metadata: Metadata = {
@@ -24,9 +23,8 @@ export default function RootLayout({
       <body className="antialiased">
         <DisableNumberInputScroll />
         <SessionProvider>
-          <AutoSchedulerProvider>
-            {children}
-          </AutoSchedulerProvider>
+          {/* Niente avvisi via email dal gestionale: i promemoria arrivano dal calendario Google */}
+          {children}
         </SessionProvider>
       </body>
     </html>

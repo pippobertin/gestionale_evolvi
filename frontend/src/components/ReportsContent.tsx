@@ -630,7 +630,7 @@ export default function ReportsContent() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-sm font-semibold text-gray-900">Reports & Analytics</h1>
+          <h1 className="text-sm font-semibold text-gray-900">Report</h1>
           <p className="text-gray-600 mt-1">Analisi dati e statistiche</p>
         </div>
       </div>
@@ -763,7 +763,7 @@ export default function ReportsContent() {
           >
             <div className="flex items-center gap-2">
               <Award className="w-4 h-4" />
-              Performance Bandi
+              Andamento bandi
             </div>
           </button>
           <button
@@ -776,7 +776,7 @@ export default function ReportsContent() {
           >
             <div className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
-              Overview Progetti
+              Riepilogo progetti
             </div>
           </button>
           <button
@@ -789,7 +789,7 @@ export default function ReportsContent() {
           >
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
-              Benchmarking
+              Confronto periodi
             </div>
           </button>
           <button

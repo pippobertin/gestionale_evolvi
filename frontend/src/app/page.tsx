@@ -22,6 +22,7 @@ import InterrogazioniContent from '@/components/InterrogazioniContent'
 import BandiEsterniManager from '@/components/BandiEsterniManager'
 import { LoadingSpinner } from '@/components/shared'
 import OdvApp from '@/components/OdvApp'
+import { titoloPagina } from '@/lib/navigazione'
 import Modello231Content from '@/components/modello231/Modello231Content'
 
 // True solo quando la pagina è stata ricaricata (F5 / reload), non alla prima apertura.
@@ -109,48 +110,6 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const getPageTitle = () => {
-    switch (activeItem) {
-      case 'dashboard': return 'Dashboard'
-      case 'scadenze': return 'Scadenzario'
-      case 'prospect': return 'Prospect'
-      case 'clienti': return 'Clienti'
-      case 'bandi': return 'Bandi'
-      case 'bandi-esterni': return 'Bandi esterni'
-      case 'progetti': return 'Progetti'
-      case 'email': return 'Centro Email'
-      case 'note-inbox': return 'Inbox Note'
-      case 'interrogazioni': return 'Interrogazioni'
-      case 'consulenti': return 'Segnalatori'
-      case 'reports': return 'Reports'
-      case 'modello231': return 'Modello 231'
-      case 'settings': return 'Impostazioni'
-      case 'faq': return 'FAQ'
-      default: return 'Dashboard'
-    }
-  }
-
-  const getBreadcrumb = () => {
-    switch (activeItem) {
-      case 'dashboard': return ['Home', 'Dashboard']
-      case 'scadenze': return ['Home', 'Scadenzario']
-      case 'prospect': return ['Home', 'Gestione', 'Prospect']
-      case 'clienti': return ['Home', 'Gestione', 'Clienti']
-      case 'bandi': return ['Home', 'Gestione', 'Bandi']
-      case 'bandi-esterni': return ['Home', 'Gestione', 'Bandi esterni']
-      case 'progetti': return ['Home', 'Gestione', 'Progetti']
-      case 'email': return ['Home', 'Comunicazione', 'Email']
-      case 'note-inbox': return ['Home', 'Comunicazione', 'Inbox Note']
-      case 'interrogazioni': return ['Home', 'Analytics', 'Interrogazioni']
-      case 'consulenti': return ['Home', 'Gestione', 'Segnalatori']
-      case 'reports': return ['Home', 'Analytics', 'Reports']
-      case 'modello231': return ['Home', 'Sistema', 'Modello 231']
-      case 'settings': return ['Home', 'Sistema', 'Impostazioni']
-      case 'faq': return ['Home', 'Aiuto', 'FAQ']
-      default: return ['Home', 'Dashboard']
-    }
-  }
-
   const renderContent = () => {
     switch (activeItem) {
       case 'dashboard':
@@ -208,7 +167,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
         }`}
       >
         {/* Top Bar */}
-        <TopBar title={getPageTitle()} breadcrumb={getBreadcrumb()} onNavigate={onNavigate} />
+        <TopBar title={titoloPagina(activeItem)} onNavigate={onNavigate} />
 
         {/* Page Content */}
         <main ref={mainScrollRef} onScroll={handleMainScroll} className="flex-1 min-h-0 p-4 overflow-auto">

@@ -8,7 +8,7 @@ import { Avvisi, campo, dataIt, useRegistro } from './comune'
 /**
  * Dichiarazioni degli interessi (modulo M.04, PR.02 §4.4): ognuno presenta la
  * propria all'ingresso, ogni anno entro il 31 gennaio e a ogni variazione.
- * L'AU le valuta (un altro amministratore valuta quella dell'AU).
+ * L'AU le valuta (un altro amministratore valuta quella dell'amministratrice unica).
  */
 
 const SEZIONI: { chiave: string; titolo: string; aiuto: string; campi: { k: string; etichetta: string }[] }[] = [
@@ -74,7 +74,7 @@ export default function Dichiarazioni({ solaLettura = false }: { solaLettura?: b
       <Avvisi errore={errore} messaggio={messaggio} />
       <p className="text-sm text-gray-600">
         Dichiarare un interesse non è una colpa; lo è tacerlo. Si presenta all&apos;ingresso, ogni anno entro il 31 gennaio e a ogni
-        variazione. Le valuta l&apos;AU{dati.auId ? ` (${dati.nomi[dati.auId] || ''})` : ''}; quella dell&apos;AU la valuta un altro amministratore.
+        variazione. Le valuta l&apos;amministratrice unica{dati.auId ? ` (${dati.nomi[dati.auId] || ''})` : ''}; quella dell&apos;amministratrice unica la valuta un altro amministratore.
         {solaLettura && ' All\'OdV le dichiarazioni arrivano in forma riepilogativa.'}
       </p>
 
@@ -137,7 +137,7 @@ export default function Dichiarazioni({ solaLettura = false }: { solaLettura?: b
           </div>
           <label className="flex items-start gap-2 text-xs text-gray-800 border-t border-gray-100 pt-2">
             <input type="checkbox" className="mt-0.5" checked={nuova.impegno} onChange={e => setNuova({ ...nuova, impegno: e.target.checked })} />
-            Mi impegno a comunicare all&apos;AU ogni variazione e, se mi trovo in conflitto rispetto a una decisione o a una pratica, a dichiararlo
+            Mi impegno a comunicare all&apos;amministratrice unica ogni variazione e, se mi trovo in conflitto rispetto a una decisione o a una pratica, a dichiararlo
             prima e ad astenermi. Prendo atto che i dati sono trattati per l&apos;applicazione del Modello 231, secondo l&apos;informativa privacy ricevuta.
           </label>
           <div className="flex gap-2">

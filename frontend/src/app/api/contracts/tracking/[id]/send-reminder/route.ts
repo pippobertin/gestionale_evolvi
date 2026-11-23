@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
-import { getValidGoogleToken } from '@/lib/googleAuth'
-import { google } from 'googleapis'
+import { getGmailClient } from '@/lib/gmail'
+import { verifyJWT } from '@/lib/jwtAuth'
+import type { gmail_v1 } from 'googleapis'
 
 // POST - Invia sollecito email per contratto non firmato
 export async function POST(
@@ -59,13 +60,16 @@ export async function POST(
       }, { status: 400 })
     }
 
-    // Ottieni token Gmail
-    const googleAccessToken = await getValidGoogleToken()
-    if (!googleAccessToken) {
+    // Il sollecito parte dalla casella di chi lo invia (nessuna casella di sistema)
+    let gmail: gmail_v1.Gmail
+    try {
+      const sessione = await verifyJWT(request)
+      gmail = await getGmailClient(sessione?.userId)
+    } catch (e) {
       return Response.json({
         success: false,
-        error: 'Gmail non configurato - impossibile inviare sollecito'
-      }, { status: 401 })
+        error: e instanceof Error ? e.message : 'Casella Gmail non collegata'
+      }, { status: 400 })
     }
 
     // Componi e invia email sollecito
@@ -89,10 +93,7 @@ Team BLM Project Srl
 Email: info@blmproject.com
 `
 
-    // Crea client Gmail e invia
-    const auth = new google.auth.OAuth2()
-    auth.setCredentials({ access_token: googleAccessToken })
-    const gmail = google.gmail({ version: 'v1', auth })
+    // Invia
 
     const emailContent = [
       `To: ${recipientEmail}`,

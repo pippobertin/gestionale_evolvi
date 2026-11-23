@@ -103,7 +103,7 @@ export default function BandiEsterniManager() {
           <div className="flex items-center gap-2">
             <Landmark className="w-5 h-5 text-gray-600" />
             <h3 className="font-semibold text-gray-900">
-              Catalogo bandi esterni
+              Catalogo bandi
             </h3>
             <span className="text-sm text-gray-500">({bandi.length})</span>
           </div>

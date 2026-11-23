@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
   ])
   const base = { ...cliente, ente, archiviate: archiviate || [], casella: utente?.gmail_email || null }
   if (!utente?.gmail_refresh_token) {
-    return NextResponse.json({ ...base, messages: [], avviso: 'Per vedere le email collega la tua casella Gmail in Impostazioni, Il mio Gmail.' })
+    return NextResponse.json({ ...base, messages: [], avviso: 'Per vedere le email collega la tua casella Gmail in Impostazioni, Il mio account Google.' })
   }
   const query = queryGmail(cliente.indirizzi, cliente.domini, p.get('q') || '')
   if (!query) {

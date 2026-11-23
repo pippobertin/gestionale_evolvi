@@ -8,13 +8,15 @@ interface GoogleDriveStatus {
   error?: string
 }
 
-export function useGoogleDriveStatus(): GoogleDriveStatus {
+export function useGoogleDriveStatus(attivo = true): GoogleDriveStatus {
   const [status, setStatus] = useState<GoogleDriveStatus>({
     isConnected: false,
     loading: true
   })
 
   useEffect(() => {
+    // Lo stato dell'account Google dello studio interessa solo agli amministratori
+    if (!attivo) { setStatus({ isConnected: true, loading: false }); return }
     const checkGoogleStatus = async () => {
       try {
         // Controlla se Gmail è configurato (che ora include anche Drive)
@@ -49,7 +51,7 @@ export function useGoogleDriveStatus(): GoogleDriveStatus {
     // Indicatore di stato: un controllo ogni 5 minuti basta (prima ogni 30 secondi per ogni scheda aperta)
     const interval = setInterval(checkGoogleStatus, 5 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [])
+  }, [attivo])
 
   return status
 }

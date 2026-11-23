@@ -72,6 +72,12 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
     try {
       setLoading(true)
 
+      // Scadenze dei progetti e scadenze generali, in parallelo
+      const pContr = supabase
+        .from('scadenze_bandi_scadenze_contrattuali')
+        .select('*')
+        .order('data_scadenza', { ascending: true })
+
       // 1. Fetch scadenze progetto
       const { data: dataProgetto, error: errProgetto } = await supabase
         .from('scadenze_bandi_scadenze')
@@ -102,11 +108,8 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
 
       if (errProgetto) throw errProgetto
 
-      // 2. Fetch scadenze contrattuali/generali
-      const { data: dataContr, error: errContr } = await supabase
-        .from('scadenze_bandi_scadenze_contrattuali')
-        .select('*')
-        .order('data_scadenza', { ascending: true })
+      // 2. Scadenze contrattuali/generali (già partite sopra)
+      const { data: dataContr, error: errContr } = await pContr
 
       if (errContr) console.error('Errore scadenze contrattuali:', errContr)
 
@@ -461,7 +464,7 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
     <div className="space-y-3">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-sm font-semibold text-gray-900">Agenda Scadenze</h1>
+        <h1 className="text-sm font-semibold text-gray-900">Scadenzario</h1>
         <button
           onClick={() => setShowNuovaScadenza(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
@@ -568,7 +571,7 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
               className="border border-gray-300 rounded-md px-3 py-1 text-sm"
             >
               <option value="tutti">Tutte le urgenze</option>
-              <option value="URGENTE">Solo urgenti</option>
+              <option value="URGENTE">Solo scadute</option>
               <option value="IMMINENTE">Solo imminenti</option>
               <option value="NORMALE">Solo normali</option>
             </select>

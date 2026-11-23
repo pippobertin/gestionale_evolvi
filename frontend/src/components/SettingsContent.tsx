@@ -4,8 +4,6 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import UserManagement from './UserManagement'
 import GroupsManagement from './GroupsManagement'
-import NotificationSettings from './NotificationSettings'
-import SchedulerManager from './SchedulerManager'
 import GmailSetupNew from './GmailSetupNew'
 import UserGmailConnection from './UserGmailConnection'
 import EmailSignatureEditor from './EmailSignatureEditor'
@@ -14,6 +12,7 @@ import BackupGestionale from './BackupGestionale'
 import DocumentiSuDrive from './DocumentiSuDrive'
 import RegistroAttivita from './RegistroAttivita'
 import RuoliPermessi from './RuoliPermessi'
+import { ETICHETTE_RUOLO } from '@/lib/ruoli'
 import {
   Settings,
   Users,
@@ -33,100 +32,21 @@ import {
 
 export default function SettingsContent() {
   const { user, isAdmin } = useAuth()
-  const [activeSection, setActiveSection] = useState('general')
+  const [activeSection, setActiveSection] = useState('my-gmail')
 
+  // Due gruppi: ciò che riguarda ciascuno e, per gli amministratori, la gestione dello studio
   const sections = [
-    {
-      id: 'general',
-      label: 'Generali',
-      icon: Settings,
-      description: 'Configurazioni di base del sistema'
-    },
-    {
-      id: 'users',
-      label: 'Gestione Utenti',
-      icon: Users,
-      description: 'Gestisci utenti, ruoli e permessi',
-      adminOnly: true
-    },
-    {
-      id: 'permessi',
-      label: 'Ruoli e permessi',
-      icon: KeySquare,
-      description: 'Che cosa possono fare i collaboratori',
-      adminOnly: true
-    },
-    {
-      id: 'registro',
-      label: 'Registro attività',
-      icon: ScrollText,
-      description: 'Chi ha fatto che cosa e quando',
-      adminOnly: true
-    },
-    {
-      id: 'groups',
-      label: 'Gruppi Utenti',
-      icon: UserPlus,
-      description: 'Organizza utenti in gruppi di lavoro',
-      adminOnly: true
-    },
-    {
-      id: 'security',
-      label: 'Sicurezza',
-      icon: Shield,
-      description: 'Impostazioni di sicurezza e autenticazione',
-      adminOnly: true
-    },
-    {
-      id: 'notifications',
-      label: 'Notifiche',
-      icon: Bell,
-      description: 'Configurazione notifiche email e sistema'
-    },
-    {
-      id: 'my-password',
-      label: 'La mia password',
-      icon: Key,
-      description: 'Cambia la password di accesso'
-    },
-    {
-      id: 'my-gmail',
-      label: 'Le Mie API Google',
-      icon: Mail,
-      description: 'Gmail, Calendar e integrazioni Google'
-    },
-    {
-      id: 'scheduler',
-      label: 'Scheduler',
-      icon: Clock,
-      description: 'Gestione scheduler notifiche automatiche',
-      adminOnly: true
-    },
-    {
-      id: 'gmail',
-      label: 'Google API',
-      icon: Mail,
-      description: 'Configurazione Gmail e Google Drive API',
-      adminOnly: true
-    },
-    {
-      id: 'appearance',
-      label: 'Aspetto',
-      icon: Palette,
-      description: 'Tema, colori e personalizzazione'
-    },
-    {
-      id: 'database',
-      label: 'Backup',
-      icon: Database,
-      description: 'Esportazioni mensili, prove di ripristino, documenti su Drive',
-      adminOnly: true
-    }
+    { id: 'my-gmail', gruppo: 'Il mio profilo', label: 'Il mio account Google', icon: Mail, description: 'Posta, calendario e firma delle email', adminOnly: false },
+    { id: 'my-password', gruppo: 'Il mio profilo', label: 'La mia password', icon: KeySquare, description: 'Cambia la password di accesso', adminOnly: false },
+    { id: 'users', gruppo: 'Amministrazione', label: 'Utenti', icon: Users, description: 'Aggiungi, disattiva, reimposta la password', adminOnly: true },
+    { id: 'permessi', gruppo: 'Amministrazione', label: 'Ruoli e permessi', icon: Key, description: 'Che cosa può fare ciascun ruolo', adminOnly: true },
+    { id: 'groups', gruppo: 'Amministrazione', label: 'Gruppi di lavoro', icon: UserPlus, description: 'Gruppi da indicare come responsabili', adminOnly: true },
+    { id: 'registro', gruppo: 'Amministrazione', label: 'Registro attività', icon: ScrollText, description: 'Chi ha fatto che cosa e quando', adminOnly: true },
+    { id: 'database', gruppo: 'Amministrazione', label: 'Backup e documenti', icon: Database, description: 'Esportazioni mensili, prove di ripristino, documenti su Drive', adminOnly: true },
+    { id: 'gmail', gruppo: 'Amministrazione', label: 'Account Google dello studio', icon: Globe, description: 'Drive per documenti e cartelle', adminOnly: true }
   ]
 
-  const availableSections = sections.filter(section =>
-    !section.adminOnly || isAdmin()
-  )
+  const availableSections = sections.filter(section => !section.adminOnly || isAdmin())
 
   const renderSectionContent = () => {
     switch (activeSection) {
@@ -147,105 +67,12 @@ export default function SettingsContent() {
                 <UserPlus className="w-4 h-4 text-teal-600" />
               </div>
               <div>
-                <h1 className="text-sm font-semibold text-gray-900">Gruppi Utenti</h1>
+                <h1 className="text-sm font-semibold text-gray-900">Gruppi di lavoro</h1>
                 <p className="text-gray-600">Organizza utenti in gruppi di lavoro per gestire le responsabilità</p>
               </div>
             </div>
 
             <GroupsManagement />
-          </div>
-        )
-
-      case 'general':
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-4 h-4 bg-gray-100 rounded-lg flex items-center justify-center">
-                <Settings className="w-4 h-4 text-gray-600" />
-              </div>
-              <div>
-                <h1 className="text-sm font-semibold text-gray-900">Impostazioni Generali</h1>
-                <p className="text-gray-600">Configurazioni di base del sistema</p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">Informazioni Sistema</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nome Applicazione</label>
-                  <input
-                    type="text"
-                    value="Gestionale Evolvi"
-                    disabled
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Versione</label>
-                  <input
-                    type="text"
-                    value="1.0.0"
-                    disabled
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-
-      case 'security':
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-4 h-4 bg-red-100 rounded-lg flex items-center justify-center">
-                <Shield className="w-4 h-4 text-red-600" />
-              </div>
-              <div>
-                <h1 className="text-sm font-semibold text-gray-900">Sicurezza</h1>
-                <p className="text-gray-600">Gestisci impostazioni di sicurezza</p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">Autenticazione</h3>
-              <p className="text-gray-600">Sezione in sviluppo - Configurazione JWT e politiche password</p>
-            </div>
-          </div>
-        )
-
-      case 'notifications':
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-4 h-4 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Bell className="w-4 h-4 text-blue-600" />
-              </div>
-              <div>
-                <h1 className="text-sm font-semibold text-gray-900">Notifiche</h1>
-                <p className="text-gray-600">Configura notifiche email e Google Calendar</p>
-              </div>
-            </div>
-
-            <NotificationSettings />
-          </div>
-        )
-
-      case 'scheduler':
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-4 h-4 bg-indigo-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-4 h-4 text-indigo-600" />
-              </div>
-              <div>
-                <h1 className="text-sm font-semibold text-gray-900">Scheduler Notifiche</h1>
-                <p className="text-gray-600">Gestisci scheduler automatici per notifiche</p>
-              </div>
-            </div>
-
-            <SchedulerManager />
           </div>
         )
 
@@ -260,8 +87,8 @@ export default function SettingsContent() {
                 <Mail className="w-4 h-4 text-red-600" />
               </div>
               <div>
-                <h1 className="text-sm font-semibold text-gray-900">Le Mie API Google</h1>
-                <p className="text-gray-600">Gmail, Calendar e integrazioni Google personali</p>
+                <h1 className="text-sm font-semibold text-gray-900">Il mio account Google</h1>
+                <p className="text-gray-600">Collegalo per usare la posta nel gestionale, inviare email e contratti a tuo nome e ricevere gli eventi in calendario</p>
               </div>
             </div>
 
@@ -278,32 +105,12 @@ export default function SettingsContent() {
                 <Mail className="w-4 h-4 text-red-600" />
               </div>
               <div>
-                <h1 className="text-sm font-semibold text-gray-900">Gmail API (Sistema)</h1>
-                <p className="text-gray-600">Configurazione Gmail di sistema (fallback)</p>
+                <h1 className="text-sm font-semibold text-gray-900">Account Google dello studio</h1>
+                <p className="text-gray-600">Il gestionale lo usa per salvare documenti e cartelle su Google Drive: non va scollegato. Non invia email: le email partono sempre dalla casella di chi le scrive, e i promemoria delle scadenze arrivano dal calendario Google.</p>
               </div>
             </div>
 
             <GmailSetupNew />
-          </div>
-        )
-
-      case 'appearance':
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-4 h-4 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Palette className="w-4 h-4 text-purple-600" />
-              </div>
-              <div>
-                <h1 className="text-sm font-semibold text-gray-900">Aspetto</h1>
-                <p className="text-gray-600">Personalizza l'interfaccia</p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">Tema</h3>
-              <p className="text-gray-600">Sezione in sviluppo - Selezione tema chiaro/scuro</p>
-            </div>
           </div>
         )
 
@@ -326,17 +133,19 @@ export default function SettingsContent() {
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-200">
           <h2 className="text-sm font-semibold text-gray-900">Impostazioni</h2>
-          <p className="text-sm text-gray-600">Gestisci configurazioni sistema</p>
+          <p className="text-sm text-gray-600">Il tuo profilo{isAdmin() ? ' e la gestione dello studio' : ''}</p>
         </div>
 
         <nav className="flex-1 p-4">
           <ul className="space-y-1">
-            {availableSections.map((section) => {
+            {availableSections.map((section, indice) => {
               const Icon = section.icon
               const isActive = activeSection === section.id
+              const nuovoGruppo = section.gruppo !== availableSections[indice - 1]?.gruppo
 
               return (
                 <li key={section.id}>
+                  {nuovoGruppo && <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mt-3 mb-1 px-1">{section.gruppo}</p>}
                   <button
                     onClick={() => setActiveSection(section.id)}
                     className={`w-full text-left p-3 rounded-lg transition-colors flex items-center space-x-3 group ${
@@ -379,7 +188,7 @@ export default function SettingsContent() {
                 {user?.nome_completo}
               </div>
               <div className="text-xs text-gray-500 truncate">
-                {user?.livello_permessi === 'admin' ? 'Amministratore' : 'Collaboratore'}
+                {user?.livello_permessi ? ETICHETTE_RUOLO[user.livello_permessi] : ''}
               </div>
             </div>
           </div>

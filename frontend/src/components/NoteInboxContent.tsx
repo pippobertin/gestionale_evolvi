@@ -128,7 +128,7 @@ export default function NoteInboxContent() {
         <div className="flex items-center gap-3">
           <Inbox className="w-6 h-6 text-gray-700" />
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Inbox Note</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Note da assegnare</h2>
             <p className="text-sm text-gray-500">
               Note di riunione non ancora assegnate a un cliente.
             </p>
@@ -385,7 +385,7 @@ function ClienteAssignmentBox({
           onClick={onMarcaInterna}
           className="text-xs px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-100 text-gray-700"
         >
-          Marca come interna BLM
+          È una riunione interna
         </button>
         <button
           onClick={onScarta}

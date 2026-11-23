@@ -128,6 +128,29 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
     try {
       setLoading(true)
 
+      // Collegamenti, esercizi e progetti partono subito, in parallelo con i clienti
+      const pCollegamenti = supabase
+        .from('scadenze_bandi_collegamenti_aziendali')
+        .select(`
+          *,
+          azienda_collegata:scadenze_bandi_clienti!azienda_collegata_id(
+            id, ula, ultimo_fatturato, attivo_bilancio
+          )
+        `)
+      const pEsercizi = fetchAllRows<any>((from, to) =>
+        supabase.from('scadenze_bandi_clienti_esercizi')
+          .select('cliente_id, esercizio, ula, fatturato, attivo')
+          .order('id')
+          .range(from, to)
+      ).catch(e => { console.warn('Storico esercizi non disponibile:', e); return null })
+      const pProgetti = fetchAllRows<{ cliente_id: string | null }>((from, to) =>
+        supabase
+          .from('scadenze_bandi_progetti')
+          .select('cliente_id')
+          .order('id')
+          .range(from, to)
+      )
+
       // Query per ottenere clienti con conteggio progetti reali e prossima scadenza
       let clientiData: any[] = []
 
@@ -154,42 +177,19 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
         )
       }
 
-      // Carica tutti i collegamenti aziendali con i dati delle aziende collegate
-      const { data: collegamentiData } = await supabase
-        .from('scadenze_bandi_collegamenti_aziendali')
-        .select(`
-          *,
-          azienda_collegata:scadenze_bandi_clienti!azienda_collegata_id(
-            id, ula, ultimo_fatturato, attivo_bilancio
-          )
-        `)
+      const [{ data: collegamentiData }, esercizi, progettiRows] = await Promise.all([pCollegamenti, pEsercizi, pProgetti])
       setTuttiCollegamenti(collegamentiData || [])
 
       // Storico per esercizio (regola dei due esercizi consecutivi)
-      try {
-        const esercizi = await fetchAllRows<any>((from, to) =>
-          supabase.from('scadenze_bandi_clienti_esercizi')
-            .select('cliente_id, esercizio, ula, fatturato, attivo')
-            .order('id')
-            .range(from, to)
-        )
+      if (esercizi) {
         const mappa: Record<string, DatiEsercizio[]> = {}
-        esercizi.forEach(r => {
+        esercizi.forEach((r: any) => {
           (mappa[r.cliente_id] = mappa[r.cliente_id] || []).push({ esercizio: r.esercizio, ula: r.ula, fatturato: r.fatturato, attivo: r.attivo })
         })
         setEserciziPerCliente(mappa)
-      } catch (e) {
-        console.warn('Storico esercizi non disponibile:', e)
       }
 
       // Conteggio progetti per cliente con una sola query (prima: una richiesta per cliente)
-      const progettiRows = await fetchAllRows<{ cliente_id: string | null }>((from, to) =>
-        supabase
-          .from('scadenze_bandi_progetti')
-          .select('cliente_id')
-          .order('id')
-          .range(from, to)
-      )
       const progettiPerCliente = countByKey(progettiRows, 'cliente_id')
 
       const clientiConDati = clientiData.map((cliente) => ({

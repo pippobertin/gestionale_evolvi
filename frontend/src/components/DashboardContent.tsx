@@ -15,6 +15,7 @@ import {
   Eye
 } from 'lucide-react'
 import CalendarioScadenze from './CalendarioScadenze'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface Scadenza {
   id: string
@@ -29,6 +30,7 @@ interface Scadenza {
   cliente_nome: string
   cliente_email: string
   progetto_id: string
+  cliente_id?: string | null
   progetto_titolo: string
   progetto_codice: string
   bando_nome: string
@@ -59,6 +61,9 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
   const [error, setError] = useState('')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [showDayModal, setShowDayModal] = useState(false)
+  // Di default ciascuno vede le proprie scadenze; con un clic quelle di tutto lo studio
+  const [soloMie, setSoloMie] = useState(true)
+  const { user } = useAuth()
 
   useEffect(() => {
     fetchDashboardData()
@@ -231,7 +236,8 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
 
   const getSelectedDateScadenze = () => {
     if (!selectedDate) return []
-    return scadenze.filter(s => {
+    const elenco = soloMie ? scadenze.filter(s => (s.responsabile_email || '').toLowerCase() === (user?.email || '').toLowerCase()) : scadenze
+    return elenco.filter(s => {
       const scadenzaDate = new Date(s.data_scadenza)
       return formatDateKey(scadenzaDate) === selectedDate
     })
@@ -262,287 +268,113 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
 
   if (!stats) return null
 
-  // Scadenze più urgenti (prossime 20 non completate)
-  const scadenzeUrgenti = scadenze
-    .filter(s => s.stato !== 'completata')
-    .sort((a, b) => a.giorni_rimanenti - b.giorni_rimanenti)
-    .slice(0, 20)
+  const miaEmail = (user?.email || '').toLowerCase()
+  const mie = scadenze.filter(s => (s.responsabile_email || '').toLowerCase() === miaEmail)
+  const visibili = soloMie ? mie : scadenze
+  const aperte = visibili.filter(s => s.stato !== 'completata')
+  const scadute = aperte.filter(s => s.giorni_rimanenti < 0).sort((a, b) => b.giorni_rimanenti - a.giorni_rimanenti)
+  const oggiDomani = aperte.filter(s => s.giorni_rimanenti >= 0 && s.giorni_rimanenti <= 1)
+  const settimana = aperte.filter(s => s.giorni_rimanenti >= 2 && s.giorni_rimanenti <= 7)
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('it-IT', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
-  }
-
-  const getUrgencyColor = (urgenza: string, stato: string) => {
-    if (stato === 'completata') return 'text-green-600'
-
-    switch (urgenza) {
-      case 'URGENTE': return 'text-red-600'
-      case 'IMMINENTE': return 'text-orange-600'
-      default: return 'text-gray-600'
-    }
+    return new Date(dateString).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
   const getGiorniText = (giorni: number) => {
-    if (giorni < 0) return `${Math.abs(giorni)} gg fa`
-    if (giorni === 0) return 'Oggi'
-    if (giorni === 1) return 'Domani'
-    return `${giorni} gg`
+    if (giorni < 0) return `scaduta da ${Math.abs(giorni)} gg`
+    if (giorni === 0) return 'oggi'
+    if (giorni === 1) return 'domani'
+    return `tra ${giorni} gg`
+  }
+
+  // Un clic sulla riga apre la pratica (o il cliente); le scadenze generali aprono lo scadenzario
+  const apri = (s: Scadenza) => {
+    if (s.progetto_id && s.progetto_codice && s.progetto_codice !== 'N/D') onNavigate('progetti', { clienteFilter: s.progetto_codice })
+    else if (s.cliente_id) onNavigate('clienti', { openClientId: s.cliente_id })
+    else onNavigate('scadenze', { date: s.data_scadenza })
+  }
+
+  const Blocco = ({ titolo, elenco, colore, vuoto }: { titolo: string; elenco: Scadenza[]; colore: string; vuoto: string }) => {
+    const mostrate = elenco.slice(0, 10)
+    return (
+      <div className="bg-white rounded-lg shadow">
+        <div className="px-3 py-2 border-b border-gray-200 flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${colore}`} />
+          <h2 className="text-sm font-medium text-gray-900">{titolo}</h2>
+          <span className="text-xs text-gray-500">{elenco.length}</span>
+        </div>
+        {elenco.length === 0
+          ? <div className="px-3 py-3 text-sm text-gray-500">{vuoto}</div>
+          : (
+            <ul className="divide-y divide-gray-100">
+              {mostrate.map(s => (
+                <li key={s.id}>
+                  <button type="button" onClick={() => apri(s)} className="w-full px-3 py-2 text-left hover:bg-gray-50">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900 flex-1 truncate">{s.titolo}</span>
+                      <span className="text-xs text-gray-500 whitespace-nowrap">{formatDate(s.data_scadenza)} · {getGiorniText(s.giorni_rimanenti)}</span>
+                    </div>
+                    <div className="text-xs text-gray-500 truncate">
+                      {[s.cliente_nome !== 'N/D' && s.cliente_nome !== '-' ? s.cliente_nome : '', s.progetto_titolo !== 'N/D' && s.progetto_titolo !== '-' ? s.progetto_titolo : '',
+                        !soloMie && s.responsabile_email ? s.responsabile_email : ''].filter(Boolean).join(' · ')}
+                    </div>
+                  </button>
+                </li>
+              ))}
+              {elenco.length > mostrate.length && (
+                <li><button type="button" onClick={() => onNavigate('scadenze')} className="w-full px-3 py-2 text-left text-xs text-blue-600 hover:bg-gray-50">e altre {elenco.length - mostrate.length}: apri lo scadenzario</button></li>
+              )}
+            </ul>
+          )}
+      </div>
+    )
   }
 
   return (
     <div className="space-y-3">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+      {/* Intestazione: di chi sono le scadenze mostrate */}
+      <div className="flex flex-wrap justify-between items-center gap-2">
         <div>
-          <h1 className="text-sm font-semibold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Panoramica scadenze e progetti</p>
+          <h1 className="text-sm font-semibold text-gray-900">{soloMie ? 'Le mie scadenze' : 'Le scadenze di tutto lo studio'}</h1>
+          <p className="text-gray-600 text-sm">Che cosa è scaduto e che cosa scade nei prossimi giorni. I promemoria arrivano anche dal calendario Google.</p>
         </div>
-        <button
-          onClick={fetchDashboardData}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Aggiorna
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border border-gray-300 overflow-hidden text-sm">
+            <button type="button" onClick={() => setSoloMie(true)} className={`px-3 py-1.5 ${soloMie ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`}>Le mie</button>
+            <button type="button" onClick={() => setSoloMie(false)} className={`px-3 py-1.5 ${!soloMie ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`}>Tutto lo studio</button>
+          </div>
+          <button type="button" onClick={fetchDashboardData} className="p-2 text-gray-500 hover:text-gray-800" title="Aggiorna"><RefreshCw className="w-4 h-4" /></button>
+        </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-        <button
-          onClick={() => onNavigate('scadenze')}
-          className="bg-gradient-to-br from-amber-500 to-yellow-500 p-4 rounded-xl border border-amber-400 hover:from-amber-600 hover:to-yellow-600 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-white drop-shadow-sm">Imminenti</p>
-              <p className="text-lg font-black text-white drop-shadow">{stats.imminenti}</p>
-              <p className="text-xs font-medium text-white drop-shadow-sm">Entro 7 giorni</p>
-            </div>
-            <Clock className="w-6 h-6 text-white drop-shadow" />
-          </div>
-        </button>
+      {soloMie && mie.length === 0 && (
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+          Non risultano scadenze assegnate a te. <button type="button" onClick={() => setSoloMie(false)} className="underline">Guarda quelle di tutto lo studio</button>.
+        </div>
+      )}
 
-        <button
-          onClick={() => onNavigate('scadenze')}
-          className="bg-gradient-to-br from-emerald-500 to-teal-500 p-4 rounded-xl border border-emerald-400 hover:from-emerald-600 hover:to-teal-600 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-emerald-100 drop-shadow-sm">Completate</p>
-              <p className="text-lg font-black text-white drop-shadow">{stats.completate}</p>
-              <p className="text-xs font-medium text-emerald-100 drop-shadow-sm">
-                {stats.totaleScadenze > 0
-                  ? `${Math.round((stats.completate / stats.totaleScadenze) * 100)}% del totale`
-                  : '0% del totale'
-                }
-              </p>
-            </div>
-            <CheckCircle2 className="w-6 h-6 text-emerald-200 drop-shadow" />
+      {/* Due soli numeri: quelli che chiedono di fare qualcosa */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-red-50 border border-red-200 p-3 rounded-lg flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-red-700">Scadute</p>
+            <p className="text-lg font-bold text-red-800">{scadute.length}</p>
           </div>
-        </button>
-
-        <button
-          onClick={() => onNavigate('scadenze')}
-          className="bg-gradient-to-br from-cyan-500 to-teal-500 p-4 rounded-xl border border-cyan-400 hover:from-cyan-600 hover:to-teal-600 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-cyan-100 drop-shadow-sm">Totale</p>
-              <p className="text-lg font-black text-white drop-shadow">{stats.totaleScadenze}</p>
-              <p className="text-xs font-medium text-cyan-100 drop-shadow-sm">Tutte le scadenze</p>
-            </div>
-            <Activity className="w-6 h-6 text-cyan-200 drop-shadow" />
+          <AlertTriangle className="w-6 h-6 text-red-400" />
+        </div>
+        <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-amber-700">Entro 7 giorni</p>
+            <p className="text-lg font-bold text-amber-800">{oggiDomani.length + settimana.length}</p>
           </div>
-        </button>
-
-        <button
-          onClick={() => onNavigate('scadenze')}
-          className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 hover:from-red-600 hover:to-red-700 transition-all duration-200 cursor-pointer text-left shadow-lg hover:shadow-xl transform hover:scale-105"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-red-100 drop-shadow-sm">Scadute</p>
-              <p className="text-lg font-black text-white drop-shadow">{stats.urgenti}</p>
-              <p className="text-xs font-medium text-red-100 drop-shadow-sm">Scadute o critiche</p>
-            </div>
-            <AlertTriangle className="w-6 h-6 text-red-200 drop-shadow" />
-          </div>
-        </button>
+          <Clock className="w-6 h-6 text-amber-400" />
+        </div>
       </div>
 
-      {/* Sezione Panoramica */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        {/* Scadenze più urgenti */}
-        <div className="lg:col-span-2 bg-white rounded-lg shadow">
-          <div className="px-3 py-1.5 border-b border-gray-200">
-            <h2 className="text-sm font-medium text-gray-900 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-600" />
-              Scadenze Prioritarie
-            </h2>
-            <p className="text-sm text-gray-600">Le prossime 20 scadenze da gestire</p>
-          </div>
-
-          <div className="overflow-x-auto">
-            {scadenzeUrgenti.length > 0 ? (
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Scadenza</th>
-                    <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
-                    <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Progetto</th>
-                    <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-                    <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Giorni</th>
-                    <th className="px-4 py-1.5 text-left text-xs font-medium text-gray-500 uppercase">Stato</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {scadenzeUrgenti.map((scadenza) => (
-                    <tr
-                      key={scadenza.id}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => onNavigate('scadenze', { date: scadenza.data_scadenza })}
-                      title="Clicca per vedere questa scadenza nel calendario"
-                    >
-                      <td className="px-3 py-1.5">
-                        <div className="text-sm font-medium text-gray-900 hover:text-blue-600">{scadenza.titolo}</div>
-                      </td>
-                      <td
-                        className="px-3 py-1.5 text-sm text-gray-900 hover:text-blue-600"
-                        onClick={(e) => { e.stopPropagation(); onNavigate('clienti'); }}
-                        title="Clicca per andare ai clienti"
-                      >
-                        {scadenza.cliente_nome}
-                      </td>
-                      <td
-                        className="px-3 py-1.5 hover:text-blue-600"
-                        onClick={(e) => { e.stopPropagation(); onNavigate('progetti'); }}
-                        title="Clicca per andare ai progetti"
-                      >
-                        <div className="text-sm font-medium text-gray-900">{scadenza.progetto_titolo}</div>
-                        <div className="text-xs text-gray-500">{scadenza.progetto_codice}</div>
-                      </td>
-                      <td className="px-3 py-1.5 text-sm text-gray-900">{formatDate(scadenza.data_scadenza)}</td>
-                      <td className="px-3 py-1.5">
-                        <span className={`text-sm font-medium ${getUrgencyColor(scadenza.urgenza, scadenza.stato)}`}>
-                          {getGiorniText(scadenza.giorni_rimanenti)}
-                        </span>
-                      </td>
-                      <td className="px-3 py-1.5">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          scadenza.stato === 'completata' ? 'bg-green-100 text-green-800' :
-                          scadenza.stato === 'in_corso' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {scadenza.stato === 'non_iniziata' ? 'Da fare' :
-                           scadenza.stato === 'in_corso' ? 'In corso' : 'Completata'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="text-center py-8">
-                <CheckCircle2 className="mx-auto h-12 w-12 text-green-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">Nessuna scadenza urgente</h3>
-                <p className="mt-1 text-sm text-gray-500">Tutte le scadenze sono sotto controllo!</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Statistiche rapide */}
-        <div className="space-y-4">
-          {/* Progetti e clienti */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="text-sm font-medium text-gray-900 mb-4 flex items-center gap-2">
-              <Building className="w-4 h-4 text-gray-600" />
-              Panoramica
-            </h3>
-            <div className="space-y-3">
-              <div
-                className="flex justify-between cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-                onClick={() => onNavigate('progetti')}
-                title="Clicca per vedere tutti i progetti"
-              >
-                <span className="text-gray-600">Progetti attivi</span>
-                <span className="font-semibold hover:text-blue-600">{stats.progetti}</span>
-              </div>
-              <div
-                className="flex justify-between cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-                onClick={() => onNavigate('clienti')}
-                title="Clicca per vedere tutti i clienti"
-              >
-                <span className="text-gray-600">Clienti</span>
-                <span className="font-semibold hover:text-blue-600">{stats.clienti}</span>
-              </div>
-              <div
-                className="flex justify-between cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-                onClick={() => onNavigate('bandi')}
-                title="Clicca per vedere tutti i bandi"
-              >
-                <span className="text-gray-600">Bandi</span>
-                <span className="font-semibold hover:text-blue-600">{stats.bandi}</span>
-              </div>
-              <hr className="my-2" />
-              <div
-                className="flex justify-between cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-                onClick={() => onNavigate('scadenze')}
-                title="Clicca per vedere le scadenze in corso"
-              >
-                <span className="text-gray-600">In corso</span>
-                <span className="font-semibold text-blue-600 hover:text-blue-800">{stats.inCorso}</span>
-              </div>
-              <div
-                className="flex justify-between cursor-pointer hover:bg-gray-50 p-2 rounded transition-colors"
-                onClick={() => onNavigate('scadenze')}
-                title="Clicca per vedere le scadenze da iniziare"
-              >
-                <span className="text-gray-600">Da iniziare</span>
-                <span className="font-semibold text-gray-600 hover:text-blue-600">{stats.nonIniziate}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick actions */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="text-sm font-medium text-gray-900 mb-4">Azioni rapide</h3>
-            <div className="space-y-2">
-              <button
-                onClick={() => onNavigate('scadenze')}
-                className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded flex items-center gap-2 transition-colors"
-              >
-                <Eye className="w-4 h-4" />
-                Vai a Scadenze
-              </button>
-              <button
-                onClick={() => onNavigate('progetti')}
-                className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded flex items-center gap-2 transition-colors"
-              >
-                <FileText className="w-4 h-4" />
-                Vai a Progetti
-              </button>
-              <button
-                onClick={() => onNavigate('clienti')}
-                className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded flex items-center gap-2 transition-colors"
-              >
-                <Building className="w-4 h-4" />
-                Vai a Clienti
-              </button>
-              <button
-                onClick={() => onNavigate('bandi')}
-                className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded flex items-center gap-2 transition-colors"
-              >
-                <FileText className="w-4 h-4" />
-                Vai a Bandi
-              </button>
-            </div>
-          </div>
-        </div>
+        <Blocco titolo="Scadute" elenco={scadute} colore="bg-red-500" vuoto="Nessuna scadenza scaduta." />
+        <Blocco titolo="Oggi e domani" elenco={oggiDomani} colore="bg-amber-500" vuoto="Niente in scadenza oggi o domani." />
+        <Blocco titolo="Questa settimana" elenco={settimana} colore="bg-blue-500" vuoto="Niente in scadenza nei prossimi sette giorni." />
       </div>
 
       {/* Mini Calendario */}
@@ -555,13 +387,13 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
           >
             <Calendar className="w-4 h-4 text-blue-600" />
             <h2 className="text-sm font-medium text-gray-900 hover:text-blue-600">
-              Calendario Scadenze - Panoramica 3 Mesi
+              Calendario dei prossimi tre mesi
             </h2>
           </div>
         </div>
         <div className="p-4">
           <CalendarioScadenze
-            scadenze={scadenze}
+            scadenze={visibili}
             mesiDaVisualizzare={3}
             onDayClick={openDayModal}
           />
@@ -613,7 +445,7 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
                             scadenza.urgenza === 'IMMINENTE' ? 'bg-orange-100 border-orange-500 text-orange-800' :
                             'bg-gray-100 border-gray-300 text-gray-700'
                           }`}>
-                            {scadenza.urgenza}
+                            {scadenza.urgenza === 'URGENTE' ? 'Scaduta' : scadenza.urgenza === 'IMMINENTE' ? 'Entro 7 giorni' : 'Più avanti'}
                           </span>
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded ${
                             scadenza.stato === 'completata' ? 'bg-green-100 text-green-800' :

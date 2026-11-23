@@ -329,7 +329,7 @@ export default function FaqContent() {
       {/* Left sidebar - section list */}
       <div className="w-72 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-200">
-          <h2 className="text-sm font-semibold text-gray-900">Sezioni FAQ</h2>
+          <h2 className="text-sm font-semibold text-gray-900">Argomenti</h2>
           <p className="text-xs text-gray-500 mt-0.5">{sections.length} sezioni disponibili</p>
         </div>
 

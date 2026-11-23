@@ -131,7 +131,7 @@ export default function GmailSetupNew() {
     const gmailError = urlParams.get('gmail_error')
 
     if (gmailSuccess) {
-      alert('✅ Gmail configurato con successo!')
+      alert('Account Google dello studio collegato.')
       window.history.replaceState({}, '', window.location.pathname)
       checkGmailStatus()
     }
@@ -158,19 +158,19 @@ export default function GmailSetupNew() {
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-sm font-semibold flex items-center">
           <Mail className="mr-2 h-4 w-4 text-red-500" />
-          Configurazione Gmail API
+          Account Google dello studio
         </h3>
 
         <div className="flex items-center space-x-2">
           {status.configured ? (
             <span className="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 flex items-center">
               <CheckCircle className="mr-1 h-3 w-3" />
-              Configurato
+              Collegato
             </span>
           ) : (
             <span className="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 flex items-center">
               <AlertCircle className="mr-1 h-3 w-3" />
-              Non Configurato
+              Non collegato
             </span>
           )}
         </div>
@@ -195,7 +195,7 @@ export default function GmailSetupNew() {
           <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
             <h4 className="font-medium text-green-800 mb-1 flex items-center">
               <CheckCircle className="w-4 h-4 mr-2" />
-              Gmail Configurato Correttamente
+              Account collegato
             </h4>
             {status.email && (
               <p className="text-green-700 text-sm mb-1">
@@ -211,19 +211,6 @@ export default function GmailSetupNew() {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={testGmailConnection}
-              disabled={actionLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {actionLoading ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
-              ) : (
-                <Mail className="w-4 h-4" />
-              )}
-              {actionLoading ? 'Testing...' : 'Testa Connessione'}
-            </button>
-
-            <button
               onClick={initializeGmail}
               disabled={actionLoading}
               className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -233,7 +220,7 @@ export default function GmailSetupNew() {
               ) : (
                 <ExternalLink className="w-4 h-4" />
               )}
-              {actionLoading ? 'Riautorizzazione...' : 'Riautorizza Gmail'}
+              {actionLoading ? 'Apertura di Google…' : 'Ricollega l\'account'}
             </button>
 
             <button
@@ -241,7 +228,7 @@ export default function GmailSetupNew() {
               className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
-              Aggiorna Status
+              Aggiorna
             </button>
           </div>
         </div>
@@ -249,18 +236,18 @@ export default function GmailSetupNew() {
         /* Not Configured State */
         <div className="space-y-4">
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h4 className="font-medium text-blue-800 mb-1">Configurazione Richiesta</h4>
+            <h4 className="font-medium text-blue-800 mb-1">Account da collegare</h4>
             <p className="text-blue-700 text-sm mb-4">
-              Per utilizzare il client Gmail integrato, è necessario autenticare l'applicazione
-              con il tuo account Google Workspace.
+              Serve perché il gestionale salvi documenti e cartelle nel Drive condiviso «Gestionale Evolvi».
+              Collega un account dello studio che abbia accesso a quel Drive.
             </p>
 
             <div className="space-y-2 text-sm text-blue-700">
-              <p><strong>Cosa succede quando clicchi "Configura Gmail":</strong></p>
+              <p><strong>Cosa succede quando clicchi "Collega l'account":</strong></p>
               <ul className="list-disc list-inside space-y-1 ml-4">
                 <li>Si aprirà una finestra di Google per l'autenticazione</li>
-                <li>Dovrai autorizzare l'accesso al tuo Gmail</li>
-                <li>L'applicazione potrà leggere e inviare email per tuo conto</li>
+                <li>Dovrai autorizzare l'accesso dell'account</li>
+                <li>Il gestionale potrà creare cartelle e salvare documenti su Drive</li>
               </ul>
             </div>
           </div>
@@ -276,7 +263,7 @@ export default function GmailSetupNew() {
               ) : (
                 <ExternalLink className="w-4 h-4" />
               )}
-              {actionLoading ? 'Inizializzazione...' : 'Configura Gmail'}
+              {actionLoading ? 'Apertura di Google…' : 'Collega l\'account'}
             </button>
 
             <button
@@ -284,7 +271,7 @@ export default function GmailSetupNew() {
               className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
-              Controlla Status
+              Aggiorna
             </button>
           </div>
         </div>
@@ -295,7 +282,7 @@ export default function GmailSetupNew() {
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-sm font-semibold flex items-center">
             <Cloud className="mr-2 h-4 w-4 text-blue-500" />
-            Configurazione Google Drive API
+            Google Drive
           </h3>
 
           <div className="flex items-center space-x-2">

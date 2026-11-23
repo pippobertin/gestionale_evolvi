@@ -46,7 +46,8 @@ export default function BandiContent({ initialFilter }: { initialFilter?: string
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchTerm, setSearchTerm] = useState(initialFilter || '')
-  const [filtroStato, setFiltroStato] = useState<string>('tutti')
+  // Di default i bandi su cui si può ancora lavorare: aperti e in arrivo
+  const [filtroStato, setFiltroStato] = useState<string>('attivi')
   const [filtroTipo, setFiltroTipo] = useState<string>('tutti')
   const [showNewBandoModal, setShowNewBandoModal] = useState(false)
   const [showEditBandoModal, setShowEditBandoModal] = useState(false)
@@ -75,22 +76,22 @@ export default function BandiContent({ initialFilter }: { initialFilter?: string
     try {
       setLoading(true)
 
-      // Prima ottieni tutti i bandi
-      const { data: bandiData, error: bandiError } = await supabase
-        .from('scadenze_bandi_bandi')
-        .select('*')
-        .order('data_chiusura_presentazione', { ascending: true })
+      // Bandi e conteggio dei progetti per bando, in parallelo
+      const [{ data: bandiData, error: bandiError }, progettiRows] = await Promise.all([
+        supabase
+          .from('scadenze_bandi_bandi')
+          .select('*')
+          .order('data_chiusura_presentazione', { ascending: true }),
+        fetchAllRows<{ bando_id: string | null }>((from, to) =>
+          supabase
+            .from('scadenze_bandi_progetti')
+            .select('bando_id')
+            .order('id')
+            .range(from, to)
+        )
+      ])
 
       if (bandiError) throw bandiError
-
-      // Conteggio progetti per bando con una sola query (prima: una richiesta per bando)
-      const progettiRows = await fetchAllRows<{ bando_id: string | null }>((from, to) =>
-        supabase
-          .from('scadenze_bandi_progetti')
-          .select('bando_id')
-          .order('id')
-          .range(from, to)
-      )
       const progettiPerBando = countByKey(progettiRows, 'bando_id')
 
       // Poi aggiorna il conteggio progetti e calcola lo stato per ogni bando
@@ -147,13 +148,22 @@ export default function BandiContent({ initialFilter }: { initialFilter?: string
         !bando.ente_erogatore?.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false
     }
-    if (filtroStato !== 'tutti' && bando.stato_calcolato !== filtroStato) {
+    if (filtroStato === 'attivi' && bando.stato_calcolato === 'SCADUTO') {
+      return false
+    }
+    if (!['tutti', 'attivi'].includes(filtroStato) && bando.stato_calcolato !== filtroStato) {
       return false
     }
     if (filtroTipo !== 'tutti' && bando.tipologia_bando !== filtroTipo) {
       return false
     }
     return true
+  }).sort((a, b) => {
+    // Prima quelli ancora aperti o in arrivo (per chiusura più vicina), poi gli scaduti dal più recente
+    const sa = a.stato_calcolato === 'SCADUTO', sb = b.stato_calcolato === 'SCADUTO'
+    if (sa !== sb) return sa ? 1 : -1
+    const da = new Date(a.data_chiusura_presentazione).getTime(), db = new Date(b.data_chiusura_presentazione).getTime()
+    return sa ? db - da : da - db
   })
 
 
@@ -458,7 +468,7 @@ export default function BandiContent({ initialFilter }: { initialFilter?: string
         <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-red-100 drop-shadow-sm">Progetti attivi</p>
+              <p className="text-sm font-bold text-red-100 drop-shadow-sm">Progetti collegati</p>
               <p className="text-lg font-black text-white drop-shadow">
                 {totalProgettiAttivi}
               </p>
@@ -489,11 +499,11 @@ export default function BandiContent({ initialFilter }: { initialFilter?: string
               onChange={(e) => setFiltroStato(e.target.value)}
               className="border border-gray-300 rounded-md px-3 py-2 text-sm"
             >
-              <option value="tutti">Tutti gli stati</option>
+              <option value="attivi">Aperti e in arrivo</option>
               <option value="APERTO">Solo aperti</option>
-              <option value="PROSSIMA_APERTURA">Prossima apertura</option>
-              <option value="IN_VALUTAZIONE">In valutazione</option>
-              <option value="CHIUSO">Chiusi</option>
+              <option value="IN_ARRIVO">In arrivo</option>
+              <option value="SCADUTO">Scaduti</option>
+              <option value="tutti">Tutti</option>
             </select>
           </div>
 
@@ -612,9 +622,6 @@ export default function BandiContent({ initialFilter }: { initialFilter?: string
                   <td className="px-1 py-2 text-sm text-gray-900">
                     <div className="text-center">
                       <div className="font-medium">{bando.progetti_collegati || 0}</div>
-                      <div className="text-gray-500 text-xs">
-                        {bando.progetti_attivi || 0} attivi
-                      </div>
                     </div>
                   </td>
                   <td className="px-1 py-2 text-sm font-medium">

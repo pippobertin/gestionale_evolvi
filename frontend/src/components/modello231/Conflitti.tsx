@@ -7,8 +7,8 @@ import { Avvisi, campo, dataIt, oggi, useRegistro } from './comune'
 
 /**
  * Registro dei conflitti (PR.02 §4.4 e §4.5): conflitti dichiarati o emersi,
- * misure adottate e decisione dell'AU (di un altro amministratore se il
- * conflitto riguarda l'AU). Trasmesso all'OdV.
+ * misure adottate e decisione dell'amministratrice unica (di un altro amministratore se il
+ * conflitto riguarda l'amministratrice unica). Trasmesso all'OdV.
  */
 const ORIGINI: Record<string, string> = {
   dichiarazione: 'Dichiarazione degli interessi', stesso_bando: 'Più clienti sullo stesso bando', segnalazione: 'Segnalazione', altro: 'Altro'
@@ -28,7 +28,7 @@ export default function Conflitti({ solaLettura = false }: { solaLettura?: boole
       <Avvisi errore={errore} messaggio={messaggio} />
       <p className="text-sm text-gray-600">
         Chi si trova in conflitto rispetto a una decisione lo dichiara prima e si astiene. Qui si annotano i conflitti, le misure e la
-        decisione dell&apos;AU{dati.auId ? ` (${dati.nomi[dati.auId] || ''})` : ''}; se il conflitto riguarda l&apos;AU decide un altro amministratore.
+        decisione dell&apos;amministratrice unica{dati.auId ? ` (${dati.nomi[dati.auId] || ''})` : ''}; se il conflitto riguarda l&apos;amministratrice unica decide un altro amministratore.
       </p>
       {!solaLettura && !nuovo && (
         <button type="button" onClick={() => setNuovo({ data: oggi(), origine: 'stesso_bando', persona_id: '', persona_esterna: '', progetto_id: '', descrizione: '', misure: '' })}

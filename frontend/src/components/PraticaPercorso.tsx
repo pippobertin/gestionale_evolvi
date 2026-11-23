@@ -133,7 +133,7 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
     successiva?.id === 'progettazione' ? [
       { ok: stato.incarico_ok, testo: 'Contratto firmato o ordine di lavoro confermato dal cliente' },
       { ok: stato.rp_rev_ok, testo: 'Responsabile di pratica e revisore assegnati, persone diverse' },
-      ...(stato.pratica_propria ? [{ ok: stato.au_escluso_ok, testo: 'Domanda di BLM in proprio: responsabile e revisore diversi dall\'AU' }] : []),
+      ...(stato.pratica_propria ? [{ ok: stato.au_escluso_ok, testo: 'Domanda di BLM in proprio: responsabile e revisore diversi dall\'amministratrice unica' }] : []),
       ...(stato.rev_coinvolto ? [{ ok: stato.motivazione_stesso_bando_ok, testo: 'Motivazione scritta: il revisore segue anche una pratica concorrente sullo stesso bando' }] : [])
     ] : successiva?.id === 'controllo_preinvio' ? [
       { ok: true, testo: 'Nessun requisito: il revisore farà il controllo nella fase successiva' }
@@ -180,7 +180,7 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
               {!tuttiOk && isAdmin() && (
                 <button type="button" disabled={inCorso !== null}
                   onClick={() => {
-                    const motivo = window.prompt(`Mancano dei requisiti. Per passare comunque a "${successiva.etichetta}" scrivi il motivo della deroga (almeno 15 caratteri). Resterà nella cronologia e nel registro, visibile all'OdV.`)
+                    const motivo = window.prompt(`Mancano dei requisiti. Per passare comunque a "${successiva.etichetta}" scrivi il motivo della deroga (almeno 15 caratteri). Resterà nella cronologia e nel registro, visibile all'Organismo di Vigilanza.`)
                     if (motivo && motivo.trim().length >= 15) cambiaFase(successiva.id, motivo.trim())
                   }}
                   className="px-3 py-1.5 text-sm border border-amber-400 text-amber-800 rounded hover:bg-amber-50">
@@ -208,14 +208,14 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
       {/* Ruoli */}
       <Sezione titolo="Responsabile di pratica e revisore">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label className="text-xs text-gray-600">Responsabile di pratica (RP)
+          <label className="text-xs text-gray-600">Responsabile della pratica
             <select className={campo} value={pratica.rp_id || ''} disabled={inCorso !== null}
               onChange={e => aggiorna({ rp_id: e.target.value || null })}>
               <option value="">Da assegnare</option>
               {dati.utenti.map((u: any) => <option key={u.id} value={u.id}>{u.nome}</option>)}
             </select>
           </label>
-          <label className="text-xs text-gray-600">Revisore (REV), diverso dal responsabile
+          <label className="text-xs text-gray-600">Revisore, diverso dal responsabile
             <select className={campo} value={pratica.rev_id || ''} disabled={inCorso !== null}
               onChange={e => aggiorna({ rev_id: e.target.value || null })}>
               <option value="">Da assegnare</option>
@@ -226,7 +226,7 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
         <label className="flex items-center gap-2 text-xs text-gray-700 mt-2">
           <input type="checkbox" checked={pratica.pratica_propria} disabled={inCorso !== null}
             onChange={e => aggiorna({ pratica_propria: e.target.checked })} />
-          Domanda presentata da BLMProject in proprio (responsabile e revisore diversi dall&apos;AU; segnalazione all&apos;OdV prima dell&apos;invio)
+          Domanda presentata da BLMProject in proprio (responsabile e revisore diversi dall&apos;amministratrice unica; segnalazione all&apos;Organismo di Vigilanza prima dell&apos;invio)
         </label>
       </Sezione>
 
@@ -236,7 +236,7 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
           <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mb-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>
-              BLM segue altri clienti sullo stesso bando. Informa l&apos;AU prima di accettare l&apos;incarico; il contratto contiene la
+              BLM segue altri clienti sullo stesso bando. Informa l&apos;amministratrice unica prima di accettare l&apos;incarico; il contratto contiene la
               clausola di trasparenza. Nessuno può essere responsabile di due pratiche concorrenti né revisore della pratica del concorrente.
             </span>
           </div>
@@ -244,7 +244,7 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
             {stato.concorrenti.map((c: any) => (
               <li key={c.id}>
                 {c.cliente || 'Cliente'} · {c.titolo} · fase {FASI.find(f => f.id === c.fase)?.etichetta || c.fase}
-                {c.rp_id && ` · RP ${nomi[c.rp_id] || ''}`}{c.rev_id && ` · REV ${nomi[c.rev_id] || ''}`}
+                {c.rp_id && ` · responsabile ${nomi[c.rp_id] || ''}`}{c.rev_id && ` · revisore ${nomi[c.rev_id] || ''}`}
               </li>
             ))}
           </ul>

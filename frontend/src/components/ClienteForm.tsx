@@ -1690,8 +1690,8 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
                   Criteri di Collegamento UE 2003/361/CE
                 </h4>
                 <div className="text-xs text-gray-600 space-y-1">
-                  <p><strong>Associata (≥50%):</strong> Somma il 100% dei valori dell'azienda associata</p>
-                  <p><strong>Collegata (25-49.99%):</strong> Somma proporzionalmente in base alla percentuale di partecipazione</p>
+                  <p><strong>Associata (dal 25% al 50%, senza controllo):</strong> i suoi dati si sommano in proporzione alla percentuale di partecipazione</p>
+                  <p><strong>Collegata (oltre il 50% dei voti o influenza dominante):</strong> i suoi dati si sommano al 100%</p>
                 </div>
               </div>
             </div>

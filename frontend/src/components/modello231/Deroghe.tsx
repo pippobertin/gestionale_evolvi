@@ -7,7 +7,7 @@ import { Avvisi, campo, dataIt, oggi, useRegistro } from './comune'
 
 /**
  * Registro delle deroghe (PR.01 §4.1, PR.02 §4.3): ogni scostamento dalle regole
- * o dalle condizioni standard, motivato e deciso per iscritto dall'AU. In fondo
+ * o dalle condizioni standard, motivato e deciso per iscritto dall'amministratrice unica. In fondo
  * le deroghe già registrate dal gestionale durante il lavoro.
  */
 const AMBITI: Record<string, string> = {
@@ -32,7 +32,7 @@ export default function Deroghe({ solaLettura = false }: { solaLettura?: boolean
       <Avvisi errore={errore} messaggio={messaggio} />
       <p className="text-sm text-gray-600">
         Quando si fa diversamente da quanto prevedono il Modello o le condizioni standard, la deroga si chiede qui con la sua motivazione e la
-        decide per iscritto l&apos;AU{dati.auId ? ` (${dati.nomi[dati.auId] || ''})` : ''}; se la chiede l&apos;AU, decide un altro amministratore.
+        decide per iscritto l&apos;amministratrice unica{dati.auId ? ` (${dati.nomi[dati.auId] || ''})` : ''}; se la chiede l&apos;amministratrice unica, decide un altro amministratore.
         Una deroga decisa non si modifica più.
       </p>
       {!solaLettura && !nuova && (
@@ -69,7 +69,7 @@ export default function Deroghe({ solaLettura = false }: { solaLettura?: boolean
                 const f = new FormData()
                 Object.entries(nuova).forEach(([k, v]) => f.append(k, String(v ?? '')))
                 if (file) f.append('file', file)
-                const ok = await invia('/api/231/deroghe', 'POST', f, 'Deroga registrata: ora la decide l\'AU')
+                const ok = await invia('/api/231/deroghe', 'POST', f, 'Deroga registrata: ora la decide l\'amministratrice unica')
                 if (ok) { setNuova(null); setFile(null) }
               }}
               className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded disabled:opacity-40">Invia la richiesta</button>

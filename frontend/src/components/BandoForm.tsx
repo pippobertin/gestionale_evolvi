@@ -833,7 +833,7 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
 
   const tabs = [
     { id: 'generale', label: 'Dati Bando', icon: Building2 },
-    { id: 'scadenze', label: 'Template Scadenze', icon: Clock },
+    { id: 'scadenze', label: 'Scadenze tipo', icon: Clock },
     { id: 'documenti', label: 'Documenti', icon: FileText }
   ]
 
@@ -1174,7 +1174,7 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="A_PUNTEGGIO">A Punteggio</option>
-                    <option value="JUST_IN_TIME">Just in Time</option>
+                    <option value="JUST_IN_TIME">A sportello (ordine di arrivo)</option>
                   </select>
                 </div>
               </div>
@@ -1184,7 +1184,7 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
                 {/* Selezione Evento Base */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tipo Evento Base ⭐
+                    Evento da cui partono le scadenze
                   </label>
                   <select
                     value={formData.evento_base_id}
@@ -1247,7 +1247,7 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
                 {/* Data Base per Calcolo */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Data Base per Calcolo Scadenze ⭐
+                    Data da cui si calcolano le scadenze
                   </label>
                   <input
                     type="date"
@@ -1343,7 +1343,7 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900">Template Scadenze</h3>
+                  <h3 className="text-sm font-semibold text-gray-900">Scadenze tipo del bando</h3>
                   <p className="text-sm text-gray-600">
                     Definisci le scadenze tipo che verranno applicate ai progetti derivanti da questo bando
                   </p>

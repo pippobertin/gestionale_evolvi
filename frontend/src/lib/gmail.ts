@@ -22,12 +22,11 @@ export function createGoogleAuthClient(redirectUri?: string) {
 }
 
 /**
- * Retrieves Gmail client with tokens from database
- * Supports both per-user tokens and system-wide fallback
- *
- * @param userId - Optional user ID to use per-user Gmail tokens
- * @returns Configured Gmail client
+ * Client Gmail della casella personale dell'utente. Chi non l'ha collegata
+ * riceve un messaggio che dice dove farlo.
  */
+export const MESSAGGIO_GMAIL_NON_COLLEGATO = 'La tua casella Gmail non è collegata: collegala in Impostazioni, Il mio account Google.'
+
 export async function getGmailClient(userId?: string) {
   // Create Supabase client
   const supabase = createClient(
@@ -39,49 +38,21 @@ export async function getGmailClient(userId?: string) {
   let accessToken: string | null = null
   let gmailEmail: string | null = null
 
-  // If userId provided, try to get user-specific tokens first
+  // Solo la casella personale: nessun ripiego sulla casella di sistema (le email
+  // partono sempre da chi le scrive)
+  void gmailEmail
   if (userId) {
     const { data: userData, error: userError } = await supabase
       .from('scadenze_bandi_utenti')
-      .select('gmail_refresh_token, gmail_access_token, gmail_email')
+      .select('gmail_refresh_token, gmail_access_token')
       .eq('id', userId)
       .single()
-
     if (!userError && userData?.gmail_refresh_token) {
       refreshToken = userData.gmail_refresh_token
       accessToken = userData.gmail_access_token
-      gmailEmail = userData.gmail_email
-      console.log(`✅ Using Gmail tokens for user ${gmailEmail || userId}`)
-    } else {
-      console.log(`⚠️ User ${userId} has no Gmail connected, falling back to system settings`)
     }
   }
-
-  // Fallback to system-wide tokens if user tokens not found
-  if (!refreshToken) {
-    const { data: refreshTokenData, error: refreshError } = await supabase
-      .from('scadenze_bandi_system_settings')
-      .select('value')
-      .eq('key', 'gmail_refresh_token')
-      .single()
-
-    if (refreshError || !refreshTokenData) {
-      throw new Error(userId
-        ? `User ${userId} has no Gmail connected and system Gmail is not configured`
-        : 'Gmail refresh token not found in system settings'
-      )
-    }
-
-    const { data: accessTokenData } = await supabase
-      .from('scadenze_bandi_system_settings')
-      .select('value')
-      .eq('key', 'gmail_access_token')
-      .single()
-
-    refreshToken = refreshTokenData.value
-    accessToken = accessTokenData?.value
-    console.log('✅ Using system-wide Gmail tokens')
-  }
+  if (!refreshToken) throw new Error(MESSAGGIO_GMAIL_NON_COLLEGATO)
 
   // Accesso a Google: si riusa quello ancora valido tenuto in memoria; il token
   // salvato nel database risale al collegamento ed è quasi sempre scaduto, e

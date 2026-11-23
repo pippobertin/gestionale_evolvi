@@ -635,7 +635,6 @@ export default function ProgettiContent({ initialFilter, onNavigate }: { initial
               <option value="ACCETTATO">Accettato</option>
               <option value="IN_CORSO">In Corso</option>
               <option value="COMPLETATO">Completato</option>
-              <option value="SOSPESO">Sospeso</option>
             </select>
           </div>
 

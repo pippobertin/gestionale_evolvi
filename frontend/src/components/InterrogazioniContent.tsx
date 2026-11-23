@@ -220,7 +220,7 @@ export default function InterrogazioniContent() {
               <Database className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-gray-900">Interrogazioni database</h2>
+              <h2 className="text-base font-semibold text-gray-900">Ricerche</h2>
               <p className="text-xs text-gray-500">{definizioneAmbito.descrizione}</p>
             </div>
           </div>
@@ -281,7 +281,7 @@ export default function InterrogazioniContent() {
                 title="Azzera filtri"
               >
                 <RotateCcw className="w-3 h-3 mr-0.5" />
-                Reset
+                Azzera
               </button>
             )}
           </div>

@@ -8,7 +8,7 @@ import { CalendarService } from '@/lib/notifications/calendarService'
 
 /**
  * Report semestrale all'OdV (modulo M.05): bozza precompilata con i dati dei
- * registri, sezioni completate e confermate dai responsabili, invio dell'AU.
+ * registri, sezioni completate e confermate dai responsabili, invio dell'amministratrice unica.
  */
 export default function ReportOdv({ solaLettura = false }: { solaLettura?: boolean }) {
   const { dati, errore, messaggio, inCorso, invia } = useRegistro<any>('/api/231/report-odv')
@@ -49,8 +49,8 @@ export default function ReportOdv({ solaLettura = false }: { solaLettura?: boole
       {!report && (
         <>
           <p className="text-sm text-gray-600">
-            Un report per semestre, da inviare all&apos;OdV entro il 31 luglio (primo semestre) e il 31 gennaio (secondo). La bozza si prepara da sola
-            alla chiusura del semestre con i dati dei registri; ogni responsabile verifica e completa la propria sezione e la conferma, poi l&apos;AU
+            Un report per semestre, da inviare all&apos;Organismo di Vigilanza (OdV) entro il 31 luglio (primo semestre) e il 31 gennaio (secondo). La bozza si prepara da sola
+            alla chiusura del semestre con i dati dei registri; ogni responsabile verifica e completa la propria sezione e la conferma, poi l&apos;amministratrice unica
             lo invia e il PDF resta su Drive. I fatti gravi non aspettano il report: si comunicano subito all&apos;OdV.
           </p>
           {!solaLettura && dati.admin && dati.disponibili.length > 0 && (
@@ -103,7 +103,7 @@ export default function ReportOdv({ solaLettura = false }: { solaLettura?: boole
               <button type="button" disabled={inCorso || !tutteConfermate} title={tutteConfermate ? '' : 'Ogni sezione va prima confermata'}
                 className="px-3 py-1 bg-gray-800 text-white rounded disabled:opacity-40 inline-flex items-center gap-1"
                 onClick={() => { if (confirm('Inviare il report all\'OdV? Dopo l\'invio non sarà più modificabile e il PDF verrà salvato su Drive.')) azione({ azione: 'invia' }, 'Report inviato: l\'OdV lo trova nella sua area e il PDF è su Drive') }}>
-                <Send className="w-3 h-3" /> Invia all&apos;OdV (AU)</button>
+                <Send className="w-3 h-3" /> Invia all&apos;OdV (amministratrice unica)</button>
             )}
           </div>
           {modificabile && <p className="text-xs text-gray-500">Le voci con il segno «dal gestionale» si compilano da sole con i dati dei registri; nella nota si aggiunge ciò che serve. Le altre le compila il responsabile.</p>}

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
-import { getValidGoogleToken } from '@/lib/googleAuth'
+import { getGmailClient } from '@/lib/gmail'
+import { verifyJWT } from '@/lib/jwtAuth'
 import { gmail_v1, google } from 'googleapis'
 
 interface EmailData {
@@ -80,17 +81,20 @@ export async function POST(req: NextRequest) {
       bandoName: progetto.scadenze_bandi_bandi.nome
     }
 
-    // 4. Ottieni token Gmail
-    const googleAccessToken = await getValidGoogleToken()
-    if (!googleAccessToken) {
+    // 4. L'email parte dalla casella di chi la invia (nessuna casella di sistema)
+    let gmail: gmail_v1.Gmail
+    try {
+      const sessione = await verifyJWT(req)
+      gmail = await getGmailClient(sessione?.userId)
+    } catch (e) {
       return Response.json({
         success: false,
-        message: 'Gmail non configurato'
-      }, { status: 401 })
+        message: e instanceof Error ? e.message : 'Casella Gmail non collegata'
+      }, { status: 400 })
     }
 
     // 5. Invia email
-    const emailResult = await sendContractEmail(googleAccessToken, emailData, customMessage)
+    const emailResult = await sendContractEmail(gmail, emailData, customMessage)
 
     if (!emailResult.success) {
       return Response.json({
@@ -147,15 +151,11 @@ export async function POST(req: NextRequest) {
 
 // Invia email con contratto allegato
 async function sendContractEmail(
-  accessToken: string,
+  gmail: gmail_v1.Gmail,
   emailData: EmailData,
   customMessage?: string
 ): Promise<{ success: boolean; emailId?: string; error?: string }> {
   try {
-    // Crea client Gmail
-    const auth = new google.auth.OAuth2()
-    auth.setCredentials({ access_token: accessToken })
-    const gmail = google.gmail({ version: 'v1', auth })
 
     // Template email
     const subject = `Contratto di consulenza - Progetto: ${emailData.projectTitle}`

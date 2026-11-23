@@ -89,6 +89,10 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
     attachments: [] as File[]
   })
   const [sendingEmail, setSendingEmail] = useState(false)
+  // Avvisi nella pagina al posto delle finestre del browser
+  const [avviso, setAvviso] = useState<{ tipo: 'ok' | 'errore'; testo: string } | null>(null)
+  const [erroreCasella, setErroreCasella] = useState('')
+  const mostraAvviso = (tipo: 'ok' | 'errore', testo: string) => { setAvviso({ tipo, testo }); setTimeout(() => setAvviso(null), 5000) }
   const [showCc, setShowCc] = useState(false)
   const [showBcc, setShowBcc] = useState(false)
 
@@ -176,14 +180,11 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
   // Load Gmail labels - memoized to prevent re-creation
   const loadLabels = useCallback(async () => {
     try {
-      console.log('Loading labels...')
       const response = await fetch('/api/gmail/labels', {
         headers: {}
       })
       const result = await response.json()
-      console.log('Labels result:', result)
       if (result.success) {
-        console.log('Setting labels:', result.labels.map((l: any) => ({ id: l.id, unread: l.messagesUnread, total: l.messagesTotal })))
         setLabels(result.labels)
       } else {
         console.error('Labels API error:', result.error)
@@ -219,13 +220,14 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
         url += `&q=${encodeURIComponent(combinedQuery)}`
       }
 
-      console.log('🔍 Loading messages with query:', combinedQuery)
 
       const response = await fetch(url, {
         headers: {}
       })
       const result = await response.json()
+      if (!result.success) setErroreCasella(result.error || 'Casella non disponibile')
       if (result.success) {
+        setErroreCasella('')
         let filteredMessages = result.messages
 
         // Apply client-side unread filter if needed (as backup)
@@ -233,7 +235,6 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
           filteredMessages = result.messages.filter((msg: GmailMessage) =>
             msg.labelIds && msg.labelIds.includes('UNREAD')
           )
-          console.log('📧 Client-side unread filter applied, found:', filteredMessages.length, 'unread messages')
         }
 
         const precedenti = altri ? (memoriaElenchi.current.get(chiave)?.messages || []) : []
@@ -272,9 +273,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
 
   // Load data on open - only when opening Gmail client
   useEffect(() => {
-    console.log('📧 GmailClient useEffect [isOpen]:', isOpen)
     if (isOpen) {
-      console.log('🔍 Loading initial data...')
       loadLabels()
       loadEmailHistory() // Load email history for autocomplete
     }
@@ -325,7 +324,6 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
         if (isMessageUnread) {
           const timer = setTimeout(async () => {
             try {
-              console.log('🔄 Auto-marking message as read after 1 second...')
               await fetch(`/api/gmail/messages/${messageId}/read`, {
                 method: 'POST',
                 headers: {}
@@ -347,16 +345,31 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
     }
   }
 
+  // Rispondi a tutti: destinatari e copia del messaggio originale in copia
+  const rispondiATutti = (m: GmailMessage) => {
+    const cc = [getHeader(m, 'to'), getHeader(m, 'cc')].filter(Boolean).join(', ')
+    setComposeData({ ...composeData, to: getHeader(m, 'from'), cc, subject: `Re: ${getHeader(m, 'subject')}`, replyTo: m })
+    setShowCc(!!cc)
+    setView('compose')
+  }
+
+  // Inoltra: testo del messaggio originale in fondo (gli allegati non vengono inoltrati)
+  const inoltra = (m: GmailMessage) => {
+    const testo = m.bodyText || (m.bodyHtml || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div)>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ')
+    const body = `\n\n---------- Messaggio inoltrato ----------\nDa: ${getHeader(m, 'from')}\nData: ${getHeader(m, 'date')}\nOggetto: ${getHeader(m, 'subject')}\nA: ${getHeader(m, 'to')}\n\n${testo.trim()}`
+    setComposeData({ ...composeData, to: '', cc: '', subject: `Fwd: ${getHeader(m, 'subject')}`, body, replyTo: null })
+    setView('compose')
+  }
+
   // Send email
   const sendEmail = async () => {
     if (!composeData.to || !composeData.subject) {
-      alert('Inserisci destinatario e oggetto')
+      mostraAvviso('errore', 'Inserisci destinatario e oggetto')
       return
     }
 
     try {
       setLoading(true)
-      console.log('Sending email:', composeData)
 
       // Prepare FormData for files or JSON for simple emails
       let requestBody: FormData | string
@@ -392,7 +405,6 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
       })
 
       const result = await response.json()
-      console.log('Send email result:', result)
 
       if (result.success) {
         // Save emails to history
@@ -400,7 +412,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
         if (composeData.cc) saveEmailToHistory(composeData.cc)
         if (composeData.bcc) saveEmailToHistory(composeData.bcc)
 
-        alert('✅ Email inviata con successo!')
+        mostraAvviso('ok', 'Email inviata.')
         setView('inbox')
         setComposeData({ to: '', cc: '', bcc: '', subject: '', body: '', replyTo: null, attachments: [] })
         setShowCc(false)
@@ -420,11 +432,11 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
           }, 2000)
         }
       } else {
-        alert(`❌ Errore invio email: ${result.error}`)
+        mostraAvviso('errore', `Email non inviata: ${result.error}`)
       }
     } catch (error: any) {
       console.error('Error sending email:', error)
-      alert(`❌ Errore invio email: ${error.message}`)
+      mostraAvviso('errore', `Email non inviata: ${error.message}`)
     } finally {
       setLoading(false)
     }
@@ -445,9 +457,10 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
     if (!r?.ok) loadMessages(currentLabel, ricerca, showUnreadOnly)
   }
 
-  const deleteMessage = async (messageId: string) => {
+  const deleteMessage = async (messageId: string, confermato = false) => {
     // If we're in TRASH, delete permanently, otherwise move to trash
     const permanent = currentLabel === 'TRASH'
+    if (permanent && !confermato && !confirm('Eliminare definitivamente il messaggio? Non sarà più recuperabile.')) return
     const url = permanent
       ? `/api/gmail/messages/${messageId}?permanent=true`
       : `/api/gmail/messages/${messageId}`
@@ -461,10 +474,9 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
 
     const result = await response.json()
     if (result.success) {
-      console.log('✅ Delete result:', result.message)
     } else {
       console.error('❌ Delete error:', result.error)
-      alert(`Errore durante l'eliminazione: ${result.error}`)
+      mostraAvviso('errore', `Eliminazione non riuscita: ${result.error}`)
       loadMessages(currentLabel, ricerca, showUnreadOnly)
     }
 
@@ -587,11 +599,9 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
   }
 
   if (!isOpen) {
-    console.log('❌ Gmail not open, returning null')
     return null
   }
 
-  console.log('✅ Gmail is open, rendering interface')
 
   return (
     <div
@@ -657,17 +667,14 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
           >
             <RefreshCw className="w-4 h-4 text-white" />
           </button>
-          <button
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
-            style={{ background: 'rgba(255,255,255,0.12)' }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.22)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
-            title="Impostazioni"
-          >
-            <Settings className="w-4 h-4 text-white" />
-          </button>
         </div>
       </div>
+
+      {avviso && (
+        <div className={`px-4 py-2 text-sm ${avviso.tipo === 'ok' ? 'bg-green-50 text-green-800 border-b border-green-200' : 'bg-red-50 text-red-800 border-b border-red-200'}`}>
+          {avviso.testo}
+        </div>
+      )}
 
       <div id="gmail-main-container" className="flex flex-1 overflow-hidden relative" style={{ background: '#f3f4f6', padding: '6px', gap: '6px' }}>
         {/* Sidebar - Evolvi Native */}
@@ -1027,13 +1034,14 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                     {selectedMessages.size > 0 ? (
                       <>
                         <span className="text-xs text-gray-500 mr-1">{selectedMessages.size}</span>
-                        <button className="p-1.5 hover:bg-gray-100 rounded-md" title="Archivia">
-                          <Archive className="w-4 h-4 text-gray-400" />
-                        </button>
                         <button
                           onClick={async () => {
                             const messageIds = Array.from(selectedMessages)
-                            await Promise.all(messageIds.map(id => deleteMessage(id)))
+                            const domanda = currentLabel === 'TRASH'
+                              ? `Eliminare definitivamente ${messageIds.length} messaggi? Non saranno più recuperabili.`
+                              : `Spostare ${messageIds.length} messaggi nel cestino?`
+                            if (!confirm(domanda)) return
+                            await Promise.all(messageIds.map(id => deleteMessage(id, true)))
                             setSelectedMessages(new Set())
                             loadLabels()
                           }}
@@ -1041,9 +1049,6 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                           title="Elimina"
                         >
                           <Trash2 className="w-4 h-4 text-gray-400" />
-                        </button>
-                        <button className="p-1.5 hover:bg-gray-100 rounded-md" title="Altri">
-                          <MoreVertical className="w-4 h-4 text-gray-400" />
                         </button>
                       </>
                     ) : (
@@ -1074,9 +1079,6 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                             {showUnreadOnly ? 'Non letti' : 'Tutti'}
                           </div>
                         </button>
-                        <button className="p-1.5 hover:bg-gray-100 rounded-md" title="Altri">
-                          <MoreVertical className="w-4 h-4 text-gray-400" />
-                        </button>
                       </>
                     )}
                   </div>
@@ -1099,8 +1101,12 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                         <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'linear-gradient(135deg, rgba(130, 216, 207, 0.15), rgba(94, 234, 212, 0.1))' }}>
                           <Inbox className="w-8 h-8 text-teal-400" />
                         </div>
-                        <p className="text-sm font-medium text-gray-400 mb-1">Nessun messaggio</p>
-                        <p className="text-xs text-gray-400">La tua posta in arrivo è vuota</p>
+                        <p className="text-sm font-medium text-gray-500 mb-1">{erroreCasella ? 'Casella non disponibile' : 'Nessun messaggio'}</p>
+                        <p className="text-xs text-gray-500 max-w-xs mx-auto">
+                          {erroreCasella
+                            ? erroreCasella
+                            : ricerca ? 'Nessun risultato per questa ricerca.' : currentLabel === 'INBOX' ? 'La posta in arrivo è vuota.' : 'Questa cartella è vuota.'}
+                        </p>
                       </div>
                     </div>
                   ) : (
@@ -1275,9 +1281,6 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                         >
                           <Trash2 className="w-4 h-4 text-gray-600" />
                         </button>
-                        <button className="p-2 hover:bg-gray-100 rounded-full" title="Altri">
-                          <MoreVertical className="w-4 h-4 text-gray-600" />
-                        </button>
                       </div>
                     </div>
 
@@ -1329,10 +1332,10 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                           >
                             <Reply className="w-4 h-4 text-gray-600" />
                           </button>
-                          <button className="p-2 hover:bg-gray-100 rounded-full" title="Rispondi a tutti">
+                          <button type="button" onClick={() => rispondiATutti(selectedMessage)} className="p-2 hover:bg-gray-100 rounded-full" title="Rispondi a tutti">
                             <ReplyAll className="w-4 h-4 text-gray-600" />
                           </button>
-                          <button className="p-2 hover:bg-gray-100 rounded-full" title="Inoltra">
+                          <button type="button" onClick={() => inoltra(selectedMessage)} className="p-2 hover:bg-gray-100 rounded-full" title="Inoltra">
                             <Forward className="w-4 h-4 text-gray-600" />
                           </button>
                           <button
@@ -1429,11 +1432,11 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                               <Reply className="w-4 h-4" />
                               Rispondi
                             </button>
-                            <button className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors text-sm font-medium">
+                            <button type="button" onClick={() => rispondiATutti(selectedMessage)} className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors text-sm font-medium">
                               <ReplyAll className="w-4 h-4" />
                               Rispondi a tutti
                             </button>
-                            <button className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors text-sm font-medium">
+                            <button type="button" onClick={() => inoltra(selectedMessage)} className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors text-sm font-medium">
                               <Forward className="w-4 h-4" />
                               Inoltra
                             </button>
