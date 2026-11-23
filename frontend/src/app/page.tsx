@@ -121,7 +121,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'email': return 'Centro Email'
       case 'note-inbox': return 'Inbox Note'
       case 'interrogazioni': return 'Interrogazioni'
-      case 'consulenti': return 'Consulenti'
+      case 'consulenti': return 'Segnalatori'
       case 'reports': return 'Reports'
       case 'modello231': return 'Modello 231'
       case 'settings': return 'Impostazioni'
@@ -142,7 +142,7 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'email': return ['Home', 'Comunicazione', 'Email']
       case 'note-inbox': return ['Home', 'Comunicazione', 'Inbox Note']
       case 'interrogazioni': return ['Home', 'Analytics', 'Interrogazioni']
-      case 'consulenti': return ['Home', 'Gestione', 'Consulenti']
+      case 'consulenti': return ['Home', 'Gestione', 'Segnalatori']
       case 'reports': return ['Home', 'Analytics', 'Reports']
       case 'modello231': return ['Home', 'Sistema', 'Modello 231']
       case 'settings': return ['Home', 'Sistema', 'Impostazioni']

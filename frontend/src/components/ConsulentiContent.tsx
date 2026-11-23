@@ -81,7 +81,7 @@ export default function ConsulentiContent({ onNavigate }: ConsulentiContentProps
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="flex items-center gap-2">
           <Users className="w-5 h-5 text-purple-600" />
-          <h2 className="text-lg font-semibold text-gray-900">Consulenti</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Segnalatori</h2>
           <span className="bg-purple-100 text-purple-700 text-xs font-medium px-2 py-0.5 rounded-full">
             {filtered.length}
           </span>
@@ -92,7 +92,7 @@ export default function ConsulentiContent({ onNavigate }: ConsulentiContentProps
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Cerca consulente..."
+              placeholder="Cerca segnalatore..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="input pl-9 w-full sm:w-64"
@@ -108,22 +108,27 @@ export default function ConsulentiContent({ onNavigate }: ConsulentiContentProps
         </div>
       </div>
 
+      <p className="text-sm text-gray-600">
+        Chi ci presenta clienti e quali clienti ha segnalato. Se la segnalazione prevede un compenso, il segnalatore va registrato anche in
+        Modello 231, scheda Segnalatori e compensi: qualifica, accordo con clausola 231 approvato dall&apos;AU, attestazione della prestazione e pagamento.
+      </p>
+
       {/* Tabella */}
       <div className="bg-white rounded-lg card-shadow overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
             <RefreshCw className="w-6 h-6 animate-spin text-gray-400 mx-auto" />
-            <p className="text-sm text-gray-500 mt-2">Caricamento consulenti...</p>
+            <p className="text-sm text-gray-500 mt-2">Caricamento segnalatori...</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-8 text-center">
             <Users className="w-10 h-10 text-gray-300 mx-auto" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">
-              {searchTerm ? `Nessun risultato per "${searchTerm}"` : 'Nessun consulente trovato'}
+              {searchTerm ? `Nessun risultato per "${searchTerm}"` : 'Nessun segnalatore trovato'}
             </h3>
             {!searchTerm && (
               <p className="mt-1 text-sm text-gray-500">
-                I consulenti vengono aggiunti assegnando la categoria "Consulenti" a un cliente.
+                I segnalatori vengono aggiunti assegnando la categoria "Consulenti" a un cliente in anagrafica.
               </p>
             )}
           </div>

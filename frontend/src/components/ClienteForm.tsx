@@ -1814,7 +1814,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
                   <h4 className="text-purple-800 font-medium">Consulente</h4>
                 </div>
                 <p className="text-purple-700 text-sm mt-2">
-                  Questo soggetto è un consulente esterno. La denominazione comparirà automaticamente nella sezione Consulenti del gestionale.
+                  Questo soggetto è un consulente esterno. La denominazione comparirà automaticamente nella sezione Segnalatori del gestionale.
                 </p>
               </div>
             )}

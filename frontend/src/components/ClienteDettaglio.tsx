@@ -868,7 +868,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
                   <h4 className="text-purple-800 font-medium">Consulente</h4>
                 </div>
                 <p className="text-purple-700 text-sm mt-2">
-                  Consulente esterno. Visibile nella sezione Consulenti del gestionale.
+                  Consulente esterno che può segnalare clienti. Visibile nella sezione Segnalatori del gestionale.
                 </p>
               </div>
             )}

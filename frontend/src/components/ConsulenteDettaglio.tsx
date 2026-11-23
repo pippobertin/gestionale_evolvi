@@ -607,7 +607,7 @@ export default function ConsulenteDettaglio({ consulenteId, isOpen, onClose, onN
           <div className="flex items-center space-x-2">
             <Briefcase className="w-4 h-4" />
             <h2 className="text-sm font-semibold">{consulente?.denominazione || 'Caricamento...'}</h2>
-            <span className="bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full">Consulente</span>
+            <span className="bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full">Segnalatore</span>
           </div>
           <button onClick={onClose} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors">
             <X className="w-4 h-4" />

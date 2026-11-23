@@ -73,7 +73,7 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
     { id: 'email', label: 'Email', icon: Mail, adminOnly: false, badge: 0 },
     { id: 'note-inbox', label: 'Inbox Note', icon: Inbox, adminOnly: false, badge: inboxNoteCount },
     { id: 'interrogazioni', label: 'Interrogazioni', icon: Search, adminOnly: false, badge: 0 },
-    { id: 'consulenti', label: 'Consulenti', icon: Building, adminOnly: false, badge: 0 },
+    { id: 'consulenti', label: 'Segnalatori', icon: Building, adminOnly: false, badge: 0 },
     { id: 'reports', label: 'Reports', icon: BarChart3, adminOnly: false, badge: 0 },
     { id: 'modello231', label: 'Modello 231', icon: ShieldCheck, adminOnly: false, badge: 0 },
     { id: 'settings', label: 'Impostazioni', icon: Settings, adminOnly: false, badge: 0 },
