@@ -83,15 +83,81 @@ export async function getGmailClient(userId?: string) {
     console.log('✅ Using system-wide Gmail tokens')
   }
 
-  // Create OAuth2 client with tokens
+  // Accesso a Google: si riusa quello ancora valido tenuto in memoria; il token
+  // salvato nel database risale al collegamento ed è quasi sempre scaduto, e
+  // presentarlo costava a ogni richiesta un rifiuto di Google e un secondo giro.
+  void accessToken
   const oauth2Client = createGoogleAuthClient()
+  const inMemoria = accessiGoogle.get(refreshToken!)
   oauth2Client.setCredentials({
     refresh_token: refreshToken,
-    access_token: accessToken || undefined
+    ...(inMemoria && inMemoria.expiry_date > Date.now() + 60_000 ? inMemoria : {})
+  })
+  oauth2Client.on('tokens', t => {
+    if (t.access_token && t.expiry_date) accessiGoogle.set(refreshToken!, { access_token: t.access_token, expiry_date: t.expiry_date })
   })
 
   // Return configured Gmail client
   return google.gmail({ version: 'v1', auth: oauth2Client })
+}
+
+/** Accessi a Google ancora validi, per utente (memoria della funzione server). */
+const accessiGoogle = new Map<string, { access_token: string; expiry_date: number }>()
+
+/**
+ * Metadati di più messaggi in una sola richiesta a Gmail (richiesta "batch"),
+ * invece di una richiesta per messaggio. Se la richiesta multipla non riesce,
+ * si torna alle richieste singole in parallelo.
+ */
+export async function metadatiMessaggi(gmail: ReturnType<typeof google.gmail>, ids: string[], intestazioni = ['From', 'To', 'Subject', 'Date']): Promise<any[]> {
+  if (!ids.length) return []
+  try {
+    const { token } = await (gmail.context._options.auth as any).getAccessToken()
+    if (!token) throw new Error('nessun accesso')
+    const confine = `batch_${Date.now()}`
+    const query = `format=metadata&${intestazioni.map(h => `metadataHeaders=${encodeURIComponent(h)}`).join('&')}&fields=id,threadId,labelIds,snippet,internalDate,sizeEstimate,payload/headers`
+    const corpo = ids.map((id, i) =>
+      `--${confine}\r\nContent-Type: application/http\r\nContent-ID: <m${i}>\r\n\r\nGET /gmail/v1/users/me/messages/${id}?${query}\r\n\r\n`
+    ).join('') + `--${confine}--`
+    const r = await fetch('https://gmail.googleapis.com/batch/gmail/v1', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/mixed; boundary=${confine}` },
+      body: corpo
+    })
+    if (!r.ok) throw new Error(`batch ${r.status}`)
+    const tipo = r.headers.get('content-type') || ''
+    const confineRisposta = /boundary=([^;]+)/.exec(tipo)?.[1]
+    if (!confineRisposta) throw new Error('risposta senza confine')
+    const testo = await r.text()
+    const perId = new Map<string, any>()
+    for (const parte of testo.split(`--${confineRisposta}`)) {
+      const inizio = parte.indexOf('{'), fine = parte.lastIndexOf('}')
+      if (inizio < 0 || fine < inizio) continue
+      try {
+        const m = JSON.parse(parte.slice(inizio, fine + 1))
+        if (m.id) perId.set(m.id, m)
+      } catch { /* parte non valida: si ignora */ }
+    }
+    const mancanti = ids.filter(id => !perId.has(id))
+    if (mancanti.length === ids.length) throw new Error('batch vuoto')
+    // Le poche parti non riuscite (per esempio per limiti di frequenza) si chiedono singolarmente
+    for (const m of await singoli(gmail, mancanti, intestazioni)) if (m?.id) perId.set(m.id, m)
+    return ids.map(id => perId.get(id)).filter(Boolean)
+  } catch (e) {
+    console.warn('Richiesta multipla a Gmail non riuscita, uso le richieste singole:', e)
+    return (await singoli(gmail, ids, intestazioni)).filter(Boolean)
+  }
+}
+
+async function singoli(gmail: ReturnType<typeof google.gmail>, ids: string[], intestazioni: string[]) {
+  return Promise.all(ids.map(async id => {
+    try {
+      const d = await gmail.users.messages.get({ userId: 'me', id, format: 'metadata', metadataHeaders: intestazioni })
+      return d.data
+    } catch {
+      return null
+    }
+  }))
 }
 
 /**

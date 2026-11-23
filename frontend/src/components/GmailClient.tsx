@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import '../styles/gmail.css'
 import {
   Mail, Search, Settings, Archive, Star, StarOff, Reply, ReplyAll,
@@ -56,7 +56,6 @@ interface GmailClientProps {
 }
 
 export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
-  console.log('🔄 GmailClient render, isOpen:', isOpen)
 
   // States
   const [view, setView] = useState<'inbox' | 'compose' | 'search'>('inbox')
@@ -67,6 +66,14 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
   const [currentLabel, setCurrentLabel] = useState('INBOX')
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  // Ricerca applicata: parte con Invio, non a ogni lettera digitata
+  const [ricerca, setRicerca] = useState('')
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null)
+  const [caricandoAltri, setCaricandoAltri] = useState(false)
+  // Memoria degli elenchi e dei messaggi aperti: si mostrano subito e si aggiornano in sottofondo
+  const memoriaElenchi = useRef(new Map<string, { messages: GmailMessage[]; next: string | null }>())
+  const memoriaMessaggi = useRef(new Map<string, GmailMessage>())
+  const elencoCorrente = useRef('')
   const ALLOWED_LABELS = ['INBOX', 'STARRED', 'SENT', 'SPAM', 'TRASH']
   const [showUnreadOnly, setShowUnreadOnly] = useState(false)
   const [markAsReadTimer, setMarkAsReadTimer] = useState<NodeJS.Timeout | null>(null)
@@ -187,10 +194,17 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
   }, [])
 
   // Load messages for current label - memoized
-  const loadMessages = useCallback(async (labelId: string, searchQuery = '', unreadOnly = false) => {
+  const loadMessages = useCallback(async (labelId: string, searchQuery = '', unreadOnly = false, altri = false) => {
+    const chiave = `${labelId}|${searchQuery.trim()}|${unreadOnly}`
+    const inMemoria = memoriaElenchi.current.get(chiave)
+    if (altri && !inMemoria?.next) return
+    elencoCorrente.current = chiave
     try {
-      setLoading(true)
+      if (altri) setCaricandoAltri(true)
+      else if (inMemoria) { setMessages(inMemoria.messages); setNextPageToken(inMemoria.next); setLoading(false) }
+      else setLoading(true)
       let url = `/api/gmail/messages?labelIds=${labelId}&maxResults=50`
+      if (altri && inMemoria?.next) url += `&pageToken=${encodeURIComponent(inMemoria.next)}`
 
       // Build the combined query
       let combinedQuery = searchQuery.trim()
@@ -222,13 +236,38 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
           console.log('📧 Client-side unread filter applied, found:', filteredMessages.length, 'unread messages')
         }
 
-        setMessages(filteredMessages)
+        const precedenti = altri ? (memoriaElenchi.current.get(chiave)?.messages || []) : []
+        const visti = new Set(precedenti.map(m => m.id))
+        const elenco = [...precedenti, ...filteredMessages.filter((m: GmailMessage) => !visti.has(m.id))]
+        const next = result.nextPageToken || null
+        memoriaElenchi.current.set(chiave, { messages: elenco, next })
+        // Se nel frattempo si è passati a un'altra cartella, il risultato resta solo in memoria
+        if (elencoCorrente.current === chiave) {
+          setMessages(elenco)
+          setNextPageToken(next)
+        }
       }
     } catch (error) {
       console.error('Error loading messages:', error)
     } finally {
       setLoading(false)
+      setCaricandoAltri(false)
     }
+  }, [])
+
+  // Aggiorna un messaggio nell'elenco visibile, nella memoria degli elenchi e in quella dei messaggi aperti
+  const aggiornaLocale = useCallback((messageId: string, etichette: (l: string[]) => string[]) => {
+    const cambia = (m: GmailMessage) => m.id === messageId ? { ...m, labelIds: etichette(m.labelIds || []) } : m
+    setMessages(prev => prev.map(cambia))
+    setSelectedMessage(prev => prev && prev.id === messageId ? cambia(prev) : prev)
+    memoriaElenchi.current.forEach((v, k) => memoriaElenchi.current.set(k, { ...v, messages: v.messages.map(cambia) }))
+    const aperto = memoriaMessaggi.current.get(messageId)
+    if (aperto) memoriaMessaggi.current.set(messageId, cambia(aperto))
+  }, [])
+
+  const togliLocale = useCallback((messageId: string) => {
+    setMessages(prev => prev.filter(m => m.id !== messageId))
+    memoriaElenchi.current.forEach((v, k) => memoriaElenchi.current.set(k, { ...v, messages: v.messages.filter(m => m.id !== messageId) }))
   }, [])
 
   // Load data on open - only when opening Gmail client
@@ -237,17 +276,16 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
     if (isOpen) {
       console.log('🔍 Loading initial data...')
       loadLabels()
-      loadMessages(currentLabel, searchQuery, showUnreadOnly)
       loadEmailHistory() // Load email history for autocomplete
     }
-  }, [isOpen, loadLabels, loadMessages, currentLabel])
+  }, [isOpen, loadLabels])
 
   // Load messages when label, search or filter changes
   useEffect(() => {
     if (isOpen && currentLabel) {
-      loadMessages(currentLabel, searchQuery, showUnreadOnly)
+      loadMessages(currentLabel, ricerca, showUnreadOnly)
     }
-  }, [currentLabel, isOpen, loadMessages, searchQuery, showUnreadOnly])
+  }, [currentLabel, isOpen, loadMessages, ricerca, showUnreadOnly])
 
   // Cleanup timer on unmount or when Gmail client closes
   useEffect(() => {
@@ -273,11 +311,13 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
         clearTimeout(markAsReadTimer)
       }
 
-      const response = await fetch(`/api/gmail/messages/${messageId}`, {
-        headers: {}
-      })
-      const result = await response.json()
+      const giaAperto = memoriaMessaggi.current.get(messageId)
+      if (giaAperto) setSelectedMessage(giaAperto)
+      const result = giaAperto
+        ? { success: true, message: giaAperto }
+        : await (await fetch(`/api/gmail/messages/${messageId}`, { headers: {} })).json()
       if (result.success) {
+        memoriaMessaggi.current.set(messageId, result.message)
         setSelectedMessage(result.message)
 
         // Auto-mark as read after 1 second if message is unread
@@ -290,20 +330,8 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                 method: 'POST',
                 headers: {}
               })
-              // Update local state without refreshing the entire list
-              setSelectedMessage(prev => prev ? {
-                ...prev,
-                labelIds: prev.labelIds?.filter(id => id !== 'UNREAD') || []
-              } : null)
-
-              // Update message in the local messages array
-              setMessages(prevMessages =>
-                prevMessages.map(msg =>
-                  msg.id === messageId
-                    ? { ...msg, labelIds: msg.labelIds?.filter(id => id !== 'UNREAD') || [] }
-                    : msg
-                )
-              )
+              // Aggiorna elenco, memoria e messaggio aperto senza ricaricare
+              aggiornaLocale(messageId, l => l.filter(id => id !== 'UNREAD'))
 
               // Only update counters, not the entire message list
               loadLabels()
@@ -382,12 +410,12 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
         loadLabels()
 
         // Reload messages for current label
-        loadMessages(currentLabel, searchQuery, showUnreadOnly)
+        loadMessages(currentLabel, ricerca, showUnreadOnly)
 
         // If we're in SENT folder, reload to show new message after delay
         if (currentLabel === 'SENT') {
           setTimeout(() => {
-            loadMessages('SENT', searchQuery, showUnreadOnly)
+            loadMessages('SENT', ricerca, showUnreadOnly)
             loadLabels() // Update counters again
           }, 2000)
         }
@@ -403,20 +431,18 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
   }
 
   // Handle message actions
+  // Azioni con effetto immediato: si aggiorna subito lo schermo, poi Gmail; se Gmail rifiuta si ricarica
   const markAsRead = async (messageId: string) => {
-    await fetch(`/api/gmail/messages/${messageId}/markAsRead`, {
-      method: 'POST',
-      headers: {}
-    })
-    loadMessages(currentLabel)
+    aggiornaLocale(messageId, l => l.filter(id => id !== 'UNREAD'))
+    const r = await fetch(`/api/gmail/messages/${messageId}/markAsRead`, { method: 'POST', headers: {} }).catch(() => null)
+    if (!r?.ok) loadMessages(currentLabel, ricerca, showUnreadOnly)
+    loadLabels()
   }
 
   const starMessage = async (messageId: string) => {
-    await fetch(`/api/gmail/messages/${messageId}/star`, {
-      method: 'POST',
-      headers: {}
-    })
-    loadMessages(currentLabel)
+    aggiornaLocale(messageId, l => l.includes('STARRED') ? l.filter(id => id !== 'STARRED') : [...l, 'STARRED'])
+    const r = await fetch(`/api/gmail/messages/${messageId}/star`, { method: 'POST', headers: {} }).catch(() => null)
+    if (!r?.ok) loadMessages(currentLabel, ricerca, showUnreadOnly)
   }
 
   const deleteMessage = async (messageId: string) => {
@@ -426,6 +452,8 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
       ? `/api/gmail/messages/${messageId}?permanent=true`
       : `/api/gmail/messages/${messageId}`
 
+    togliLocale(messageId)
+    setSelectedMessage(prev => prev && prev.id === messageId ? null : prev)
     const response = await fetch(url, {
       method: 'DELETE',
       headers: {}
@@ -437,9 +465,8 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
     } else {
       console.error('❌ Delete error:', result.error)
       alert(`Errore durante l'eliminazione: ${result.error}`)
+      loadMessages(currentLabel, ricerca, showUnreadOnly)
     }
-
-    loadMessages(currentLabel, searchQuery, showUnreadOnly)
 
     // Update counters after deletion with delay for permanent deletions
     if (permanent) {
@@ -595,10 +622,11 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
-                loadMessages(currentLabel, searchQuery, showUnreadOnly)
+                setRicerca(searchQuery.trim())
               }
               if (e.key === 'Escape') {
                 setSearchQuery('')
+                setRicerca('')
               }
             }}
             className="w-full h-9 pl-10 pr-4 border-none rounded-full text-sm outline-none transition-all placeholder:text-white/60"
@@ -608,7 +636,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
           />
           {searchQuery && (
             <button
-              onClick={() => setSearchQuery('')}
+              onClick={() => { setSearchQuery(''); setRicerca('') }}
               className="absolute inset-y-0 right-0 pr-3 flex items-center"
               title="Cancella ricerca"
             >
@@ -620,7 +648,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
         {/* Right Actions */}
         <div className="flex items-center gap-2 ml-auto">
           <button
-            onClick={() => loadMessages(currentLabel, searchQuery, showUnreadOnly)}
+            onClick={() => { loadMessages(currentLabel, ricerca, showUnreadOnly); loadLabels() }}
             className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
             style={{ background: 'rgba(255,255,255,0.12)' }}
             onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.22)'}
@@ -663,6 +691,7 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                   setCurrentLabel(label.id)
                   setSelectedMessage(null)
                   setSearchQuery('')
+                  setRicerca('')
                   setShowUnreadOnly(false)
                 }}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm transition-all relative ${
@@ -1006,7 +1035,6 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                             const messageIds = Array.from(selectedMessages)
                             await Promise.all(messageIds.map(id => deleteMessage(id)))
                             setSelectedMessages(new Set())
-                            loadMessages(currentLabel, searchQuery, showUnreadOnly)
                             loadLabels()
                           }}
                           className="p-1.5 hover:bg-gray-100 rounded-md"
@@ -1055,7 +1083,12 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                 </div>
 
                 {/* Messages - Evolvi Native layout */}
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto" onScroll={(e) => {
+                  const el = e.currentTarget
+                  if (nextPageToken && !caricandoAltri && el.scrollTop + el.clientHeight > el.scrollHeight - 300) {
+                    loadMessages(currentLabel, ricerca, showUnreadOnly, true)
+                  }
+                }}>
                   {loading ? (
                     <div className="flex items-center justify-center py-8">
                       <RefreshCw className="w-4 h-4 animate-spin text-teal-400" />
@@ -1182,6 +1215,11 @@ export default function GmailClient({ isOpen, onClose }: GmailClientProps) {
                           </div>
                         )
                       })}
+                      {(caricandoAltri || nextPageToken) && (
+                        <div className="py-3 text-center text-xs text-gray-400">
+                          {caricandoAltri ? 'Caricamento di altri messaggi…' : 'Scorri per vedere i messaggi precedenti'}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
