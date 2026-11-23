@@ -15,7 +15,8 @@ export const ETICHETTE_EVENTO: Record<string, string> = {
   permesso_negato: 'Operazione negata',
   deroga_approvazione: 'Approvazione in deroga',
   permessi_modificati: 'Permessi modificati',
-  segnalazione_odv: 'Segnalazione all\'OdV'
+  segnalazione_odv: 'Segnalazione all\'OdV',
+  documenti_spostati_drive: 'Documenti spostati su Drive'
 }
 
 /** Gruppi di eventi per il filtro. */

@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { requireAdmin } from '@/lib/jwtAuth'
 import { spostaNelCestino } from '@/lib/cestinoArchivi'
+import { getValidGoogleToken } from '@/lib/googleAuth'
+import { cestinaSuDrive } from '@/lib/driveCliente'
 
 // Riservata agli amministratori: la riconversione cancella definitivamente i dati
 // collegati al cliente (contratti, progetti, documenti, formazione...).
@@ -189,8 +191,19 @@ export async function POST(
     // 4d. Documenti amministrativi + cleanup Storage
     const { data: documenti } = await supabase
       .from('scadenze_bandi_documenti_amministrativi')
-      .select('storage_path')
+      .select('storage_path, google_drive_id')
       .eq('cliente_id', clienteId)
+
+    // Copie su Drive nel cestino di Drive (ripristinabili dal Registro attività)
+    const suDrive = (documenti || []).map((d: any) => d.google_drive_id).filter(Boolean)
+    if (suDrive.length > 0) {
+      try {
+        const token = await getValidGoogleToken()
+        if (token) for (const id of suDrive) await cestinaSuDrive(token, id).catch(() => null)
+      } catch (driveErr) {
+        console.warn('Documenti su Drive non spostati nel cestino (non bloccante):', driveErr)
+      }
+    }
 
     if (documenti && documenti.length > 0) {
       const paths = documenti.map((d: any) => d.storage_path).filter(Boolean)

@@ -30,7 +30,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import NuovaAziendaCollegataModal from './NuovaAziendaCollegataModal'
 import NuovoCollegamentoModal from './NuovoCollegamentoModal'
 import ReferentiManager from './ReferentiManager'
-import DocumentiManager from './DocumentiManager'
+import DocumentiAmministrativiManager from './DocumentiAmministrativiManager'
 
 interface Cliente {
   id?: string
@@ -1850,10 +1850,9 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
       case 'documenti':
         return (
           <div className="space-y-3">
-            <DocumentiManager
-              clienteId={cliente?.id || ''}
-              isNewClient={!cliente?.id}
-            />
+            {cliente?.id
+              ? <DocumentiAmministrativiManager clienteId={cliente.id} />
+              : <p className="text-sm text-gray-500">Salva prima il cliente: poi potrai caricarne i documenti, che vanno nella sua cartella su Google Drive.</p>}
           </div>
         )
 

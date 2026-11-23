@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
 import { deleteFile, BUCKET_CLIENTI } from '@/lib/supabaseStorageServer'
+import { getValidGoogleToken } from '@/lib/googleAuth'
+import { cestinaSuDrive } from '@/lib/driveCliente'
 
 // GET - Recupera singolo documento amministrativo
 export async function GET(
@@ -112,7 +114,7 @@ export async function DELETE(
     // First get the document to find the storage path
     const { data: doc, error: fetchError } = await supabase
       .from('scadenze_bandi_documenti_amministrativi')
-      .select('storage_path, nome_originale')
+      .select('storage_path, google_drive_id, nome_originale')
       .eq('id', docId)
       .eq('cliente_id', clienteId)
       .single()
@@ -127,11 +129,21 @@ export async function DELETE(
       throw fetchError
     }
 
-    // Delete from storage
-    try {
-      await deleteFile(BUCKET_CLIENTI, doc.storage_path)
-    } catch (storageError: any) {
-      console.error('Errore eliminazione file da storage (continuo con eliminazione DB):', storageError)
+    // Il file va nel cestino (di Drive o dell'archivio interno): resta ripristinabile dal Registro attività
+    if (doc.google_drive_id) {
+      try {
+        const token = await getValidGoogleToken()
+        if (token) await cestinaSuDrive(token, doc.google_drive_id)
+      } catch (driveError: any) {
+        console.error('File su Drive non spostato nel cestino (continuo con eliminazione DB):', driveError)
+      }
+    }
+    if (doc.storage_path) {
+      try {
+        await deleteFile(BUCKET_CLIENTI, doc.storage_path)
+      } catch (storageError: any) {
+        console.error('Errore eliminazione file da storage (continuo con eliminazione DB):', storageError)
+      }
     }
 
     // Delete from database

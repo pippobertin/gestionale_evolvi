@@ -768,6 +768,14 @@ export default function DocumentiAmministrativiManager({ clienteId }: DocumentiA
                   <AlertTriangle className="w-10 h-10 text-yellow-500 mb-2" />
                   <p className="text-sm text-gray-700">Impossibile caricare l&apos;anteprima</p>
                 </div>
+              ) : (previewDoc as any).google_drive_id ? (
+                // Documento su Google Drive: anteprima di Drive (PDF, immagini, documenti Office)
+                <iframe
+                  src={`https://drive.google.com/file/d/${(previewDoc as any).google_drive_id}/preview`}
+                  className="w-full h-full border-0"
+                  title={`Anteprima: ${previewDoc.nome_originale}`}
+                  allow="autoplay"
+                />
               ) : previewDoc.mime_type === 'application/pdf' ? (
                 <iframe
                   src={previewUrl}

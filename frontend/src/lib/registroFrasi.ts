@@ -182,6 +182,8 @@ function fraseEvento(r: RigaRegistro): { frase: string; categoria: Gruppo['categ
       return { frase: `${autore} ha approvato in deroga: ${r.descrizione || ''}`, categoria: 'contratti' }
     case 'segnalazione_odv':
       return { frase: `Segnalazione all'OdV: ${r.descrizione || ''}`, categoria: 'contratti' }
+    case 'documenti_spostati_drive':
+      return { frase: `${autore}: ${r.descrizione || 'documenti dei clienti spostati su Google Drive'}`, categoria: 'sistema' }
     case 'permessi_modificati':
       return { frase: `${autore} ha modificato i permessi. ${r.descrizione || ''}`, categoria: 'sicurezza' }
     default:

@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabaseAdmin'
-import { uploadFile, BUCKET_CLIENTI } from '@/lib/supabaseStorageServer'
+import { caricaDocumentoCliente, contestoDrive } from '@/lib/driveCliente'
+import { verifyJWT } from '@/lib/jwtAuth'
+
+export const maxDuration = 60
 
 // GET - Lista documenti amministrativi per cliente
 export async function GET(
@@ -87,13 +90,12 @@ export async function POST(
       }
     }
 
-    // Generate unique filename
+    // Il file va su Google Drive, nella cartella del cliente (CLIENTI/<cliente>/DOCUMENTI/<categoria>)
     const timestamp = Date.now()
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const storagePath = `${clienteId}/${tipo_documento}/${timestamp}_${sanitizedName}`
-
-    // Upload file to Supabase Storage
-    await uploadFile(BUCKET_CLIENTI, storagePath, file, file.type)
+    const drive = await caricaDocumentoCliente(await contestoDrive(), clienteId, categoria || 'ALTRO',
+      file.name, Buffer.from(await file.arrayBuffer()), file.type || 'application/octet-stream')
+    const sessione = await verifyJWT(request)
 
     // Insert metadata record
     const documentData = {
@@ -104,13 +106,15 @@ export async function POST(
       nome_originale: file.name,
       dimensione_bytes: file.size,
       mime_type: file.type || 'application/octet-stream',
-      storage_path: storagePath,
+      storage_path: null,
+      google_drive_id: drive.id,
+      google_drive_url: drive.url,
       descrizione: descrizione || null,
       data_documento: data_documento || null,
       data_scadenza: data_scadenza || null,
       verificato: false,
       tags: tags,
-      uploaded_by: 'system'
+      uploaded_by: sessione?.userId || 'system'
     }
 
     const { data, error } = await supabase

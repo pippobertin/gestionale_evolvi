@@ -18,6 +18,7 @@ export type EventoRegistro =
   | 'permesso_negato'
   | 'deroga_approvazione'
   | 'permessi_modificati'
+  | 'documenti_spostati_drive'
 
 type DatiEvento = {
   evento: EventoRegistro

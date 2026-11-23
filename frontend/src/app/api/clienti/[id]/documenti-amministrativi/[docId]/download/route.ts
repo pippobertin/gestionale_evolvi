@@ -13,7 +13,7 @@ export async function GET(
     // Recupera il documento per ottenere il path nello storage
     const { data: doc, error: fetchError } = await supabase
       .from('scadenze_bandi_documenti_amministrativi')
-      .select('storage_path, nome_originale, mime_type')
+      .select('storage_path, google_drive_url, nome_originale, mime_type')
       .eq('id', docId)
       .eq('cliente_id', clienteId)
       .single()
@@ -28,8 +28,8 @@ export async function GET(
       throw fetchError
     }
 
-    // Genera signed URL (valido per 1 ora)
-    const signedUrl = await getSignedUrl(BUCKET_CLIENTI, doc.storage_path, 3600)
+    // Su Drive: il collegamento al file; nell'archivio interno: link temporaneo (1 ora)
+    const signedUrl = doc.google_drive_url || await getSignedUrl(BUCKET_CLIENTI, doc.storage_path, 3600)
 
     // Check if redirect param is set
     const { searchParams } = new URL(request.url)

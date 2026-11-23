@@ -11,6 +11,7 @@ import UserGmailConnection from './UserGmailConnection'
 import EmailSignatureEditor from './EmailSignatureEditor'
 import ChangeOwnPassword from './ChangeOwnPassword'
 import BackupGestionale from './BackupGestionale'
+import DocumentiSuDrive from './DocumentiSuDrive'
 import RegistroAttivita from './RegistroAttivita'
 import RuoliPermessi from './RuoliPermessi'
 import {
@@ -118,7 +119,7 @@ export default function SettingsContent() {
       id: 'database',
       label: 'Backup',
       icon: Database,
-      description: 'Esportazioni mensili e prove di ripristino',
+      description: 'Esportazioni mensili, prove di ripristino, documenti su Drive',
       adminOnly: true
     }
   ]
@@ -307,7 +308,12 @@ export default function SettingsContent() {
         )
 
       case 'database':
-        return <BackupGestionale />
+        return (
+          <div className="space-y-4">
+            <BackupGestionale />
+            <DocumentiSuDrive />
+          </div>
+        )
 
       default:
         return <div>Sezione non trovata</div>
