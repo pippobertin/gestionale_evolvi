@@ -18,9 +18,12 @@ Le email arretrate della coda sono annullate; la coda si riempie di nuovo finch�
 
 I dati di prova (delega "restart" su AAAAPIPPO, utente "Prova Uscita", segnalatore Daniele Bedetti e simili) restano di proposito: servono come esempio per formare i colleghi.
 
+- Report semestrale all'OdV (M.05): bozza precompilata dai registri, preparata da sola alla chiusura del semestre, sezioni confermate dai responsabili, invio dell'AU con PDF su Drive; promemoria ricorrenti in calendario. La bozza del 2° semestre 2026 è già preparata: va completata e inviata entro il 31/01/2027 (prima "Aggiorna i dati dai registri").
+- La sezione "Consulenti" e la categoria omonima in anagrafica si chiamano ora "Segnalatori" (il codice interno della categoria resta CONSULENTI).
+
 ## Da dove riprendere
 
-1. **Report semestrale all'OdV** precompilato con i dati dei registri (modulo M.05, scadenze 31/07 e 31/01).
+L'utente ha altre richieste da indicare.
 
 ## Rinviati, da decidere
 
