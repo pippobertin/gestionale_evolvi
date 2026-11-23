@@ -21,9 +21,13 @@ I dati di prova (delega "restart" su AAAAPIPPO, utente "Prova Uscita", segnalato
 - Report semestrale all'OdV (M.05): bozza precompilata dai registri, preparata da sola alla chiusura del semestre, sezioni confermate dai responsabili, invio dell'AU con PDF su Drive; promemoria ricorrenti in calendario. La bozza del 2° semestre 2026 è già preparata: va completata e inviata entro il 31/01/2027 (prima "Aggiorna i dati dai registri").
 - La sezione "Consulenti" e la categoria omonima in anagrafica si chiamano ora "Segnalatori" (il codice interno della categoria resta CONSULENTI).
 
+- Client email più veloce (richieste multiple a Gmail, memoria degli elenchi, ricerca con Invio, azioni immediate).
+- Documenti dei clienti su Google Drive (CLIENTI/<cliente>/DOCUMENTI/<categoria>): i 657 documenti dell'archivio interno sono stati spostati; le copie interne si eliminano da Impostazioni, Backup.
+- Riquadro Email nella scheda cliente e nella pratica: email con il cliente dalla casella Gmail di chi è collegato, archiviazione in PDF su Drive, registrazione come contatto con la PA o conferma del cliente, etichetta "Archiviata nel gestionale" in Gmail.
+
 ## Da dove riprendere
 
-L'utente ha altre richieste da indicare.
+Nessuna richiesta aperta: si riparte dalle prossime indicazioni dell'utente o dai rinviati qui sotto.
 
 ## Rinviati, da decidere
 
