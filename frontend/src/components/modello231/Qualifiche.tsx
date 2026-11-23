@@ -91,7 +91,11 @@ export default function Qualifiche({ solaLettura = false }: { solaLettura?: bool
               </select>
             </label>
             <label className="text-xs text-gray-600">Forma
-              <select className={campo} value={nuova.forma} onChange={e => apriNuova(e.target.value)}>
+              <select className={campo} value={nuova.forma} onChange={e => {
+                // Cambia solo la checklist: tipo, nome e dati già scritti restano
+                const forma = e.target.value
+                setNuova({ ...nuova, forma, verifiche: Object.fromEntries(voci(forma).map((v: any) => [v.chiave, { fatto: false, nota: '' }])) })
+              }}>
                 <option value="societa">Società</option><option value="persona">Persona o professionista</option>
               </select>
             </label>

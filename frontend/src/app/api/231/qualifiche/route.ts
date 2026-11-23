@@ -57,5 +57,27 @@ export async function POST(request: NextRequest) {
     compilata_da: sessione.userId, scade_il: continuativo ? scadenza.toISOString().slice(0, 10) : null
   }).select('id').single()
   if (error) return erroreDatabase(error)
+  if (soggetto_tipo === 'segnalatore') await collegaSegnalatore(data.id, sessione.userId, { denominazione, forma, cf: t('codice_fiscale'), piva: t('partita_iva') })
   return NextResponse.json({ ok: true, id: data.id })
+}
+
+/**
+ * La scheda di un segnalatore compare da sola in "Segnalatori e compensi": se il
+ * segnalatore c'è già (stessa partita IVA, codice fiscale o nome) la nuova scheda
+ * ne aggiorna la qualifica, altrimenti lo crea. L'accordo si aggiunge da lì.
+ */
+async function collegaSegnalatore(qualificaId: string, utenteId: string, d: { denominazione: string; forma: string; cf: string; piva: string }) {
+  const { data: esistenti } = await supabaseAdmin.from('scadenze_bandi_segnalatori').select('id, nome, partita_iva, codice_fiscale')
+  const norm = (x?: string | null) => (x || '').replace(/\s+/g, '').toLowerCase()
+  const trovato = (esistenti || []).find(s =>
+    (d.piva && norm(s.partita_iva) === norm(d.piva)) || (d.cf && norm(s.codice_fiscale) === norm(d.cf)) ||
+    s.nome.trim().toLowerCase() === d.denominazione.trim().toLowerCase())
+  if (trovato) {
+    await supabaseAdmin.from('scadenze_bandi_segnalatori').update({ qualifica_id: qualificaId }).eq('id', trovato.id)
+  } else {
+    await supabaseAdmin.from('scadenze_bandi_segnalatori').insert({
+      nome: d.denominazione, forma: d.forma === 'societa' ? 'societa' : 'persona',
+      codice_fiscale: d.cf || null, partita_iva: d.piva || null, qualifica_id: qualificaId, registrato_da: utenteId
+    })
+  }
 }
