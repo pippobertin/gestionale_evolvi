@@ -53,6 +53,7 @@ export default function BandiEsterniManager() {
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<BandoEsterno | null>(null)
   const [filtroStato, setFiltroStato] = useState<string>('attivo')
+  const [filtroInvestimento, setFiltroInvestimento] = useState<string>('')
 
   const fetchBandi = useCallback(async () => {
     setLoading(true)
@@ -61,11 +62,13 @@ export default function BandiEsterniManager() {
       .select('*')
       .order('created_at', { ascending: false })
     if (filtroStato !== 'tutti') query = query.eq('stato', filtroStato)
+    // Tipologia di investimento finanziabile (le 14 voci di Agevolando)
+    if (filtroInvestimento) query = query.contains('investimenti_spesati', [filtroInvestimento])
     const { data, error } = await query
     if (!error && data) setBandi(data as BandoEsterno[])
     else if (error) console.error('[BandiEsterni] fetch:', error)
     setLoading(false)
-  }, [filtroStato])
+  }, [filtroStato, filtroInvestimento])
 
   useEffect(() => {
     fetchBandi()
@@ -118,6 +121,15 @@ export default function BandiEsterniManager() {
               <option value="scaduto">Scaduti</option>
               <option value="archiviato">Archiviati</option>
               <option value="tutti">Tutti</option>
+            </select>
+            <select
+              value={filtroInvestimento}
+              onChange={(e) => setFiltroInvestimento(e.target.value)}
+              className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white max-w-[16rem]"
+              title="Tipologia di investimento finanziabile"
+            >
+              <option value="">Tutti gli investimenti</option>
+              {TIPOLOGIE_INVESTIMENTO.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
             <button
               onClick={fetchBandi}
