@@ -173,7 +173,7 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
             decisione === 'EVOLVI' ? 'Evolvi' :
             decisione === 'SPOT' ? 'Cliente Spot' :
             decisione === 'FPI' ? 'FPI' :
-            'Consulente'
+            'Segnalatore'
           })`
         }])
       if (historyError) {
@@ -303,10 +303,10 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
             }`}>
               <Briefcase className={`w-5 h-5 ${decisione === 'CONSULENTI' ? 'text-purple-600' : 'text-gray-500'}`} />
             </div>
-            <h4 className="font-semibold text-gray-900">CONSULENTI</h4>
+            <h4 className="font-semibold text-gray-900">SEGNALATORI</h4>
           </div>
           <p className="text-sm text-gray-600">
-            Consulente esterno. Comparirà automaticamente nella sezione Consulenti.
+            Soggetto che segnala clienti. Comparirà automaticamente nella sezione Segnalatori.
           </p>
           {decisione === 'CONSULENTI' && (
             <div className="mt-3 flex items-center text-purple-600 text-sm font-medium">
@@ -338,7 +338,7 @@ export default function ProspectConversionModal({ prospect, isOpen, onClose, onC
             {decisione === 'EVOLVI' ? 'Evolvi Base' :
              decisione === 'SPOT' ? 'Cliente Spot' :
              decisione === 'FPI' ? 'FPI' :
-             decisione === 'CONSULENTI' ? 'Consulenti' :
+             decisione === 'CONSULENTI' ? 'Segnalatori' :
              '—'}
           </span>
         </div>

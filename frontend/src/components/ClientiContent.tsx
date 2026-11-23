@@ -471,7 +471,7 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
       case 'CLIENTE_SPOT': return 'Spot'
       case 'EVOLVI': return 'Evolvi'
       case 'FPI': return 'FPI'
-      case 'CONSULENTI': return 'Consulenti'
+      case 'CONSULENTI': return 'Segnalatori'
       default: return categoria || ''
     }
   }
@@ -598,7 +598,7 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
             <option value="CLIENTE_SPOT">Spot</option>
             <option value="EVOLVI">Evolvi</option>
             <option value="FPI">FPI</option>
-            <option value="CONSULENTI">Consulenti</option>
+            <option value="CONSULENTI">Segnalatori</option>
           </select>
         </div>
       )}
@@ -763,7 +763,7 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
       {/* Status bar */}
       <div className="border-t border-gray-200 px-4 py-1 bg-white">
         <span className="text-[10px] text-gray-400">
-          {filteredClienti.length} clienti{evolviCount > 0 && ` \u00b7 ${evolviCount} Evolvi`}{spotCount > 0 && ` \u00b7 ${spotCount} Spot`}{fpiCount > 0 && ` \u00b7 ${fpiCount} FPI`}{consulentiCount > 0 && ` \u00b7 ${consulentiCount} Consulenti`}
+          {filteredClienti.length} clienti{evolviCount > 0 && ` \u00b7 ${evolviCount} Evolvi`}{spotCount > 0 && ` \u00b7 ${spotCount} Spot`}{fpiCount > 0 && ` \u00b7 ${fpiCount} FPI`}{consulentiCount > 0 && ` \u00b7 ${consulentiCount} Segnalatori`}
         </span>
       </div>
 

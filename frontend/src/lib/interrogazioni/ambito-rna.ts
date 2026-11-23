@@ -15,7 +15,7 @@ const AMBITO_LABEL: Record<string, string> = {
 }
 const SI_NO: Record<string, string> = { true: 'Sì', false: 'No' }
 const CATEGORIA_LABEL: Record<string, string> = {
-  CLIENTE_SPOT: 'Cliente spot', EVOLVI: 'Evolvi', FPI: 'FPI', CONSULENTI: 'Consulenti',
+  CLIENTE_SPOT: 'Cliente spot', EVOLVI: 'Evolvi', FPI: 'FPI', CONSULENTI: 'Segnalatori',
 }
 const DIMENSIONE_LABEL: Record<string, string> = {
   MICRO: 'Micro', PICCOLA: 'Piccola', MEDIA: 'Media', GRANDE: 'Grande',

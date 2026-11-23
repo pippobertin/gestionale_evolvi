@@ -5,7 +5,7 @@ const toOpts = (m: Record<string, string>) => Object.entries(m).map(([value, lab
 
 const ORIGINE_LABEL: Record<string, string> = { DA_PROGETTO: 'Da progetto', MANUALE: 'Manuale', DA_RNA: 'Da RNA' }
 const CATEGORIA_LABEL: Record<string, string> = {
-  CLIENTE_SPOT: 'Cliente spot', EVOLVI: 'Evolvi', FPI: 'FPI', CONSULENTI: 'Consulenti',
+  CLIENTE_SPOT: 'Cliente spot', EVOLVI: 'Evolvi', FPI: 'FPI', CONSULENTI: 'Segnalatori',
 }
 const DIMENSIONE_LABEL: Record<string, string> = {
   MICRO: 'Micro', PICCOLA: 'Piccola', MEDIA: 'Media', GRANDE: 'Grande',

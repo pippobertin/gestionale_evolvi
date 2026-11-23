@@ -14,7 +14,7 @@ const DECISIONE_OPTS = [
   { value: 'EVOLVI', label: 'Evolvi' },
   { value: 'SPOT', label: 'Spot' },
   { value: 'FPI', label: 'FPI' },
-  { value: 'CONSULENTI', label: 'Consulenti' },
+  { value: 'CONSULENTI', label: 'Segnalatori' },
   { value: 'RIFIUTATO', label: 'Rifiutato' },
 ]
 

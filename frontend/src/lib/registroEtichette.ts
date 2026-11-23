@@ -49,7 +49,7 @@ const ETICHETTE_TABELLA: Record<string, string> = {
   scadenze_bandi_collegamenti_aziendali: 'Collegamenti aziendali',
   scadenze_bandi_legali_rappresentanti: 'Legali rappresentanti',
   scadenze_bandi_contatti: 'Contatti',
-  scadenze_bandi_consulenti_clienti: 'Consulenti dei clienti',
+  scadenze_bandi_consulenti_clienti: 'Clienti segnalati',
   scadenze_bandi_documenti_cliente: 'Documenti cliente',
   scadenze_bandi_documenti_amministrativi: 'Documenti amministrativi',
   scadenze_bandi_contributi_ottenuti: 'Contributi ottenuti',

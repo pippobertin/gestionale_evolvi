@@ -1732,7 +1732,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
                   <option value="CLIENTE_SPOT">Spot</option>
                   <option value="EVOLVI">Evolvi</option>
                   <option value="FPI">FPI</option>
-                  <option value="CONSULENTI">Consulenti</option>
+                  <option value="CONSULENTI">Segnalatori</option>
                 </select>
               </div>
 
@@ -1811,10 +1811,10 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
                 <div className="flex items-center">
                   <Briefcase className="w-5 h-5 text-purple-600 mr-2" />
-                  <h4 className="text-purple-800 font-medium">Consulente</h4>
+                  <h4 className="text-purple-800 font-medium">Segnalatore</h4>
                 </div>
                 <p className="text-purple-700 text-sm mt-2">
-                  Questo soggetto è un consulente esterno. La denominazione comparirà automaticamente nella sezione Segnalatori del gestionale.
+                  Questo soggetto segnala clienti. La denominazione comparirà automaticamente nella sezione Segnalatori del gestionale; se riceve un compenso va registrato anche in Modello 231, Segnalatori e compensi.
                 </p>
               </div>
             )}

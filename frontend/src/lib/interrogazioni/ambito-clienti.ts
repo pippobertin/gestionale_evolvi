@@ -4,7 +4,7 @@ const CATEGORIA_OPTS = [
   { value: 'EVOLVI', label: 'Evolvi' },
   { value: 'CLIENTE_SPOT', label: 'Cliente Spot' },
   { value: 'FPI', label: 'FPI' },
-  { value: 'CONSULENTI', label: 'Consulenti' },
+  { value: 'CONSULENTI', label: 'Segnalatori' },
 ]
 
 const DIMENSIONE_OPTS = [

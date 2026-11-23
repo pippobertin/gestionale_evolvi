@@ -68,7 +68,7 @@ const OGGETTI: Record<string, string> = {
   scadenze_bandi_clienti_adesioni_fpi: "l'adesione al fondo interprofessionale",
   scadenze_bandi_fabbisogno_rilevazioni: 'la rilevazione del fabbisogno',
   scadenze_bandi_clienti_esigenze: "l'esigenza del cliente",
-  scadenze_bandi_consulenti_clienti: 'il collegamento con il consulente',
+  scadenze_bandi_consulenti_clienti: 'la segnalazione di un cliente',
   scadenze_bandi_responsabili_scadenze: 'il responsabile della scadenza',
   scadenze_bandi_backup_registro: 'la registrazione di backup',
   scadenze_bandi_ordini_lavoro: "l'ordine di lavoro",

@@ -799,7 +799,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
                   {cliente.categoria_evolvi === 'CLIENTE_SPOT' ? 'Spot' :
                    cliente.categoria_evolvi === 'EVOLVI' ? 'Evolvi' :
                    cliente.categoria_evolvi === 'FPI' ? 'FPI' :
-                   cliente.categoria_evolvi === 'CONSULENTI' ? 'Consulenti' : '-'}
+                   cliente.categoria_evolvi === 'CONSULENTI' ? 'Segnalatori' : '-'}
                 </div>
               </div>
 
@@ -865,10 +865,10 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
                 <div className="flex items-center">
                   <Briefcase className="w-5 h-5 text-purple-600 mr-2" />
-                  <h4 className="text-purple-800 font-medium">Consulente</h4>
+                  <h4 className="text-purple-800 font-medium">Segnalatore</h4>
                 </div>
                 <p className="text-purple-700 text-sm mt-2">
-                  Consulente esterno che può segnalare clienti. Visibile nella sezione Segnalatori del gestionale.
+                  Soggetto esterno che segnala clienti. Visibile nella sezione Segnalatori del gestionale.
                 </p>
               </div>
             )}

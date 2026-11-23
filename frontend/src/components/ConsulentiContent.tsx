@@ -128,7 +128,7 @@ export default function ConsulentiContent({ onNavigate }: ConsulentiContentProps
             </h3>
             {!searchTerm && (
               <p className="mt-1 text-sm text-gray-500">
-                I segnalatori vengono aggiunti assegnando la categoria "Consulenti" a un cliente in anagrafica.
+                I segnalatori vengono aggiunti assegnando la categoria "Segnalatori" a un cliente in anagrafica.
               </p>
             )}
           </div>
