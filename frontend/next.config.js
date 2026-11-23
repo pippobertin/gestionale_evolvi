@@ -12,6 +12,9 @@ const nextConfig = {
     '/api/clienti/**': [
       './node_modules/pdfkit/js/data/**/*',
     ],
+    '/api/231/**': [
+      './node_modules/pdfkit/js/data/**/*',
+    ],
   },
   // Esclude pdfmake e pdfkit dal bundle Turbopack: vengono caricati a runtime
   // come moduli Node, cosi' i file .afm vengono trovati dove stanno davvero.

@@ -86,7 +86,8 @@ const OGGETTI: Record<string, string> = {
   scadenze_bandi_checklist_personale: 'la checklist di ingresso o uscita',
   scadenze_bandi_segnalatori: 'il segnalatore',
   scadenze_bandi_compensi_segnalatori: 'il compenso del segnalatore',
-  scadenze_bandi_deroghe: 'la deroga'
+  scadenze_bandi_deroghe: 'la deroga',
+  scadenze_bandi_report_odv: "il report semestrale all'OdV"
 }
 
 const CAMPI: Record<string, string> = {

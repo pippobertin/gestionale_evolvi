@@ -61,11 +61,6 @@ export default function OdvApp() {
         {scheda === 'registri231' && <Modello231Content solaLettura />}
         {scheda === 'backup' && <BackupGestionale solaLettura />}
         {scheda === 'password' && <ChangeOwnPassword />}
-        {scheda !== 'password' && (
-          <p className="text-xs text-gray-500 mt-6">
-            Il report semestrale precompilato si aggiungerà qui quando sarà attivato nel gestionale.
-          </p>
-        )}
       </main>
     </div>
   )

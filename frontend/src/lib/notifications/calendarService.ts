@@ -13,6 +13,7 @@ export interface CalendarEvent {
   reminders?: CalendarReminder[]
   attendees?: string[] // email addresses
   location?: string
+  recurrence?: string[] // es. ['RRULE:FREQ=YEARLY']
   metadata?: {
     scadenzaId?: string
     progettoId?: string
@@ -428,6 +429,42 @@ ${scadenza.note ? `📝 Note:\\n${scadenza.note}\\n\\n` : ''}🚀 Apri Gestional
     })
   }
 
+  /**
+   * Promemoria ricorrenti del report semestrale all'OdV (M.05): il 1° e il 21
+   * luglio per il primo semestre, il 1° e il 21 gennaio per il secondo, ogni anno.
+   * Restituisce quanti eventi ha creato.
+   */
+  static async promemoriaReportOdv(partecipanti: string[]): Promise<number> {
+    const anno = new Date().getFullYear()
+    const prossima = (mese: number, giorno: number) => {
+      const d = new Date(anno, mese - 1, giorno, 9, 0, 0)
+      if (d < new Date()) d.setFullYear(anno + 1)
+      return d
+    }
+    const eventi = [
+      { mese: 7, giorno: 1, titolo: 'Report semestrale all\'OdV: da preparare entro il 31 luglio' },
+      { mese: 7, giorno: 21, titolo: 'Report semestrale all\'OdV: mancano 10 giorni (31 luglio)' },
+      { mese: 1, giorno: 1, titolo: 'Report semestrale all\'OdV: da preparare entro il 31 gennaio' },
+      { mese: 1, giorno: 21, titolo: 'Report semestrale all\'OdV: mancano 10 giorni (31 gennaio)' }
+    ]
+    let creati = 0
+    for (const e of eventi) {
+      const inizio = prossima(e.mese, e.giorno)
+      const fine = new Date(inizio); fine.setMinutes(30)
+      const id = await this.createCalendarEvent({
+        title: e.titolo,
+        description: 'Gestionale Evolvi, Modello 231, scheda Report semestrale all\'OdV: la bozza è già precompilata con i dati dei registri. Ogni responsabile completa e conferma la propria sezione, poi l\'AU la invia.',
+        start: inizio.toISOString(), end: fine.toISOString(),
+        reminders: [{ method: 'popup', minutes: 60 }],
+        attendees: Array.from(new Set(partecipanti.filter(Boolean))),
+        location: 'Gestionale Evolvi',
+        recurrence: ['RRULE:FREQ=YEARLY']
+      })
+      if (id) creati++
+    }
+    return creati
+  }
+
   private static async saveEventReference(entityId: string, calendarEventId: string, eventType: string): Promise<void> {
     await supabase
       .from('scadenze_bandi_calendar_events')
@@ -467,7 +504,8 @@ ${scadenza.note ? `📝 Note:\\n${scadenza.note}\\n\\n` : ''}🚀 Apri Gestional
         })) || []
       },
       attendees: event.attendees?.map(email => ({ email })) || [],
-      location: event.location || ''
+      location: event.location || '',
+      ...(event.recurrence ? { recurrence: event.recurrence } : {})
     }
 
     try {
