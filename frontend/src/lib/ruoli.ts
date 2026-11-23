@@ -30,3 +30,4 @@ export type Permesso =
   | 'email.invia'
   | 'riferimento.modifica'
   | 'deleghe.gestisci'
+  | 'segnalatori.gestisci'

@@ -105,7 +105,10 @@ const ETICHETTE_TABELLA: Record<string, string> = {
   scadenze_bandi_conflitti: 'Registro dei conflitti',
   scadenze_bandi_deleghe: 'Deleghe dei clienti',
   scadenze_bandi_deleghe_persone: 'Persone autorizzate sulle deleghe',
-  scadenze_bandi_checklist_personale: 'Checklist di ingresso e uscita'
+  scadenze_bandi_checklist_personale: 'Checklist di ingresso e uscita',
+  scadenze_bandi_segnalatori: 'Segnalatori',
+  scadenze_bandi_compensi_segnalatori: 'Compensi dei segnalatori',
+  scadenze_bandi_deroghe: 'Registro delle deroghe'
 }
 
 export function etichettaTabella(tabella: string | null | undefined): string {

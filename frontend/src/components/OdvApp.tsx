@@ -63,8 +63,7 @@ export default function OdvApp() {
         {scheda === 'password' && <ChangeOwnPassword />}
         {scheda !== 'password' && (
           <p className="text-xs text-gray-500 mt-6">
-            Gli altri registri del Modello 231 (segnalatori, deroghe, report semestrale) si aggiungeranno qui
-            quando saranno attivati nel gestionale.
+            Il report semestrale precompilato si aggiungerà qui quando sarà attivato nel gestionale.
           </p>
         )}
       </main>

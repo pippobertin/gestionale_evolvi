@@ -41,6 +41,9 @@ const REGOLE: Regola[] = [
   // Registro delle deleghe dei clienti (Modello 231, PR.03 §4.2)
   { metodo: 'POST', schema: /^\/api\/231\/deleghe$/, permesso: 'deleghe.gestisci' },
   { metodo: 'PATCH', schema: new RegExp(`^/api/231/deleghe/${ID}$`), permesso: 'deleghe.gestisci' },
+  // Segnalatori e compensi (Modello 231, PR.02 §4.3)
+  { metodo: 'POST', schema: /^\/api\/231\/(segnalatori|compensi)$/, permesso: 'segnalatori.gestisci' },
+  { metodo: 'PATCH', schema: new RegExp(`^/api/231/(segnalatori|compensi)/${ID}$`), permesso: 'segnalatori.gestisci' },
   // Tabelle di riferimento
   { metodo: 'POST', schema: /^\/api\/formazione\/import-ccnl$/, permesso: 'riferimento.modifica' },
   { metodo: 'POST', schema: /^\/api\/prospect\/profiling-template$/, permesso: 'riferimento.modifica' },

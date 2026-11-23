@@ -83,7 +83,10 @@ const OGGETTI: Record<string, string> = {
   scadenze_bandi_conflitti: 'il conflitto di interessi',
   scadenze_bandi_deleghe: 'la delega del cliente',
   scadenze_bandi_deleghe_persone: "l'autorizzazione di una persona sulla delega",
-  scadenze_bandi_checklist_personale: 'la checklist di ingresso o uscita'
+  scadenze_bandi_checklist_personale: 'la checklist di ingresso o uscita',
+  scadenze_bandi_segnalatori: 'il segnalatore',
+  scadenze_bandi_compensi_segnalatori: 'il compenso del segnalatore',
+  scadenze_bandi_deroghe: 'la deroga'
 }
 
 const CAMPI: Record<string, string> = {
