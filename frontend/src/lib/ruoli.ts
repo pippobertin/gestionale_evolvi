@@ -29,3 +29,4 @@ export type Permesso =
   | 'contratti.registra_firmato'
   | 'email.invia'
   | 'riferimento.modifica'
+  | 'deleghe.gestisci'

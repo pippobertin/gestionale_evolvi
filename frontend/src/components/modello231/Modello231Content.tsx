@@ -1,17 +1,21 @@
 'use client'
 
 import { useState } from 'react'
-import { ShieldCheck, BadgeCheck, UserCheck, Scale } from 'lucide-react'
+import { ShieldCheck, BadgeCheck, UserCheck, Scale, KeyRound, ClipboardList } from 'lucide-react'
 import Qualifiche from './Qualifiche'
 import Dichiarazioni from './Dichiarazioni'
 import Conflitti from './Conflitti'
+import Deleghe from './Deleghe'
+import Personale from './Personale'
 
-/** Registri del Modello 231: qualifiche, dichiarazioni degli interessi, conflitti. */
+/** Registri del Modello 231: qualifiche, interessi, conflitti, deleghe dei clienti, ingressi e uscite. */
 
 const SCHEDE = [
   { id: 'qualifiche', etichetta: 'Qualifica delle controparti', icona: BadgeCheck },
   { id: 'dichiarazioni', etichetta: 'Dichiarazioni degli interessi', icona: UserCheck },
-  { id: 'conflitti', etichetta: 'Registro dei conflitti', icona: Scale }
+  { id: 'conflitti', etichetta: 'Registro dei conflitti', icona: Scale },
+  { id: 'deleghe', etichetta: 'Deleghe dei clienti', icona: KeyRound },
+  { id: 'personale', etichetta: 'Ingressi e uscite', icona: ClipboardList }
 ] as const
 
 export default function Modello231Content({ solaLettura = false }: { solaLettura?: boolean }) {
@@ -38,6 +42,8 @@ export default function Modello231Content({ solaLettura = false }: { solaLettura
       {scheda === 'qualifiche' && <Qualifiche solaLettura={solaLettura} />}
       {scheda === 'dichiarazioni' && <Dichiarazioni solaLettura={solaLettura} />}
       {scheda === 'conflitti' && <Conflitti solaLettura={solaLettura} />}
+      {scheda === 'deleghe' && <Deleghe solaLettura={solaLettura} />}
+      {scheda === 'personale' && <Personale solaLettura={solaLettura} />}
     </div>
   )
 }

@@ -371,13 +371,11 @@ ${scadenza.note ? `📝 Note:\\n${scadenza.note}\\n\\n` : ''}🚀 Apri Gestional
     descrizione: string
     scadenza: string // AAAA-MM-GG
     partecipanti: string[]
+    giorni?: number[]
+    tipoEvento?: string
   }): Promise<number> {
     const oggi = new Date(); oggi.setHours(0, 0, 0, 0)
-    const quando = [
-      { giorni: 30, prefisso: 'Tra 30 giorni' },
-      { giorni: 10, prefisso: 'Tra 10 giorni' },
-      { giorni: 0, prefisso: 'Scadenza oggi' }
-    ]
+    const quando = (p.giorni || [30, 10, 0]).map(g => ({ giorni: g, prefisso: g === 0 ? 'Scadenza oggi' : `Tra ${g} giorni` }))
     let creati = 0
     for (const q of quando) {
       const giorno = new Date(`${p.scadenza}T09:00:00`)
@@ -394,11 +392,40 @@ ${scadenza.note ? `📝 Note:\\n${scadenza.note}\\n\\n` : ''}🚀 Apri Gestional
         location: 'Gestionale Evolvi'
       })
       if (id) {
-        await this.saveEventReference(p.entityId, id, 'promemoria_231')
+        await this.saveEventReference(p.entityId, id, p.tipoEvento || 'promemoria_231')
         creati++
       }
     }
     return creati
+  }
+
+  /**
+   * Promemoria dell'uscita di una persona (modulo M.06): una settimana prima e il
+   * giorno della fine dell'accesso, per compilare la checklist di uscita. Se la
+   * data cambia, i promemoria precedenti si sostituiscono; senza data si tolgono.
+   */
+  static async promemoriaUscita231(p: { utenteId: string; nome: string; data: string | null; partecipanti: string[] }): Promise<number> {
+    const { data: vecchi } = await supabase
+      .from('scadenze_bandi_calendar_events')
+      .select('calendar_event_id')
+      .eq('entity_id', p.utenteId)
+      .eq('event_type', 'uscita_231')
+    for (const v of vecchi || []) {
+      try { await this.deleteCalendarEvent(v.calendar_event_id) } catch { /* evento già rimosso */ }
+    }
+    if ((vecchi || []).length) {
+      await supabase.from('scadenze_bandi_calendar_events').delete().eq('entity_id', p.utenteId).eq('event_type', 'uscita_231')
+    }
+    if (!p.data) return 0
+    return this.creaPromemoria231({
+      entityId: p.utenteId,
+      titolo: `uscita di ${p.nome}`,
+      descrizione: `Fine dell'accesso al gestionale di ${p.nome}. Compilare la checklist di uscita (Modello 231, Ingressi e uscite): account disattivati, persona tolta dagli elenchi delle deleghe, riconsegna, promemoria di riservatezza.`,
+      scadenza: p.data.slice(0, 10),
+      partecipanti: p.partecipanti,
+      giorni: [7, 0],
+      tipoEvento: 'uscita_231'
+    })
   }
 
   private static async saveEventReference(entityId: string, calendarEventId: string, eventType: string): Promise<void> {

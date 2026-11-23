@@ -28,6 +28,8 @@ const COLORI_RUOLO: Record<Ruolo, string> = {
   odv: 'bg-slate-100 text-slate-700'
 }
 import { LoadingSpinner } from './shared'
+import { useAuth } from '@/contexts/AuthContext'
+import { CalendarService } from '@/lib/notifications/calendarService'
 
 interface User {
   id: string
@@ -43,6 +45,7 @@ interface User {
 }
 
 export default function UserManagement() {
+  const { user: io } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -130,11 +133,19 @@ export default function UserManagement() {
       setUsers(prev => prev.map(user =>
         user.id === userId ? { ...user, ...updates } : user
       ))
+      return true
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Errore del server')
+      return false
     } finally {
       setActionLoading(null)
     }
+  }
+
+  // Promemoria in calendario per la checklist di uscita (Modello 231, M.06); non blocca il salvataggio
+  const promemoriaUscita = (utenteId: string, nome: string, data: string | null) => {
+    CalendarService.promemoriaUscita231({ utenteId, nome, data, partecipanti: io?.email ? [io.email] : [] })
+      .catch(err => console.error('Promemoria di uscita non creato:', err))
   }
 
   const deleteUser = async (userId: string) => {
@@ -181,6 +192,10 @@ export default function UserManagement() {
 
       if (!response.ok) {
         throw new Error(data.error || 'Errore nella creazione utente')
+      }
+
+      if (newUserData.accesso_fino_al && data.user?.id) {
+        promemoriaUscita(data.user.id, `${newUserData.nome} ${newUserData.cognome}`.trim(), newUserData.accesso_fino_al)
       }
 
       // Ricarica la lista utenti
@@ -232,7 +247,8 @@ export default function UserManagement() {
 
   const salvaScadenza = async (valore: string) => {
     if (!utenteScadenza) return
-    await updateUser(utenteScadenza.id, { accesso_fino_al: valore || null })
+    const ok = await updateUser(utenteScadenza.id, { accesso_fino_al: valore || null })
+    if (ok) promemoriaUscita(utenteScadenza.id, `${utenteScadenza.nome} ${utenteScadenza.cognome}`.trim(), valore || null)
     setUtenteScadenza(null)
   }
 

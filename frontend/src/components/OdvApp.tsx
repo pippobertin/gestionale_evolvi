@@ -18,7 +18,7 @@ type Scheda = 'registro' | 'registri231' | 'backup' | 'password'
 
 const SCHEDE: { id: Scheda; etichetta: string; icona: typeof ScrollText }[] = [
   { id: 'registro', etichetta: 'Registro attività', icona: ScrollText },
-  { id: 'registri231', etichetta: 'Qualifiche, interessi e conflitti', icona: ShieldCheck },
+  { id: 'registri231', etichetta: 'Registri del Modello 231', icona: ShieldCheck },
   { id: 'backup', etichetta: 'Backup e prove di ripristino', icona: Database },
   { id: 'password', etichetta: 'La mia password', icona: Key }
 ]
@@ -63,8 +63,8 @@ export default function OdvApp() {
         {scheda === 'password' && <ChangeOwnPassword />}
         {scheda !== 'password' && (
           <p className="text-xs text-gray-500 mt-6">
-            Gli altri registri del Modello 231 (deleghe dei clienti, ingressi e uscite del personale, segnalatori,
-            deroghe, report semestrale) si aggiungeranno qui quando saranno attivati nel gestionale.
+            Gli altri registri del Modello 231 (segnalatori, deroghe, report semestrale) si aggiungeranno qui
+            quando saranno attivati nel gestionale.
           </p>
         )}
       </main>

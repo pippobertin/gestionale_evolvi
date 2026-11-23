@@ -38,6 +38,9 @@ const REGOLE: Regola[] = [
   // Eliminazioni di entità principali che passano dal server
   { metodo: 'DELETE', schema: new RegExp(`^/api/prospect/${ID}$`), permesso: 'entita.elimina' },
   { metodo: 'DELETE', schema: new RegExp(`^/api/contracts/evolvi/${ID}$`), permesso: 'entita.elimina' },
+  // Registro delle deleghe dei clienti (Modello 231, PR.03 §4.2)
+  { metodo: 'POST', schema: /^\/api\/231\/deleghe$/, permesso: 'deleghe.gestisci' },
+  { metodo: 'PATCH', schema: new RegExp(`^/api/231/deleghe/${ID}$`), permesso: 'deleghe.gestisci' },
   // Tabelle di riferimento
   { metodo: 'POST', schema: /^\/api\/formazione\/import-ccnl$/, permesso: 'riferimento.modifica' },
   { metodo: 'POST', schema: /^\/api\/prospect\/profiling-template$/, permesso: 'riferimento.modifica' },

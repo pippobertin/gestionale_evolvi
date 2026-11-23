@@ -5,6 +5,7 @@ import { Check, X, AlertTriangle, ExternalLink, FileText, Upload, ChevronRight, 
 import { LoadingSpinner } from './shared'
 import { useAuth } from '@/contexts/AuthContext'
 import PraticaDopoInvio from './PraticaDopoInvio'
+import Deleghe from './modello231/Deleghe'
 
 /**
  * Percorso della pratica di finanza agevolata (Modello 231, PR.01 e PR.02):
@@ -380,6 +381,14 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
               </select>
             </label>
           </div>
+
+          {pratica.trasmissione === 'blm' && pratica.cliente_id && (
+            <div>
+              <p className="text-xs font-medium text-gray-800">Deleghe del cliente nel registro</p>
+              <p className="text-[11px] text-gray-500 mb-1">Chi può operare sulle piattaforme per questo cliente. Si gestiscono da Modello 231, Deleghe dei clienti.</p>
+              <Deleghe clienteId={pratica.cliente_id} solaLettura />
+            </div>
+          )}
 
           {[
             { tipo: 'conferma_cliente', titolo: 'Conferma scritta del cliente sulla versione finale', aiuto: 'Email o PEC in cui il cliente dichiara di aver letto e approvato la versione finale (la firma degli allegati non basta).' },
