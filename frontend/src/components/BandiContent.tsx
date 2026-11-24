@@ -420,18 +420,21 @@ export default function BandiContent({ initialFilter, onNavigate }: { initialFil
           ) : (
             <>
               <button
+                type="button"
                 onClick={() => setIsSelectMode(true)}
-                className="bg-gradient-to-br from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg"
+                className="text-sm text-gray-600 hover:text-gray-900 px-2 py-1.5 rounded-lg flex items-center gap-1"
+                title="Seleziona più bandi per eliminarli"
               >
                 <CheckSquare className="w-4 h-4" />
                 Seleziona
               </button>
               <button
+                type="button"
                 onClick={() => setShowNewBandoModal(true)}
-                className="bg-gradient-to-br from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg"
+                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
-                Nuovo Bando
+                Nuovo bando
               </button>
             </>
           )}
@@ -657,13 +660,6 @@ export default function BandiContent({ initialFilter, onNavigate }: { initialFil
                           <ExternalLink className="w-4 h-4" />
                         </a>
                       )}
-                      <button
-                        onClick={() => handleDeleteBando(bando.id)}
-                        className="text-red-600 hover:text-red-900"
-                        title="Elimina bando"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -699,6 +695,11 @@ export default function BandiContent({ initialFilter, onNavigate }: { initialFil
           onClose={() => {
             setShowEditBandoModal(false)
             setEditingBando(null)
+          }}
+          onDelete={(id) => {
+            setShowEditBandoModal(false)
+            setEditingBando(null)
+            handleDeleteBando(id)
           }}
           onBandoCreated={handleBandoCreated}
         />
@@ -739,7 +740,7 @@ export default function BandiContent({ initialFilter, onNavigate }: { initialFil
               </div>
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                 <p className="text-sm text-yellow-800">
-                  <strong>Attenzione:</strong> Questa operazione è irreversibile e eliminerà automaticamente TUTTI i progetti collegati ai bandi selezionati e le relative scadenze.
+                  <strong>Attenzione:</strong> l'eliminazione comprende TUTTI i progetti collegati e le loro scadenze. Un amministratore può annullare l’eliminazione dal Registro attività.
                 </p>
               </div>
               <div className="flex justify-end gap-3">

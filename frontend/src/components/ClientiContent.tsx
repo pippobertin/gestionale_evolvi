@@ -838,7 +838,7 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-3">
                 <p className="text-xs text-amber-800">
-                  Questa operazione eliminerà anche tutti i progetti e scadenze collegati. Non può essere annullata.
+                  Questa operazione eliminerà anche tutti i progetti e le scadenze collegati. Un amministratore può annullare l’eliminazione dal Registro attività.
                 </p>
               </div>
               <div className="flex justify-end gap-2">

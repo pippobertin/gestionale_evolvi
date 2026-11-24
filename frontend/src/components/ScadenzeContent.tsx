@@ -909,8 +909,8 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
 
               <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
                 <p className="text-sm text-red-800">
-                  <strong>⚠️ Attenzione:</strong> Questa azione non può essere annullata.
-                  La scadenza e tutti i dati associati saranno eliminati definitivamente.
+                  <strong>Attenzione:</strong> la scadenza e i dati associati saranno eliminati.
+                  Un amministratore può annullare l’eliminazione dal Registro attività.
                 </p>
               </div>
             </div>

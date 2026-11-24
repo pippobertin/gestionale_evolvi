@@ -85,7 +85,7 @@ export default function NoteTimeline({ clienteId }: { clienteId: string }) {
 
   async function handleDelete(notaId: string) {
     const conferma = window.confirm(
-      'Vuoi eliminare definitivamente questa nota?\n\nL\'azione e\' irreversibile e rimuovera\' anche tutti i collegamenti a bandi e progetti.'
+      'Vuoi eliminare questa nota?\n\nSaranno rimossi anche i collegamenti a bandi e progetti. Un amministratore può annullare l\'eliminazione dal Registro attività.'
     )
     if (!conferma) return
 

@@ -1999,7 +1999,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-900">Elimina Cliente</h3>
-                  <p className="text-sm text-gray-500">Questa azione non può essere annullata</p>
+                  <p className="text-sm text-gray-500">Un amministratore può annullare l’eliminazione dal Registro attività.</p>
                 </div>
               </div>
 

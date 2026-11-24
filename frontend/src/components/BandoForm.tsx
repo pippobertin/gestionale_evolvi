@@ -82,11 +82,12 @@ interface BandoFormProps {
   onBandoCreated: () => void
   bando?: any // Per modifica esistente
   precompila?: Partial<BandoFormData> // Nuovo bando che parte dai dati del catalogo
+  onDelete?: (bandoId: string) => void // Eliminazione dalla scheda del bando
 }
 
 type TabType = 'generale' | 'scadenze' | 'documenti'
 
-export default function BandoForm({ onClose, onBandoCreated, bando, precompila }: BandoFormProps) {
+export default function BandoForm({ onClose, onBandoCreated, bando, precompila, onDelete }: BandoFormProps) {
   const { data: session, status } = useSession()
   const [activeTab, setActiveTab] = useState<TabType>('generale')
   const [loading, setLoading] = useState(false)
@@ -1784,6 +1785,16 @@ export default function BandoForm({ onClose, onBandoCreated, bando, precompila }
           </div>
 
           <div className="flex gap-3">
+            {bando?.id && onDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(bando.id)}
+                className="px-4 py-2 text-red-700 bg-white border border-red-300 rounded-md hover:bg-red-50 flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Elimina bando
+              </button>
+            )}
             <button
               onClick={onClose}
               className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"

@@ -876,7 +876,7 @@ export default function ProgettiContent({ initialFilter, onNavigate, openProgett
               </div>
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                 <p className="text-sm text-yellow-800">
-                  <strong>Attenzione:</strong> Questa operazione è irreversibile e eliminerà anche tutte le scadenze collegate.
+                  <strong>Attenzione:</strong> l'eliminazione comprende tutte le scadenze collegate. Un amministratore può annullare l’eliminazione dal Registro attività.
                 </p>
               </div>
               <div className="flex justify-end gap-3">
