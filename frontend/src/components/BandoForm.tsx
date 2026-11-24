@@ -970,10 +970,49 @@ export default function BandoForm({ onClose, onBandoCreated, bando, precompila, 
         {/* Content */}
         <div className="flex-1 p-4 overflow-y-auto">
           {/* Tab Generale */}
-          {activeTab === 'controllo' && bando?.id && <ControlloPaginaBando bandoId={bando.id} />}
+          {activeTab === 'controllo' && bando?.id && <ControlloPaginaBando bandoId={bando.id} onApriDati={() => setActiveTab('generale')} />}
 
           {activeTab === 'generale' && (
             <div className="space-y-3">
+              {/* Link Bando Ufficiale */}
+              <div className="bg-primary-50 p-4 rounded-lg border border-primary-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <ExternalLink className="w-4 h-4 text-primary-600" />
+                  <h3 className="text-sm font-semibold text-gray-900">Link ufficiale del bando</h3>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  L&apos;indirizzo della pagina ufficiale del bando sul sito dell&apos;ente erogatore. Serve anche al controllo automatico
+                  delle graduatorie (scheda &quot;Controllo della pagina&quot;).
+                </p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Indirizzo della pagina
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.link_bando_ufficiale}
+                    onChange={(e) => setFormData({...formData, link_bando_ufficiale: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                    placeholder="https://www.ente.gov.it/bando-innovazione-2024"
+                  />
+                  {formData.link_bando_ufficiale && (
+                    <div className="mt-2 flex items-center gap-2 text-sm">
+                      <span className="text-green-600">✓ Link inserito</span>
+                      <span className="text-gray-500">|</span>
+                      <a
+                        href={formData.link_bando_ufficiale}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary-600 hover:text-blue-800 flex items-center gap-1"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Anteprima link
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* Informazioni Base */}
                 <div className="space-y-4">
@@ -1504,44 +1543,6 @@ export default function BandoForm({ onClose, onBandoCreated, bando, precompila, 
           {/* Tab Documenti */}
           {activeTab === 'documenti' && (
             <div className="space-y-3">
-              {/* Link Bando Ufficiale */}
-              <div className="bg-primary-50 p-4 rounded-lg border border-primary-200">
-                <div className="flex items-center gap-3 mb-3">
-                  <ExternalLink className="w-4 h-4 text-primary-600" />
-                  <h3 className="text-sm font-semibold text-gray-900">Link Bando Ufficiale</h3>
-                </div>
-                <p className="text-sm text-gray-600 mb-4">
-                  Inserisci l'URL della pagina ufficiale del bando sul sito dell'ente erogatore
-                </p>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    URL Bando Ufficiale
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.link_bando_ufficiale}
-                    onChange={(e) => setFormData({...formData, link_bando_ufficiale: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    placeholder="https://www.ente.gov.it/bando-innovazione-2024"
-                  />
-                  {formData.link_bando_ufficiale && (
-                    <div className="mt-2 flex items-center gap-2 text-sm">
-                      <span className="text-green-600">✓ Link inserito</span>
-                      <span className="text-gray-500">|</span>
-                      <a
-                        href={formData.link_bando_ufficiale}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary-600 hover:text-blue-800 flex items-center gap-1"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        Anteprima link
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-
               {/* Upload Documenti - NORMATIVA */}
               <div className="space-y-3">
                 {/* Sezione Normativa */}

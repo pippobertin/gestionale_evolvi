@@ -17,7 +17,7 @@ const ORIGINE: Record<string, string> = { link_ufficiale: 'pagina ufficiale', ag
 const STATO_NOVITA: Record<string, string> = { da_vedere: 'da vedere', graduatoria: 'è la graduatoria', non_interessa: 'non interessa' }
 const quando = (d: string | null) => (d ? new Date(d).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'mai')
 
-export default function ControlloPaginaBando({ bandoId }: { bandoId: string }) {
+export default function ControlloPaginaBando({ bandoId, onApriDati }: { bandoId: string; onApriDati?: () => void }) {
   const [stato, setStato] = useState<Stato | null>(null)
   const [errore, setErrore] = useState('')
   const [messaggio, setMessaggio] = useState('')
@@ -91,7 +91,12 @@ export default function ControlloPaginaBando({ bandoId }: { bandoId: string }) {
         </div>
         {!stato.link_ufficiale && (
           <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1">
-            Il bando non ha il link ufficiale (scheda &quot;Dati Bando&quot;): inseriscilo, oppure aggiungi qui sotto la pagina da controllare.
+            Il bando non ha ancora il link ufficiale.{' '}
+            {onApriDati
+              ? <button type="button" onClick={onApriDati} className="underline font-medium">Inseriscilo nella scheda &quot;Dati Bando&quot;</button>
+              : <>Inseriscilo nella scheda &quot;Dati Bando&quot;</>}
+            , salva il bando e poi premi &quot;Controlla adesso&quot;: la pagina ufficiale entra da sola tra quelle controllate.
+            Le pagine aggiunte qui sotto servono per altre pagine dell&apos;ente, per esempio Notizie o Esiti.
           </p>
         )}
         {messaggio && <p className="text-xs text-green-800 bg-green-50 border border-green-200 rounded px-2 py-1">{messaggio}</p>}
