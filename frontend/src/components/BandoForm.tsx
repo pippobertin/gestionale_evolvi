@@ -81,11 +81,12 @@ interface BandoFormProps {
   onClose: () => void
   onBandoCreated: () => void
   bando?: any // Per modifica esistente
+  precompila?: Partial<BandoFormData> // Nuovo bando che parte dai dati del catalogo
 }
 
 type TabType = 'generale' | 'scadenze' | 'documenti'
 
-export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormProps) {
+export default function BandoForm({ onClose, onBandoCreated, bando, precompila }: BandoFormProps) {
   const { data: session, status } = useSession()
   const [activeTab, setActiveTab] = useState<TabType>('generale')
   const [loading, setLoading] = useState(false)
@@ -142,6 +143,7 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
     // Genera codice automatico per nuovo bando
     if (!bando) {
       generateCodiceBando()
+      if (precompila) setFormData(prev => ({ ...prev, ...precompila }))
     }
 
     if (bando) {
@@ -926,7 +928,7 @@ export default function BandoForm({ onClose, onBandoCreated, bando }: BandoFormP
               {bando ? 'Modifica Bando' : 'Nuovo Bando'}
             </h2>
             <p className="text-gray-600">
-              {bando ? 'Modifica i dati del bando esistente' : 'Crea un nuovo bando con template scadenze'}
+              {bando ? 'Modifica i dati del bando esistente' : precompila ? 'Dati presi dal catalogo: completali e salva' : 'Crea un nuovo bando con template scadenze'}
             </p>
           </div>
           <button

@@ -11,10 +11,13 @@ import {
   ExternalLink,
   Calendar,
   Pencil,
+  Rocket,
+  CheckCircle2,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { TIPOLOGIE_INVESTIMENTO } from '@/lib/tipologieInvestimento'
+import BandoForm from './BandoForm'
 
 interface BandoEsterno {
   id: string
@@ -32,9 +35,10 @@ interface BandoEsterno {
   created_at: string
 }
 
+// Stessi nomi degli stati dei bandi dello studio (Aperto, In arrivo, Scaduto)
 const STATO_LABEL: Record<string, string> = {
-  attivo: 'Attivo',
-  in_apertura: 'In apertura',
+  attivo: 'Aperto',
+  in_apertura: 'In arrivo',
   scaduto: 'Scaduto',
   archiviato: 'Archiviato',
 }
@@ -46,13 +50,26 @@ const STATO_BADGE: Record<string, string> = {
   archiviato: 'bg-gray-100 border-gray-200 text-gray-500',
 }
 
-export default function BandiEsterniManager() {
+// Data del catalogo (testo libero) in formato AAAA-MM-GG, se riconoscibile
+function dataIso(d: string | null) {
+  if (!d) return ''
+  if (/^\d{4}-\d{2}-\d{2}/.test(d)) return d.slice(0, 10)
+  const m = d.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+  return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : ''
+}
+
+const normalizza = (t: string) => t.trim().toLowerCase().replace(/\s+/g, ' ')
+
+export default function BandiEsterniManager({ onApriNostro }: { onApriNostro?: (nome: string) => void } = {}) {
   const { user } = useAuth()
   const [bandi, setBandi] = useState<BandoEsterno[]>([])
+  // Nomi dei bandi dello studio, per riconoscere quelli già presi in carico
+  const [nostri, setNostri] = useState<Map<string, string>>(new Map())
+  const [daLavorare, setDaLavorare] = useState<BandoEsterno | null>(null)
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<BandoEsterno | null>(null)
-  const [filtroStato, setFiltroStato] = useState<string>('attivo')
+  const [filtroStato, setFiltroStato] = useState<string>('attivi')
   const [filtroInvestimento, setFiltroInvestimento] = useState<string>('')
 
   const fetchBandi = useCallback(async () => {
@@ -61,10 +78,15 @@ export default function BandiEsterniManager() {
       .from('scadenze_bandi_bandi_esterni')
       .select('*')
       .order('created_at', { ascending: false })
-    if (filtroStato !== 'tutti') query = query.eq('stato', filtroStato)
+    if (filtroStato === 'attivi') query = query.in('stato', ['attivo', 'in_apertura'])
+    else if (filtroStato !== 'tutti') query = query.eq('stato', filtroStato)
     // Tipologia di investimento finanziabile (le 14 voci di Agevolando)
     if (filtroInvestimento) query = query.contains('investimenti_spesati', [filtroInvestimento])
-    const { data, error } = await query
+    const [{ data, error }, { data: interni }] = await Promise.all([
+      query,
+      supabase.from('scadenze_bandi_bandi').select('nome')
+    ])
+    setNostri(new Map((interni || []).filter(b => b.nome).map(b => [normalizza(b.nome), b.nome])))
     if (!error && data) setBandi(data as BandoEsterno[])
     else if (error) console.error('[BandiEsterni] fetch:', error)
     setLoading(false)
@@ -105,10 +127,7 @@ export default function BandiEsterniManager() {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Landmark className="w-5 h-5 text-gray-600" />
-            <h3 className="font-semibold text-gray-900">
-              Catalogo bandi
-            </h3>
-            <span className="text-sm text-gray-500">({bandi.length})</span>
+            <span className="text-sm text-gray-700">{bandi.length} {bandi.length === 1 ? 'bando' : 'bandi'} nel catalogo</span>
           </div>
           <div className="flex items-center gap-2">
             <select
@@ -116,8 +135,9 @@ export default function BandiEsterniManager() {
               onChange={(e) => setFiltroStato(e.target.value)}
               className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white"
             >
-              <option value="attivo">Attivi</option>
-              <option value="in_apertura">In apertura</option>
+              <option value="attivi">Aperti e in arrivo</option>
+              <option value="attivo">Solo aperti</option>
+              <option value="in_apertura">In arrivo</option>
               <option value="scaduto">Scaduti</option>
               <option value="archiviato">Archiviati</option>
               <option value="tutti">Tutti</option>
@@ -230,6 +250,25 @@ export default function BandiEsterniManager() {
                 </div>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
+                {nostri.has(normalizza(b.titolo)) ? (
+                  <button
+                    type="button"
+                    onClick={() => onApriNostro?.(nostri.get(normalizza(b.titolo)) || b.titolo)}
+                    className="text-xs px-2 py-1 rounded-lg border border-green-200 bg-green-50 text-green-800 inline-flex items-center gap-1 mr-1"
+                    title="Apri il bando tra quelli su cui lavoriamo"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Ci lavoriamo già
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setDaLavorare(b)}
+                    className="text-xs px-2 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white inline-flex items-center gap-1 mr-1"
+                    title="Crea il bando dello studio con i dati del catalogo"
+                  >
+                    <Rocket className="w-3.5 h-3.5" /> Lavoriamo su questo bando
+                  </button>
+                )}
                 {b.url_dettagli && (
                   <a
                     href={b.url_dettagli}
@@ -247,8 +286,8 @@ export default function BandiEsterniManager() {
                   className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-white"
                   title="Cambia stato"
                 >
-                  <option value="attivo">Attivo</option>
-                  <option value="in_apertura">In apertura</option>
+                  <option value="attivo">Aperto</option>
+                  <option value="in_apertura">In arrivo</option>
                   <option value="scaduto">Scaduto</option>
                   <option value="archiviato">Archiviato</option>
                 </select>
@@ -273,6 +312,32 @@ export default function BandiEsterniManager() {
             </div>
           ))}
         </div>
+      )}
+
+      {daLavorare && (
+        <BandoForm
+          precompila={{
+            nome: daLavorare.titolo,
+            data_apertura_presentazione: dataIso(daLavorare.data_apertura),
+            data_chiusura_presentazione: daLavorare.data_scadenza || '',
+            link_bando_ufficiale: daLavorare.url_dettagli || '',
+            localizzazione_geografica: daLavorare.territorio || '',
+            note_interne: [
+              'Dal catalogo Agevolando.',
+              daLavorare.tipologia_aiuto && `Tipologia di aiuto: ${daLavorare.tipologia_aiuto}.`,
+              daLavorare.destinatari && `Destinatari: ${daLavorare.destinatari}.`,
+              daLavorare.settori && `Settori: ${daLavorare.settori}.`,
+              daLavorare.investimenti_spesati.length > 0 && `Investimenti finanziabili: ${daLavorare.investimenti_spesati.join(', ')}.`
+            ].filter(Boolean).join('\n')
+          }}
+          onClose={() => setDaLavorare(null)}
+          onBandoCreated={() => {
+            const nome = daLavorare.titolo
+            setDaLavorare(null)
+            if (onApriNostro) onApriNostro(nome)
+            else fetchBandi()
+          }}
+        />
       )}
 
       {showModal && (
@@ -528,8 +593,8 @@ function BandoEsternoModal({
                 onChange={(e) => set('stato', e.target.value)}
                 className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="attivo">Attivo</option>
-                <option value="in_apertura">In apertura</option>
+                <option value="attivo">Aperto</option>
+                <option value="in_apertura">In arrivo</option>
                 <option value="scaduto">Scaduto</option>
                 <option value="archiviato">Archiviato</option>
               </select>

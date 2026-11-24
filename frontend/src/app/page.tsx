@@ -8,7 +8,7 @@ import TopBar from '@/components/TopBar'
 import DashboardContent from '@/components/DashboardContent'
 import ClientiContent from '@/components/ClientiContent'
 import ScadenzeContent from '@/components/ScadenzeContent'
-import BandiContent from '@/components/BandiContent'
+import BandiPagina from '@/components/BandiPagina'
 import ProgettiContent from '@/components/ProgettiContent'
 import SettingsContent from '@/components/SettingsContent'
 import GmailClient from '@/components/GmailClient'
@@ -18,7 +18,6 @@ import ConsulentiContent from '@/components/ConsulentiContent'
 import ChatbotWidget from '@/components/ChatbotWidget'
 import NoteInboxContent from '@/components/NoteInboxContent'
 import AnalisiContent from '@/components/AnalisiContent'
-import BandiEsterniManager from '@/components/BandiEsterniManager'
 import { LoadingSpinner } from '@/components/shared'
 import OdvApp from '@/components/OdvApp'
 import { titoloPagina } from '@/lib/navigazione'
@@ -120,9 +119,9 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'clienti':
         return <ClientiContent onNavigate={onNavigate} navigationParams={navigationParams} />
       case 'bandi':
-        return <BandiContent initialFilter={navigationParams?.filter} onNavigate={onNavigate} />
+        return <BandiPagina initialFilter={navigationParams?.filter} onNavigate={onNavigate} />
       case 'bandi-esterni':
-        return <BandiEsterniManager />
+        return <BandiPagina schedaIniziale="catalogo" onNavigate={onNavigate} />
       case 'progetti':
         return <ProgettiContent initialFilter={navigationParams?.clienteFilter} openProgettoId={navigationParams?.openProgettoId} onNavigate={onNavigate} />
       case 'email':

@@ -46,8 +46,8 @@ export default function BandiContent({ initialFilter, onNavigate }: { initialFil
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchTerm, setSearchTerm] = useState(initialFilter || '')
-  // Di default i bandi su cui si può ancora lavorare: aperti e in arrivo
-  const [filtroStato, setFiltroStato] = useState<string>('attivi')
+  // Di default i bandi su cui si può ancora lavorare: aperti e in arrivo (tutti se si cerca un bando preciso)
+  const [filtroStato, setFiltroStato] = useState<string>(initialFilter ? 'tutti' : 'attivi')
   const [filtroTipo, setFiltroTipo] = useState<string>('tutti')
   const [showNewBandoModal, setShowNewBandoModal] = useState(false)
   const [showEditBandoModal, setShowEditBandoModal] = useState(false)
@@ -169,6 +169,9 @@ export default function BandiContent({ initialFilter, onNavigate }: { initialFil
 
   // Tipi di bando unici per filtro
   const tipiBando = Array.from(new Set(bandi.map(b => b.tipologia_bando).filter(Boolean)))
+
+  // Stessi nomi del Catalogo
+  const STATO_LABEL: Record<string, string> = { APERTO: 'Aperto', IN_ARRIVO: 'In arrivo', SCADUTO: 'Scaduto' }
 
   const getStatoColor = (stato: string | null | undefined) => {
     if (!stato) return 'bg-gray-100 text-gray-600 border-gray-200'
@@ -391,7 +394,7 @@ export default function BandiContent({ initialFilter, onNavigate }: { initialFil
     <div className="space-y-3">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-sm font-semibold text-gray-900">Gestione Bandi</h1>
+        <p className="text-xs text-gray-500">I bandi dello studio, con progetti e scadenze. Un clic su un bando lo apre.</p>
         <div className="flex items-center gap-3">
           {isSelectMode ? (
             <>
@@ -573,9 +576,10 @@ export default function BandiContent({ initialFilter, onNavigate }: { initialFil
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {bandiFiltrati.map((bando) => (
-                <tr key={bando.id} className="hover:bg-gray-50">
+                <tr key={bando.id} className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => (isSelectMode ? toggleSelectBando(bando.id) : handleEditBando(bando))}>
                   {isSelectMode && (
-                    <td className="px-1 py-2 w-12">
+                    <td className="px-1 py-2 w-12" onClick={e => e.stopPropagation()}>
                       <button
                         onClick={() => toggleSelectBando(bando.id)}
                         className="text-gray-600 hover:text-gray-800"
@@ -618,7 +622,7 @@ export default function BandiContent({ initialFilter, onNavigate }: { initialFil
                   </td>
                   <td className="px-1 py-2">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getStatoColor(bando.stato_calcolato)}`}>
-                      {bando.stato_calcolato ? bando.stato_calcolato.replace('_', ' ') : 'N/A'}
+                      {bando.stato_calcolato ? STATO_LABEL[bando.stato_calcolato] || bando.stato_calcolato : 'N/D'}
                     </span>
                   </td>
                   <td className="px-1 py-2 text-sm text-gray-900">
@@ -626,7 +630,7 @@ export default function BandiContent({ initialFilter, onNavigate }: { initialFil
                       <div className="font-medium">{bando.progetti_collegati || 0}</div>
                     </div>
                   </td>
-                  <td className="px-1 py-2 text-sm font-medium">
+                  <td className="px-1 py-2 text-sm font-medium" onClick={e => e.stopPropagation()}>
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleEditBando(bando)}

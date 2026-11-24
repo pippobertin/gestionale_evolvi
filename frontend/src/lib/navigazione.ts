@@ -15,7 +15,6 @@ export const VOCI_MENU: VoceMenu[] = [
   { id: 'clienti', label: 'Clienti', gruppo: 'Anagrafiche' },
   { id: 'consulenti', label: 'Segnalatori', gruppo: 'Anagrafiche' },
   { id: 'bandi', label: 'Bandi', gruppo: 'Bandi e progetti' },
-  { id: 'bandi-esterni', label: 'Catalogo bandi', gruppo: 'Bandi e progetti' },
   { id: 'progetti', label: 'Progetti', gruppo: 'Bandi e progetti' },
   { id: 'reports', label: 'Analisi', gruppo: 'Analisi' },
   { id: 'modello231', label: 'Modello 231', gruppo: 'Studio' },
@@ -25,6 +24,7 @@ export const VOCI_MENU: VoceMenu[] = [
 
 export function titoloPagina(id: string) {
   if (id === 'interrogazioni') return 'Analisi'
+  if (id === 'bandi-esterni') return 'Bandi'
   return VOCI_MENU.find(v => v.id === id)?.label || 'Cruscotto'
 }
 
