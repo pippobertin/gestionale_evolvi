@@ -17,7 +17,7 @@ const MODALITA_OPTS = [
 
 export const ambitoCorsi: DefinizioneAmbito = {
   id: 'corsi',
-  label: 'Corsi ed Edizioni',
+  label: 'Corsi ed edizioni',
   descrizione: 'Corsi e edizioni formative collegate a piani o standalone.',
   tabella: 'scadenze_bandi_corsi_formativi',
   join_cliente: true,

@@ -108,7 +108,7 @@ const CAMBIAMENTI_OPTS = [
 
 export const ambitoFabbisogni: DefinizioneAmbito = {
   id: 'fabbisogni',
-  label: 'Fabbisogni Formativi',
+  label: 'Fabbisogni formativi',
   descrizione: 'Rilevazioni del questionario di fabbisogno formativo compilate dai clienti.',
   tabella: 'scadenze_bandi_fabbisogno_rilevazioni',
   join_cliente: true,

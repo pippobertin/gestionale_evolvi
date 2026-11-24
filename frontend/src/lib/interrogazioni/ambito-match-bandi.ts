@@ -18,7 +18,7 @@ const CATEGORIE_OPTS = TIPOLOGIE_INVESTIMENTO.map((t) => ({ value: t, label: t }
 
 export const ambitoMatchBandi: DefinizioneAmbito = {
   id: 'match_bandi',
-  label: 'Bandi esterni ↔ Clienti',
+  label: 'Catalogo bandi e clienti',
   descrizione:
     'Clienti la cui "lista della spesa" combacia con bandi esterni attivi o in apertura. Uso interno.',
   tabella: 'vista_match_bandi_per_cliente',

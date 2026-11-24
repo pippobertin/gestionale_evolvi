@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { supabase } from '@/lib/supabase'
 import {
   Search, Filter, X, Download, FileText, Loader2, ChevronDown, ChevronRight, Database, RotateCcw,
   Mail, Calendar, Send, CheckCircle2, AlertTriangle
@@ -61,17 +62,13 @@ interface AmbitoSommario {
   descrizione?: string
 }
 
-const ICONE_AMBITO: Record<string, string> = {
-  clienti: '🏢',
-  prospect: '🎯',
-  fabbisogni: '📋',
-  bandi: '📂',
-  progetti: '🚀',
-  piani: '🎓',
-  corsi: '📚',
-  fpi: '💼',
-  contratti: '📑',
-}
+// Le aree di ricerca raggruppate per argomento (prima erano 12 pulsanti in fila)
+const GRUPPI_AMBITO: { titolo: string; ambiti: string[] }[] = [
+  { titolo: 'Clienti e prospect', ambiti: ['clienti', 'prospect', 'fabbisogni'] },
+  { titolo: 'Bandi e progetti', ambiti: ['bandi', 'progetti', 'match_bandi', 'contratti'] },
+  { titolo: 'Formazione', ambiti: ['piani', 'corsi', 'fpi'] },
+  { titolo: 'Aiuti ricevuti', ambiti: ['contributi', 'rna'] }
+]
 
 // ----------------------------------------------------------------
 // Componente principale
@@ -230,32 +227,41 @@ export default function InterrogazioniContent() {
           </div>
         </div>
 
-        {/* Ambito picker — caricato dinamicamente dal server */}
-        <div className="mt-3 flex items-center gap-2 flex-wrap">
-          {ambitiDisponibili.map(a => {
-            const attivo = ambitoId === a.id
-            const icona = ICONE_AMBITO[a.id] || '🔎'
-            return (
-              <button
-                key={a.id}
-                onClick={() => {
-                  setAmbitoId(a.id)
-                  setFiltri({})
-                  setRisultati([])
-                  setDefinizioneAmbito(null)
-                }}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                  attivo
-                    ? 'bg-teal-600 text-white border-teal-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-                title={a.descrizione}
-              >
-                <span className="mr-1">{icona}</span>
-                {a.label}
-              </button>
-            )
-          })}
+        {/* Aree di ricerca, raggruppate */}
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+          {[...GRUPPI_AMBITO, { titolo: 'Altro', ambiti: ambitiDisponibili.map(a => a.id).filter(id => !GRUPPI_AMBITO.some(g => g.ambiti.includes(id))) }]
+            .map(g => ({ ...g, voci: g.ambiti.map(id => ambitiDisponibili.find(a => a.id === id)).filter(Boolean) as AmbitoSommario[] }))
+            .filter(g => g.voci.length > 0)
+            .map(g => (
+              <div key={g.titolo}>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">{g.titolo}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {g.voci.map(a => {
+                    const attivo = ambitoId === a.id
+                    return (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => {
+                          setAmbitoId(a.id)
+                          setFiltri({})
+                          setRisultati([])
+                          setDefinizioneAmbito(null)
+                        }}
+                        className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                          attivo
+                            ? 'bg-teal-600 text-white border-teal-600'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                        title={a.descrizione}
+                      >
+                        {a.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
         </div>
       </div>
 
@@ -390,8 +396,8 @@ export default function InterrogazioniContent() {
               <Search className="w-10 h-10 text-gray-300 mx-auto mb-2" />
               <p className="text-sm text-gray-500">
                 {numeroFiltriAttivi === 0
-                  ? 'Nessun filtro attivo: la ricerca ha restituito tutti i record disponibili (oppure nessuno).'
-                  : 'Nessun risultato con i filtri impostati. Prova a rilassarli.'}
+                  ? 'Non ci sono dati in quest\'area.'
+                  : 'Nessun risultato con questi filtri: prova a toglierne qualcuno.'}
               </p>
             </div>
           ) : (
@@ -590,11 +596,16 @@ function ScadenzaBulkModal({ ambitoId, filtri, onClose, onEsito }: {
   onEsito: (esito: { tipo: 'success' | 'error'; messaggio: string }) => void
 }) {
   const [titolo, setTitolo] = useState('Follow-up: {nome}')
-  const [descrizione, setDescrizione] = useState('Contattare {nome} a seguito dell\'interrogazione filtrata nel gestionale.')
+  const [descrizione, setDescrizione] = useState('Contattare {nome} a seguito della ricerca fatta nel gestionale.')
   const [dataScadenza, setDataScadenza] = useState('')
   const [priorita, setPriorita] = useState<'ALTA' | 'MEDIA' | 'BASSA'>('MEDIA')
   const [categoria, setCategoria] = useState('follow_up_interrogazione')
   const [responsabileEmail, setResponsabileEmail] = useState('')
+  const [utentiAttivi, setUtentiAttivi] = useState<{ email: string; nome: string }[]>([])
+  useEffect(() => {
+    supabase.from('scadenze_bandi_utenti').select('email, nome, cognome, attivo, livello_permessi').order('nome')
+      .then(({ data }) => setUtentiAttivi((data || []).filter((u: any) => u.attivo && u.livello_permessi !== 'odv').map((u: any) => ({ email: u.email, nome: `${u.nome || ''} ${u.cognome || ''}`.trim() }))))
+  }, [])
   const [creando, setCreando] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
 
@@ -636,17 +647,17 @@ function ScadenzaBulkModal({ ambitoId, filtri, onClose, onEsito }: {
     <ModaleBase title="Crea scadenze in serie" onClose={onClose} icon={<Calendar className="w-5 h-5" />}>
       <div className="space-y-3">
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
-          Verra&apos; creata una scadenza nel calendario contrattuale per ogni cliente unico nei risultati.
-          Usa <code className="bg-white px-1 py-0.5 rounded">{`{nome}`}</code> per personalizzare titolo e descrizione.
+          Verrà creata una scadenza nello scadenzario per ogni cliente presente nei risultati.
+          Scrivi <code className="bg-white px-1 py-0.5 rounded">{`{nome}`}</code> dove vuoi che compaia il nome del cliente.
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Titolo (template)</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Titolo (puoi usare {'{nome}'})</label>
           <input type="text" value={titolo} onChange={e => setTitolo(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2" />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Descrizione (template)</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Descrizione (puoi usare {'{nome}'})</label>
           <textarea rows={3} value={descrizione} onChange={e => setDescrizione(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2" />
         </div>
 
@@ -668,11 +679,19 @@ function ScadenzaBulkModal({ ambitoId, filtri, onClose, onEsito }: {
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Categoria</label>
-            <input type="text" value={categoria} onChange={e => setCategoria(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2" placeholder="follow_up_interrogazione" />
+            <select value={categoria} onChange={e => setCategoria(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white">
+              <option value="follow_up_interrogazione">Ricontatto</option>
+              <option value="CONTRATTI">Contratti</option>
+              <option value="ADEMPIMENTO">Adempimento</option>
+              <option value="ALTRO">Altro</option>
+            </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Responsabile (email)</label>
-            <input type="email" value={responsabileEmail} onChange={e => setResponsabileEmail(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2" placeholder="opzionale" />
+            <label className="block text-xs font-medium text-gray-700 mb-1">Responsabile</label>
+            <select value={responsabileEmail} onChange={e => setResponsabileEmail(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white">
+              <option value="">Nessuno in particolare</option>
+              {utentiAttivi.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
+            </select>
           </div>
         </div>
 

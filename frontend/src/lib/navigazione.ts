@@ -17,14 +17,14 @@ export const VOCI_MENU: VoceMenu[] = [
   { id: 'bandi', label: 'Bandi', gruppo: 'Bandi e progetti' },
   { id: 'bandi-esterni', label: 'Catalogo bandi', gruppo: 'Bandi e progetti' },
   { id: 'progetti', label: 'Progetti', gruppo: 'Bandi e progetti' },
-  { id: 'interrogazioni', label: 'Ricerche', gruppo: 'Analisi', nascostaA: ['collaboratore_limitato'] },
-  { id: 'reports', label: 'Report', gruppo: 'Analisi' },
+  { id: 'reports', label: 'Analisi', gruppo: 'Analisi' },
   { id: 'modello231', label: 'Modello 231', gruppo: 'Studio' },
   { id: 'settings', label: 'Impostazioni', gruppo: 'Studio' },
   { id: 'faq', label: 'Aiuto', gruppo: 'Studio' }
 ]
 
 export function titoloPagina(id: string) {
+  if (id === 'interrogazioni') return 'Analisi'
   return VOCI_MENU.find(v => v.id === id)?.label || 'Cruscotto'
 }
 

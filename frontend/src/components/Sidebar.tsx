@@ -66,7 +66,7 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
 
   const ICONE: Record<string, typeof Home> = {
     dashboard: Home, scadenze: Calendar, email: Mail, 'note-inbox': Inbox, prospect: UserPlus, clienti: Users,
-    consulenti: Building, bandi: FileText, 'bandi-esterni': Landmark, progetti: Target, interrogazioni: Search,
+    consulenti: Building, bandi: FileText, 'bandi-esterni': Landmark, progetti: Target,
     reports: BarChart3, modello231: ShieldCheck, settings: Settings, faq: HelpCircle
   }
   const menuItems = vociVisibili(user?.livello_permessi).map(v => ({

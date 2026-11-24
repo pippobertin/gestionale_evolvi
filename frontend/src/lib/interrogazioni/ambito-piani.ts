@@ -32,7 +32,7 @@ const CANALE_OPTS = [
 
 export const ambitoPiani: DefinizioneAmbito = {
   id: 'piani',
-  label: 'Piani Formativi',
+  label: 'Piani formativi',
   descrizione: 'Piani formativi presentati o in gestione, con dati di rendicontazione e contributo.',
   tabella: 'scadenze_bandi_piani_formativi',
   join_cliente: true,

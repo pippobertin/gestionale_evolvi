@@ -1,5 +1,6 @@
 'use client'
 
+import { esportaExcel } from '@/lib/esportaExcel'
 import React, { useState, useEffect } from 'react'
 import {
   BarChart3,
@@ -213,7 +214,7 @@ export default function ScadenzeContrattualiReports() {
 
     const headers = [
       'Titolo', 'Tipo Scadenza', 'Categoria', 'Data Scadenza', 'Stato',
-      'Priorita', 'Responsabile', 'Entity Type', 'Tags', 'Data Completamento'
+      'Priorità', 'Responsabile', 'Collegata a', 'Etichette', 'Data completamento'
     ]
 
     const rows = reportData.dettaglio.map(item => [
@@ -229,18 +230,7 @@ export default function ScadenzeContrattualiReports() {
       item.data_completamento || ''
     ])
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    ].join('\n')
-
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `report-scadenze-contrattuali-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-    window.URL.revokeObjectURL(url)
+    esportaExcel(headers, rows, `report-scadenze-contrattuali-${new Date().toISOString().split('T')[0]}`)
   }
 
   return (
@@ -248,8 +238,7 @@ export default function ScadenzeContrattualiReports() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Report Scadenze Contrattuali</h1>
-          <p className="text-gray-600 mt-1">Analisi e statistiche delle scadenze contrattuali</p>
+          <p className="text-sm text-gray-600">Scadenze contrattuali e generali: andamento e dettaglio</p>
         </div>
         <button
           onClick={exportToCSV}
@@ -257,7 +246,7 @@ export default function ScadenzeContrattualiReports() {
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
         >
           <Download className="w-4 h-4" />
-          Esporta CSV
+          Esporta in Excel
         </button>
       </div>
 

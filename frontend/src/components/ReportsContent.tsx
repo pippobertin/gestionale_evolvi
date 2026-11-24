@@ -1,5 +1,6 @@
 'use client'
 
+import { esportaExcelOggetti } from '@/lib/esportaExcel'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import {
@@ -88,6 +89,10 @@ interface PeriodoData {
   overview: OverviewProgetti | null
 }
 
+// Anni disponibili nei filtri: dall'anno in corso fino al 2023 (prima erano scritti a mano)
+const ANNI_REPORT = Array.from({ length: Math.max(1, new Date().getFullYear() - 2022) }, (_, i) => new Date().getFullYear() - i)
+const PERIODI_REPORT = ANNI_REPORT.flatMap(a => [`q1_${a}`, `q2_${a}`, `q3_${a}`, `q4_${a}`, `anno_${a}`])
+
 export default function ReportsContent() {
   const [activeTab, setActiveTab] = useState<'contributi' | 'bandi' | 'overview' | 'benchmarking' | 'scadenze_contrattuali'>('contributi')
   const [loading, setLoading] = useState(false)
@@ -142,83 +147,19 @@ export default function ReportsContent() {
 
   const getDateRangeFromPeriodo = (periodo?: string) => {
     const periodoToUse = periodo || periodoFiltro
-
-    switch (periodoToUse) {
-      // 2026
-      case 'q1_2026':
-        return { start: '2026-01-01', end: '2026-03-31' }
-      case 'q2_2026':
-        return { start: '2026-04-01', end: '2026-06-30' }
-      case 'q3_2026':
-        return { start: '2026-07-01', end: '2026-09-30' }
-      case 'q4_2026':
-        return { start: '2026-10-01', end: '2026-12-31' }
-      case 'anno_2026':
-        return { start: '2026-01-01', end: '2026-12-31' }
-      // 2025
-      case 'q1_2025':
-        return { start: '2025-01-01', end: '2025-03-31' }
-      case 'q2_2025':
-        return { start: '2025-04-01', end: '2025-06-30' }
-      case 'q3_2025':
-        return { start: '2025-07-01', end: '2025-09-30' }
-      case 'q4_2025':
-        return { start: '2025-10-01', end: '2025-12-31' }
-      case 'anno_2025':
-        return { start: '2025-01-01', end: '2025-12-31' }
-      // 2024
-      case 'q1_2024':
-        return { start: '2024-01-01', end: '2024-03-31' }
-      case 'q2_2024':
-        return { start: '2024-04-01', end: '2024-06-30' }
-      case 'q3_2024':
-        return { start: '2024-07-01', end: '2024-09-30' }
-      case 'q4_2024':
-        return { start: '2024-10-01', end: '2024-12-31' }
-      case 'anno_2024':
-        return { start: '2024-01-01', end: '2024-12-31' }
-      // 2023
-      case 'q1_2023':
-        return { start: '2023-01-01', end: '2023-03-31' }
-      case 'q2_2023':
-        return { start: '2023-04-01', end: '2023-06-30' }
-      case 'q3_2023':
-        return { start: '2023-07-01', end: '2023-09-30' }
-      case 'q4_2023':
-        return { start: '2023-10-01', end: '2023-12-31' }
-      case 'anno_2023':
-        return { start: '2023-01-01', end: '2023-12-31' }
-      case 'personalizzato':
-        return { start: dataInizio, end: dataFine }
-      default:
-        return null
-    }
+    if (periodoToUse === 'personalizzato') return { start: dataInizio, end: dataFine }
+    const m = /^(q[1-4]|anno)_(\d{4})$/.exec(periodoToUse)
+    if (!m) return null
+    const anno = m[2]
+    const trimestri: Record<string, [string, string]> = { q1: ['01-01', '03-31'], q2: ['04-01', '06-30'], q3: ['07-01', '09-30'], q4: ['10-01', '12-31'], anno: ['01-01', '12-31'] }
+    const [da, a] = trimestri[m[1]]
+    return { start: `${anno}-${da}`, end: `${anno}-${a}` }
   }
 
   const getPeriodoLabel = (periodo: string) => {
-    const labels: Record<string, string> = {
-      'q1_2026': 'Q1 2026',
-      'q2_2026': 'Q2 2026',
-      'q3_2026': 'Q3 2026',
-      'q4_2026': 'Q4 2026',
-      'anno_2026': '2026',
-      'q1_2025': 'Q1 2025',
-      'q2_2025': 'Q2 2025',
-      'q3_2025': 'Q3 2025',
-      'q4_2025': 'Q4 2025',
-      'anno_2025': '2025',
-      'q1_2024': 'Q1 2024',
-      'q2_2024': 'Q2 2024',
-      'q3_2024': 'Q3 2024',
-      'q4_2024': 'Q4 2024',
-      'anno_2024': '2024',
-      'q1_2023': 'Q1 2023',
-      'q2_2023': 'Q2 2023',
-      'q3_2023': 'Q3 2023',
-      'q4_2023': 'Q4 2023',
-      'anno_2023': '2023'
-    }
-    return labels[periodo] || periodo
+    const m = /^(q[1-4]|anno)_(\d{4})$/.exec(periodo)
+    if (!m) return periodo
+    return m[1] === 'anno' ? m[2] : `${m[1].toUpperCase()} ${m[2]}`
   }
 
   const loadContributiClienti = async (periodo?: string) => {
@@ -565,20 +506,8 @@ export default function ReportsContent() {
     return new Date(dateString).toLocaleDateString('it-IT')
   }
 
-  const exportToCSV = (data: any[], filename: string) => {
-    if (data.length === 0) return
-
-    const headers = Object.keys(data[0]).join(',')
-    const rows = data.map(row => Object.values(row).join(',')).join('\n')
-    const csv = `${headers}\n${rows}`
-
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${filename}.csv`
-    a.click()
-  }
+  // Esportazione in Excel (prima era un CSV)
+  const exportToCSV = (data: any[], filename: string) => { esportaExcelOggetti(data, filename) }
 
   const getStatoIcon = (stato: string) => {
     switch (stato) {
@@ -630,112 +559,10 @@ export default function ReportsContent() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-sm font-semibold text-gray-900">Report</h1>
-          <p className="text-gray-600 mt-1">Analisi dati e statistiche</p>
+          <h1 className="text-sm font-semibold text-gray-900">Cruscotto</h1>
+          <p className="text-gray-600 mt-1 text-sm">Grafici e riepiloghi su contributi, bandi, progetti e scadenze</p>
         </div>
       </div>
-
-      {/* Filtri (solo per tabs non-benchmarking) */}
-      {activeTab !== 'benchmarking' && activeTab !== 'scadenze_contrattuali' && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center gap-3 flex-wrap">
-            <Filter className="w-4 h-4 text-gray-400" />
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Stato Progetti
-              </label>
-              <select
-                value={statiFiltro}
-                onChange={(e) => setStatiFiltro(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="tutti">Tutti gli stati</option>
-                <option value="DECRETO_ATTESO">Decreto Atteso</option>
-                <option value="DECRETO_RICEVUTO">Decreto Ricevuto</option>
-                <option value="ACCETTATO">Accettato</option>
-                <option value="IN_CORSO">In Corso</option>
-                <option value="COMPLETATO">Completato</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Periodo
-              </label>
-              <select
-                value={periodoFiltro}
-                onChange={(e) => {
-                  setPeriodoFiltro(e.target.value)
-                  if (e.target.value !== 'personalizzato') {
-                    setDataInizio('')
-                    setDataFine('')
-                  }
-                }}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="tutti">Tutti i periodi</option>
-                <optgroup label="2026">
-                  <option value="q1_2026">Q1 2026 (Gen-Mar)</option>
-                  <option value="q2_2026">Q2 2026 (Apr-Giu)</option>
-                  <option value="q3_2026">Q3 2026 (Lug-Set)</option>
-                  <option value="q4_2026">Q4 2026 (Ott-Dic)</option>
-                  <option value="anno_2026">Anno 2026</option>
-                </optgroup>
-                <optgroup label="2025">
-                  <option value="q1_2025">Q1 2025 (Gen-Mar)</option>
-                  <option value="q2_2025">Q2 2025 (Apr-Giu)</option>
-                  <option value="q3_2025">Q3 2025 (Lug-Set)</option>
-                  <option value="q4_2025">Q4 2025 (Ott-Dic)</option>
-                  <option value="anno_2025">Anno 2025</option>
-                </optgroup>
-                <optgroup label="2024">
-                  <option value="q1_2024">Q1 2024 (Gen-Mar)</option>
-                  <option value="q2_2024">Q2 2024 (Apr-Giu)</option>
-                  <option value="q3_2024">Q3 2024 (Lug-Set)</option>
-                  <option value="q4_2024">Q4 2024 (Ott-Dic)</option>
-                  <option value="anno_2024">Anno 2024</option>
-                </optgroup>
-                <optgroup label="2023">
-                  <option value="q1_2023">Q1 2023 (Gen-Mar)</option>
-                  <option value="q2_2023">Q2 2023 (Apr-Giu)</option>
-                  <option value="q3_2023">Q3 2023 (Lug-Set)</option>
-                  <option value="q4_2023">Q4 2023 (Ott-Dic)</option>
-                  <option value="anno_2023">Anno 2023</option>
-                </optgroup>
-                <option value="personalizzato">Personalizzato</option>
-              </select>
-            </div>
-
-            {periodoFiltro === 'personalizzato' && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Data Inizio
-                  </label>
-                  <input
-                    type="date"
-                    value={dataInizio}
-                    onChange={(e) => setDataInizio(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Data Fine
-                  </label>
-                  <input
-                    type="date"
-                    value={dataFine}
-                    onChange={(e) => setDataFine(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-                  />
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
@@ -808,6 +635,89 @@ export default function ReportsContent() {
         </nav>
       </div>
 
+      {/* Filtri, sotto le schede che li usano */}
+      {activeTab !== 'benchmarking' && activeTab !== 'scadenze_contrattuali' && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Filter className="w-4 h-4 text-gray-400" />
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Stato Progetti
+              </label>
+              <select
+                value={statiFiltro}
+                onChange={(e) => setStatiFiltro(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="tutti">Tutti gli stati</option>
+                <option value="DECRETO_ATTESO">Decreto Atteso</option>
+                <option value="DECRETO_RICEVUTO">Decreto Ricevuto</option>
+                <option value="ACCETTATO">Accettato</option>
+                <option value="IN_CORSO">In Corso</option>
+                <option value="COMPLETATO">Completato</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Periodo
+              </label>
+              <select
+                value={periodoFiltro}
+                onChange={(e) => {
+                  setPeriodoFiltro(e.target.value)
+                  if (e.target.value !== 'personalizzato') {
+                    setDataInizio('')
+                    setDataFine('')
+                  }
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="tutti">Tutti i periodi</option>
+                {ANNI_REPORT.map(anno => (
+                  <optgroup key={anno} label={String(anno)}>
+                    <option value={`q1_${anno}`}>1° trimestre {anno} (gen-mar)</option>
+                    <option value={`q2_${anno}`}>2° trimestre {anno} (apr-giu)</option>
+                    <option value={`q3_${anno}`}>3° trimestre {anno} (lug-set)</option>
+                    <option value={`q4_${anno}`}>4° trimestre {anno} (ott-dic)</option>
+                    <option value={`anno_${anno}`}>Anno {anno}</option>
+                  </optgroup>
+                ))}
+                <option value="personalizzato">Personalizzato</option>
+              </select>
+            </div>
+
+            {periodoFiltro === 'personalizzato' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Data Inizio
+                  </label>
+                  <input
+                    type="date"
+                    value={dataInizio}
+                    onChange={(e) => setDataInizio(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Data Fine
+                  </label>
+                  <input
+                    type="date"
+                    value={dataFine}
+                    onChange={(e) => setDataFine(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       {loading && activeTab !== 'benchmarking' && activeTab !== 'scadenze_contrattuali' ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
@@ -828,7 +738,7 @@ export default function ReportsContent() {
                   className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
                 >
                   <Download className="w-4 h-4" />
-                  Esporta CSV
+                  Esporta in Excel
                 </button>
               </div>
 
@@ -977,7 +887,7 @@ export default function ReportsContent() {
                   className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
                 >
                   <Download className="w-4 h-4" />
-                  Esporta CSV
+                  Esporta in Excel
                 </button>
               </div>
 
@@ -1218,12 +1128,7 @@ export default function ReportsContent() {
                 </p>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  {[
-                    'q1_2026', 'q2_2026', 'q3_2026', 'q4_2026', 'anno_2026',
-                    'q1_2025', 'q2_2025', 'q3_2025', 'q4_2025', 'anno_2025',
-                    'q1_2024', 'q2_2024', 'q3_2024', 'q4_2024', 'anno_2024',
-                    'q1_2023', 'q2_2023', 'q3_2023', 'q4_2023', 'anno_2023'
-                  ].map((periodo) => (
+                  {PERIODI_REPORT.map((periodo) => (
                     <button
                       key={periodo}
                       onClick={() => togglePeriodoComparazione(periodo)}

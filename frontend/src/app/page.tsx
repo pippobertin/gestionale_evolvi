@@ -12,13 +12,12 @@ import BandiContent from '@/components/BandiContent'
 import ProgettiContent from '@/components/ProgettiContent'
 import SettingsContent from '@/components/SettingsContent'
 import GmailClient from '@/components/GmailClient'
-import ReportsContent from '@/components/ReportsContent'
 import ProspectContent from '@/components/ProspectContent'
 import FaqContent from '@/components/FaqContent'
 import ConsulentiContent from '@/components/ConsulentiContent'
 import ChatbotWidget from '@/components/ChatbotWidget'
 import NoteInboxContent from '@/components/NoteInboxContent'
-import InterrogazioniContent from '@/components/InterrogazioniContent'
+import AnalisiContent from '@/components/AnalisiContent'
 import BandiEsterniManager from '@/components/BandiEsterniManager'
 import { LoadingSpinner } from '@/components/shared'
 import OdvApp from '@/components/OdvApp'
@@ -135,11 +134,11 @@ function MainApp({ activeItem, setActiveItem, navigationParams, onNavigate, side
       case 'note-inbox':
         return <NoteInboxContent />
       case 'interrogazioni':
-        return <InterrogazioniContent />
+        return <AnalisiContent scheda="ricerche" />
       case 'consulenti':
         return <ConsulentiContent onNavigate={onNavigate} />
       case 'reports':
-        return <ReportsContent />
+        return <AnalisiContent scheda="cruscotto" />
       case 'modello231':
         return <Modello231Content />
       case 'settings':
