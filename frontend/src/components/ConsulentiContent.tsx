@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Users, Search, RefreshCw, ExternalLink, Plus } from 'lucide-react'
 import ConsulenteDettaglio from './ConsulenteDettaglio'
-import ClienteForm from './ClienteForm'
+import NuovoSegnalatoreModal from './NuovoSegnalatoreModal'
 
 interface Consulente {
   id: string
@@ -114,12 +114,11 @@ export default function ConsulentiContent({ onNavigate }: ConsulentiContentProps
         </div>
       </div>
 
-      {/* Nuovo segnalatore: è un'anagrafica con la categoria Segnalatori già impostata */}
-      <ClienteForm
-        cliente={nuovo ? ({ denominazione: '', categoria_evolvi: 'CONSULENTI', stato_fatturazione: 'Italia', numero_dipendenti: 0, numero_volontari: 0, numero_collaboratori: 0, tipo_collegamento: 'AUTONOMA', influenza_dominante: false } as any) : undefined}
+      {/* Nuovo segnalatore: modulo breve, solo i dati che servono */}
+      <NuovoSegnalatoreModal
         isOpen={nuovo}
         onClose={() => setNuovo(false)}
-        onSave={fetchConsulenti}
+        onSaved={(id) => { fetchConsulenti(); setSelectedConsulenteId(id); setShowDettaglio(true) }}
       />
 
       <p className="text-sm text-gray-600">
