@@ -28,6 +28,7 @@ import ContractModal from './ContractModal'
 import ContractTrackingWidget from './ContractTrackingWidget'
 import PraticaPercorso from './PraticaPercorso'
 import EmailCorrelate from './EmailCorrelate'
+import SceltaConRicerca from './shared/SceltaConRicerca'
 import NoteCollegateBox from './NoteCollegateBox'
 import { spostaNelCestino } from '@/lib/cestinoArchivi'
 import { STATO_LABEL as STATO_CONTRIBUTO } from '@/lib/contributi/types'
@@ -1481,20 +1482,13 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Bando *
                       </label>
-                      <select
-                        value={formData.bando_id}
-                        onChange={(e) => setFormData({ ...formData, bando_id: e.target.value })}
-                        required
+                      <SceltaConRicerca
+                        valore={formData.bando_id}
+                        onChange={(id) => setFormData({ ...formData, bando_id: id })}
+                        opzioni={bandi.map((b) => ({ id: b.id, etichetta: b.nome, dettaglio: b.codice_bando }))}
+                        segnaposto="Scrivi il nome o il codice del bando"
                         disabled={!!bando}
-                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                      >
-                        <option value="">Seleziona un bando</option>
-                        {bandi.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.nome} - {b.codice_bando}
-                          </option>
-                        ))}
-                      </select>
+                      />
                       {bando && (
                         <p className="mt-1 text-sm text-gray-600">
                           Bando pre-selezionato: {bando.nome}
@@ -1506,20 +1500,13 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Cliente *
                       </label>
-                      <select
-                        value={formData.cliente_id}
-                        onChange={(e) => setFormData({ ...formData, cliente_id: e.target.value })}
-                        required
+                      <SceltaConRicerca
+                        valore={formData.cliente_id}
+                        onChange={(id) => setFormData({ ...formData, cliente_id: id })}
+                        opzioni={clienti.map((c) => ({ id: c.id, etichetta: c.denominazione, dettaglio: c.partita_iva }))}
+                        segnaposto="Scrivi il nome o la partita IVA del cliente"
                         disabled={!!cliente}
-                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                      >
-                        <option value="">Seleziona un cliente</option>
-                        {clienti.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.denominazione} - {c.partita_iva}
-                          </option>
-                        ))}
-                      </select>
+                      />
                       {cliente && (
                         <p className="mt-1 text-sm text-gray-600">
                           Cliente pre-selezionato: {cliente.denominazione}

@@ -13,6 +13,7 @@ import {
   ChevronDown
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import SceltaConRicerca from './shared/SceltaConRicerca'
 import UnifiedResponsableSelector from './UnifiedResponsableSelector'
 
 interface Cliente {
@@ -491,51 +492,36 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
               </label>
 
               {entitaSelezionata === 'cliente' && (
-                <select
-                  value={formData.cliente_id || ''}
-                  onChange={(e) => handleInputChange('cliente_id', e.target.value)}
-                  className="input"
+                <SceltaConRicerca
+                  valore={formData.cliente_id || ''}
+                  onChange={(id) => handleInputChange('cliente_id', id)}
+                  opzioni={clienti.map(cliente => ({ id: cliente.id, etichetta: cliente.denominazione, dettaglio: cliente.partita_iva }))}
+                  segnaposto="Scrivi il nome o la partita IVA del cliente"
+                  className="input pr-16"
                   required
-                >
-                  <option value="">Seleziona cliente...</option>
-                  {clienti.map(cliente => (
-                    <option key={cliente.id} value={cliente.id}>
-                      {cliente.denominazione} {cliente.partita_iva && `(${cliente.partita_iva})`}
-                    </option>
-                  ))}
-                </select>
+                />
               )}
 
               {entitaSelezionata === 'bando' && (
-                <select
-                  value={formData.bando_id || ''}
-                  onChange={(e) => handleInputChange('bando_id', e.target.value)}
-                  className="input"
+                <SceltaConRicerca
+                  valore={formData.bando_id || ''}
+                  onChange={(id) => handleInputChange('bando_id', id)}
+                  opzioni={bandi.map(bando => ({ id: bando.id, etichetta: bando.nome, dettaglio: bando.codice_bando }))}
+                  segnaposto="Scrivi il nome o il codice del bando"
+                  className="input pr-16"
                   required
-                >
-                  <option value="">Seleziona bando...</option>
-                  {bandi.map(bando => (
-                    <option key={bando.id} value={bando.id}>
-                      {bando.nome} {bando.codice_bando && `(${bando.codice_bando})`}
-                    </option>
-                  ))}
-                </select>
+                />
               )}
 
               {entitaSelezionata === 'progetto' && (
-                <select
-                  value={formData.progetto_id || ''}
-                  onChange={(e) => handleInputChange('progetto_id', e.target.value)}
-                  className="input"
+                <SceltaConRicerca
+                  valore={formData.progetto_id || ''}
+                  onChange={(id) => handleInputChange('progetto_id', id)}
+                  opzioni={progetti.map(progetto => ({ id: progetto.id, etichetta: progetto.titolo_progetto, dettaglio: progetto.codice_progetto }))}
+                  segnaposto="Scrivi il titolo o il codice del progetto"
+                  className="input pr-16"
                   required
-                >
-                  <option value="">Seleziona progetto...</option>
-                  {progetti.map(progetto => (
-                    <option key={progetto.id} value={progetto.id}>
-                      {progetto.titolo_progetto} {progetto.codice_progetto && `(${progetto.codice_progetto})`}
-                    </option>
-                  ))}
-                </select>
+                />
               )}
             </div>
           )}
