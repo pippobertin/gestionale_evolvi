@@ -7,7 +7,7 @@ interface Scadenza {
   id: string
   titolo: string
   data_scadenza: string
-  stato: 'non_iniziata' | 'in_corso' | 'completata'
+  stato: 'non_iniziata' | 'in_corso' | 'completata' | 'annullata'
   urgenza: 'NORMALE' | 'IMMINENTE' | 'URGENTE'
   cliente_nome: string
   tipo_scadenza_nome: string

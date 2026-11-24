@@ -11,7 +11,7 @@ interface Scadenza {
   id: string
   titolo: string
   data_scadenza: string
-  stato: 'non_iniziata' | 'in_corso' | 'completata'
+  stato: 'non_iniziata' | 'in_corso' | 'completata' | 'annullata'
   priorita: 'bassa' | 'media' | 'alta'
   responsabile_email: string
   note: string
@@ -34,7 +34,9 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
   const [scadenze, setScadenze] = useState<Scadenza[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [viewMode, setViewMode] = useState<ViewMode>('calendario')
+  const [viewMode, setViewMode] = useState<ViewMode>('lista')
+  // Elenco: di default solo ciò che c'è da fare entro 30 giorni (scadute comprese)
+  const [filtroPeriodo, setFiltroPeriodo] = useState<'prossimi30' | 'tutte'>('prossimi30')
   const [filtroUrgenza, setFiltroUrgenza] = useState<string>('tutti')
   const [filtroStato, setFiltroStato] = useState<string>('tutti')
   const [filtroCliente, setFiltroCliente] = useState<string>('tutti')
@@ -122,7 +124,7 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
         const giorni_rimanenti = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
         let urgenza: 'NORMALE' | 'IMMINENTE' | 'URGENTE' = 'NORMALE'
-        if (item.stato !== 'completata') {
+        if (item.stato !== 'completata' && item.stato !== 'annullata') {
           if (giorni_rimanenti < 0) urgenza = 'URGENTE'
           else if (giorni_rimanenti <= 7) urgenza = 'IMMINENTE'
         }
@@ -142,7 +144,7 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
       })
 
       // Processa scadenze contrattuali → normalizza allo stesso formato
-      const statoMap: Record<string, string> = { APERTA: 'non_iniziata', IN_CORSO: 'in_corso', COMPLETATA: 'completata', ANNULLATA: 'completata' }
+      const statoMap: Record<string, string> = { APERTA: 'non_iniziata', IN_CORSO: 'in_corso', COMPLETATA: 'completata', ANNULLATA: 'annullata' }
       const prioritaMap: Record<string, string> = { BASSA: 'bassa', MEDIA: 'media', ALTA: 'alta', CRITICA: 'alta' }
 
       const scadenzeContrattuali = (dataContr || []).map(item => {
@@ -169,7 +171,7 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
           id: item.id,
           titolo: item.titolo,
           data_scadenza: item.data_scadenza,
-          stato: (statoMap[item.stato] || 'non_iniziata') as 'non_iniziata' | 'in_corso' | 'completata',
+          stato: (statoMap[item.stato] || 'non_iniziata') as 'non_iniziata' | 'in_corso' | 'completata' | 'annullata',
           priorita: (prioritaMap[item.priorita] || 'media') as 'bassa' | 'media' | 'alta',
           responsabile_email: item.responsabile_email || '',
           note: item.descrizione || '',
@@ -200,9 +202,22 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
     }
   }
 
+  const aperta = (s: Scadenza) => s.stato !== 'completata' && s.stato !== 'annullata'
+
+  // Filtri per cliente, bando e progetto: valgono anche per i contatori
+  const scadenzeBase = scadenze.filter(scadenza =>
+    (filtroCliente === 'tutti' || scadenza.cliente_nome === filtroCliente) &&
+    (filtroBando === 'tutti' || scadenza.bando_nome === filtroBando) &&
+    (filtroProgetto === 'tutti' || scadenza.progetto_codice === filtroProgetto)
+  )
+
   // Filtra scadenze
-  const scadenzeFiltrate = scadenze.filter(scadenza => {
-    if (filtroUrgenza !== 'tutti' && scadenza.urgenza !== filtroUrgenza) {
+  const scadenzeFiltrate = scadenzeBase.filter(scadenza => {
+    // L'urgenza riguarda solo le scadenze ancora aperte
+    if (filtroUrgenza !== 'tutti' && (scadenza.urgenza !== filtroUrgenza || !aperta(scadenza))) {
+      return false
+    }
+    if (viewMode === 'lista' && filtroPeriodo === 'prossimi30' && (!aperta(scadenza) || scadenza.giorni_rimanenti > 30)) {
       return false
     }
     if (filtroStato !== 'tutti' && scadenza.stato !== filtroStato) {
@@ -225,10 +240,24 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
   const bandiUnici = [...new Set(scadenze.map(s => s.bando_nome).filter(Boolean))].sort()
   const progettiUnici = [...new Set(scadenze.map(s => s.progetto_codice).filter(Boolean))].sort()
 
-  // Raggruppa scadenze per urgenza
-  const urgenti = scadenzeFiltrate.filter(s => s.urgenza === 'URGENTE')
-  const imminenti = scadenzeFiltrate.filter(s => s.urgenza === 'IMMINENTE')
-  const normali = scadenzeFiltrate.filter(s => s.urgenza === 'NORMALE')
+  // Contatori (cliccabili come filtri): urgenza delle scadenze aperte, più le completate
+  const urgenti = scadenzeBase.filter(s => aperta(s) && s.urgenza === 'URGENTE')
+  const imminenti = scadenzeBase.filter(s => aperta(s) && s.urgenza === 'IMMINENTE')
+  const normali = scadenzeBase.filter(s => aperta(s) && s.urgenza === 'NORMALE')
+  const completate = scadenzeBase.filter(s => s.stato === 'completata')
+
+  // Un clic su un contatore filtra l'elenco; un secondo clic toglie il filtro
+  const filtraUrgenza = (u: string) => {
+    const attivo = filtroUrgenza === u
+    setFiltroUrgenza(attivo ? 'tutti' : u); setFiltroStato('tutti')
+    if (!attivo) { setViewMode('lista'); setFiltroPeriodo('tutte') }
+  }
+  const filtraCompletate = () => {
+    const attivo = filtroStato === 'completata'
+    setFiltroStato(attivo ? 'tutti' : 'completata'); setFiltroUrgenza('tutti')
+    if (!attivo) { setViewMode('lista'); setFiltroPeriodo('tutte') }
+  }
+  const ETICHETTA_URGENZA: Record<string, string> = { URGENTE: 'Scaduta', IMMINENTE: 'Imminente', NORMALE: 'Normale' }
 
   const getPriorityColor = (urgenza: string) => {
     switch (urgenza) {
@@ -242,6 +271,7 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
     switch (stato) {
       case 'completata': return 'bg-green-100 text-green-800'
       case 'in_corso': return 'bg-blue-100 text-blue-800'
+      case 'annullata': return 'bg-gray-200 text-gray-500 line-through'
       default: return 'bg-gray-100 text-gray-600'
     }
   }
@@ -340,7 +370,7 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
 
       if (scadenza?.source === 'contrattuali') {
         // Mappa stato indietro a formato contrattuali
-        const reverseStatoMap: Record<string, string> = { non_iniziata: 'APERTA', in_corso: 'IN_CORSO', completata: 'COMPLETATA' }
+        const reverseStatoMap: Record<string, string> = { non_iniziata: 'APERTA', in_corso: 'IN_CORSO', completata: 'COMPLETATA', annullata: 'ANNULLATA' }
         const updateData: any = { stato: reverseStatoMap[nuovoStato] || 'APERTA' }
         if (nuovoStato === 'completata') {
           updateData.data_completamento = new Date().toISOString()
@@ -368,7 +398,7 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
       setScadenze(prev => prev.map(s => {
         if (s.id !== scadenzaId) return s
         const updated = { ...s, stato: nuovoStato as any }
-        if (nuovoStato === 'completata') {
+        if (nuovoStato === 'completata' || nuovoStato === 'annullata') {
           updated.urgenza = 'NORMALE'
         }
         return updated
@@ -479,7 +509,7 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
 
       {/* Statistiche Rapide */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <div className="bg-gradient-to-br from-amber-500 to-yellow-500 p-4 rounded-xl border border-amber-400 shadow-lg">
+        <div role="button" tabIndex={0} onClick={() => filtraUrgenza('IMMINENTE')} title="Filtra l'elenco (secondo clic: tutte)" className={`bg-gradient-to-br from-amber-500 to-yellow-500 p-4 rounded-xl border border-amber-400 shadow-lg cursor-pointer ${filtroUrgenza === 'IMMINENTE' ? 'ring-4 ring-offset-1 ring-slate-700' : ''}`}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-white drop-shadow-sm">Imminenti</p>
@@ -489,7 +519,7 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-cyan-500 to-teal-500 p-4 rounded-xl border border-cyan-400 shadow-lg">
+        <div role="button" tabIndex={0} onClick={() => filtraUrgenza('NORMALE')} title="Filtra l'elenco (secondo clic: tutte)" className={`bg-gradient-to-br from-cyan-500 to-teal-500 p-4 rounded-xl border border-cyan-400 shadow-lg cursor-pointer ${filtroUrgenza === 'NORMALE' ? 'ring-4 ring-offset-1 ring-slate-700' : ''}`}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-cyan-100 drop-shadow-sm">Normali</p>
@@ -499,19 +529,19 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-500 p-4 rounded-xl border border-emerald-400 shadow-lg">
+        <div role="button" tabIndex={0} onClick={filtraCompletate} title="Filtra l'elenco (secondo clic: tutte)" className={`bg-gradient-to-br from-emerald-500 to-teal-500 p-4 rounded-xl border border-emerald-400 shadow-lg cursor-pointer ${filtroStato === 'completata' ? 'ring-4 ring-offset-1 ring-slate-700' : ''}`}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-emerald-100 drop-shadow-sm">Completate</p>
               <p className="text-lg font-black text-white drop-shadow">
-                {scadenze.filter(s => s.stato === 'completata').length}
+                {completate.length}
               </p>
             </div>
             <CheckCircle className="w-6 h-6 text-emerald-200 drop-shadow" />
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 shadow-lg">
+        <div role="button" tabIndex={0} onClick={() => filtraUrgenza('URGENTE')} title="Filtra l'elenco (secondo clic: tutte)" className={`bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 shadow-lg cursor-pointer ${filtroUrgenza === 'URGENTE' ? 'ring-4 ring-offset-1 ring-slate-700' : ''}`}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-bold text-red-100 drop-shadow-sm">Scadute</p>
@@ -577,15 +607,27 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
             </select>
           </div>
 
+          {viewMode === 'lista' && (
+            <select
+              value={filtroPeriodo}
+              onChange={(e) => setFiltroPeriodo(e.target.value as 'prossimi30' | 'tutte')}
+              className="border border-gray-300 rounded-md px-3 py-1 text-sm"
+            >
+              <option value="prossimi30">Da fare nei prossimi 30 giorni</option>
+              <option value="tutte">Tutte le date</option>
+            </select>
+          )}
+
           <select
             value={filtroStato}
-            onChange={(e) => setFiltroStato(e.target.value)}
+            onChange={(e) => { setFiltroStato(e.target.value); if (['completata', 'annullata'].includes(e.target.value)) setFiltroPeriodo('tutte') }}
             className="border border-gray-300 rounded-md px-3 py-1 text-sm"
           >
             <option value="tutti">Tutti gli stati</option>
             <option value="non_iniziata">Da fare</option>
             <option value="in_corso">In corso</option>
             <option value="completata">Completate</option>
+            <option value="annullata">Annullate</option>
           </select>
 
           <select
@@ -702,7 +744,7 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
                     </td>
                     <td className="px-3 py-1.5 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(scadenza.urgenza)}`}>
-                        {scadenza.urgenza}
+                        {ETICHETTA_URGENZA[scadenza.urgenza] || scadenza.urgenza}
                       </span>
                     </td>
                     <td className="px-3 py-1.5 whitespace-nowrap">
@@ -714,6 +756,7 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
                         <option value="non_iniziata">Da fare</option>
                         <option value="in_corso">In corso</option>
                         <option value="completata">Completata</option>
+                        <option value="annullata">Annullata</option>
                       </select>
                     </td>
                   </tr>

@@ -594,7 +594,7 @@ export default function ScadenzaForm({ onClose, onScadenzaCreata, scadenza }: Sc
                 onChange={(e) => handleInputChange('stato', e.target.value as any)}
                 className="input"
               >
-                <option value="non_iniziata">Non iniziata</option>
+                <option value="non_iniziata">Da fare</option>
                 <option value="in_corso">In corso</option>
                 <option value="completata">Completata</option>
                 <option value="annullata">Annullata</option>
