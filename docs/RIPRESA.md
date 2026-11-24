@@ -39,7 +39,7 @@ I dati di prova (delega "restart" su AAAAPIPPO, utente "Prova Uscita", segnalato
 
 Approvato dall'utente; si fa un pezzo alla volta, ciascuno con prova in anteprima e pubblicazione su main solo dopo il via.
 
-**Rilascio 3 completato e in produzione** (tutti gli otto punti qui sotto). Dopo il rilascio 3, in produzione anche: Scadenzario con contatori come filtri e vista "da fare nei prossimi 30 giorni"; ricerca nei menu a tendina di cliente, bando e progetto; elenchi coerenti (eliminazione dentro la scheda, conferme che rimandano al Registro attività); chiusura di tutte le finestre con la X e con il clic fuori; progetto aperto sopra la scheda del cliente; Note da assegnare con cliente proposto, punti da controllare e archivio. In prova: pulizia dei contratti e stato del contratto nella sezione Incarico.
+**Rilascio 3 completato e in produzione** (tutti gli otto punti qui sotto). Dopo il rilascio 3, in produzione anche: Scadenzario con contatori come filtri e vista "da fare nei prossimi 30 giorni"; ricerca nei menu a tendina di cliente, bando e progetto; elenchi coerenti (eliminazione dentro la scheda, conferme che rimandano al Registro attività); chiusura di tutte le finestre con la X e con il clic fuori; progetto aperto sopra la scheda del cliente; Note da assegnare con cliente proposto, punti da controllare e archivio. Inoltre: pulizia dei contratti e stato del contratto nella sezione Incarico; contatori corretti e cliccabili nella pagina Progetti; controllo automatico delle pagine dei bandi (vedi sotto).
 
 1. **Segnalatori in un solo posto.**
    - Oggi un segnalatore si inserisce due volte: dal menu Segnalatori (anagrafica con categoria Segnalatori e clienti segnalati) e in Modello 231, Segnalatori e compensi.
@@ -66,15 +66,13 @@ Approvato dall'utente; si fa un pezzo alla volta, ciascuno con prova in anteprim
    - Aggiungere Ricerche, Catalogo bandi, Modello 231, Note da assegnare e Segnalatori.
    - Spiegare la scelta sulle email (casella personale e promemoria dal calendario).
 
-### Dopo il rilascio 3: controllo automatico delle pagine dei bandi (richiesto il 24/11/2026)
+### Controllo automatico delle pagine dei bandi: in produzione dal 24/11/2026
 
-Avviso quando sul sito dell'ente compare una graduatoria. Proposta da confermare con l'utente prima di partire:
-- per ogni bando con progetti in attesa del decreto, uno o più indirizzi da controllare (la pagina del bando e, se serve, la pagina delle notizie o degli esiti dell'ente);
-- controllo una volta al giorno: si confrontano i collegamenti e i documenti della pagina con quelli già visti, si seguono le sottopagine dello stesso sito che parlano di esiti, graduatorie o notizie (al massimo poche per bando);
-- segnalazione quando compare un documento o una notizia con parole come graduatoria, elenco degli ammessi, esiti, decreto di concessione; in una seconda fase, lettura dei PDF nuovi alla ricerca dei clienti (denominazione o partita IVA);
-- avviso coerente con la scelta sulle email: scadenza "Controllare la graduatoria" nello Scadenzario al responsabile del progetto (quindi anche nel calendario) e riquadro nel Cruscotto, con i pulsanti "È la graduatoria" e "Non interessa";
-- limiti da dire chiaramente: siti che caricano i contenuti con JavaScript, portali con accesso riservato, protezioni anti-robot; per questi la pagina risulta "non controllabile" e resta il controllo a mano.
-- Oggi nessuno dei 5 bandi dello studio ha il link compilato: va inserito per quelli in attesa del decreto.
+- Ogni mattina alle 6 (cron `/api/cron/controllo-bandi`) legge la pagina ufficiale (campo in "Dati Bando") e le altre pagine dei bandi con progetti inviati in attesa del decreto, o accesi a mano nella scheda "Controllo della pagina". Motore in `frontend/src/lib/controlloBandi.ts`, tabelle `scadenze_bandi_controllo_pagine` e `scadenze_bandi_controllo_novita` (migrazione 20261124).
+- Novità "graduatoria" (parole chiave) e "documento" (file nuovi); per le graduatorie scadenza "Controllare la graduatoria" ai responsabili dei progetti (responsabile della pratica, altrimenti referente interno) e riquadro "Novità sui bandi" nel Cruscotto.
+- Da verificare alla prima graduatoria vera: se l'evento nel calendario dello studio viene creato (dipende dai permessi dell'account Google dello studio).
+- Da raccogliere: quali siti degli enti risultano "non controllabili".
+- Estensioni decise per dopo una prima prova: ricerca dei clienti (denominazione, partita IVA) nei PDF nuovi; valutazione delle novità dubbie con l'intelligenza artificiale.
 
 ### Rimasti dall'analisi, più piccoli
 
@@ -84,7 +82,7 @@ Restano:
 - Cliente: unire davvero dettaglio e modifica in una sola finestra (oggi sono due finestre, ma la modifica torna sul cliente).
 - Progetti: le schede numeriche in alto (decreto atteso, ricevuto, in corso, completati) non contano i progetti non ancora inviati; la scheda "Completati" è rossa.
 
-Poi: controllo automatico delle pagine dei bandi (sezione qui sopra).
+L'utente ha chiesto di fare per ora solo il terzo punto (fatto); gli altri due restano da decidere.
 
 ## Rinviati, da decidere
 
