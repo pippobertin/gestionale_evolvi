@@ -1,7 +1,8 @@
 'use client'
 
 import Segnalatori from './modello231/Segnalatori'
-import { Handshake } from 'lucide-react'
+import NuovoSegnalatoreModal from './NuovoSegnalatoreModal'
+import { Handshake, Pencil } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
 import {
   X, Building2, Briefcase, Users, TrendingUp,
@@ -94,6 +95,7 @@ const TIPO_SEGNALAZIONE_CONFIG: Record<string, { label: string; color: string }>
 // ─── Component ────────────────────────────────────────────
 
 export default function ConsulenteDettaglio({ consulenteId, isOpen, onClose, onNavigate }: ConsulenteDettaglioProps) {
+  const [modificaDati, setModificaDati] = useState(false)
   const [consulente, setConsulente] = useState<Consulente | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentTab, setCurrentTab] = useState('anagrafica')
@@ -385,17 +387,13 @@ export default function ConsulenteDettaglio({ consulenteId, isOpen, onClose, onN
           </div>
         )}
 
-        {onNavigate && (
-          <div className="pt-2">
-            <button
-              onClick={() => onNavigate('clienti', { openClientId: consulenteId })}
-              className="btn-primary text-xs flex items-center space-x-1.5"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>Apri Scheda Completa</span>
-            </button>
-          </div>
-        )}
+        <div className="pt-2">
+          <button type="button" onClick={() => setModificaDati(true)} className="btn-primary text-xs flex items-center space-x-1.5">
+            <Pencil className="w-3.5 h-3.5" />
+            <span>Modifica i dati</span>
+          </button>
+        </div>
+        <NuovoSegnalatoreModal isOpen={modificaDati} segnalatore={consulente} onClose={() => setModificaDati(false)} onSaved={() => fetchConsulente()} />
       </div>
     )
   }

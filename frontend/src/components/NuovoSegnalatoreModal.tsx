@@ -1,24 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { X, Save } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 
 /**
- * Nuovo segnalatore: solo i dati che servono (chi è, come contattarlo, dove
+ * Nuovo segnalatore (o modifica dei suoi dati): solo i dati che servono (chi è, come contattarlo, dove
  * sta). È un'anagrafica con la categoria Segnalatori; accordo e compensi si
  * registrano poi dalla sua scheda.
  */
-type Props = { isOpen: boolean; onClose: () => void; onSaved: (id: string) => void }
+type Props = { isOpen: boolean; onClose: () => void; onSaved: (id: string) => void; segnalatore?: Record<string, any> | null }
 
 const vuoto = { denominazione: '', partita_iva: '', codice_fiscale: '', email: '', pec: '', telefono: '', indirizzo_fatturazione: '', cap_fatturazione: '', citta_fatturazione: '', provincia_fatturazione: '', note: '' }
 
-export default function NuovoSegnalatoreModal({ isOpen, onClose, onSaved }: Props) {
+export default function NuovoSegnalatoreModal({ isOpen, onClose, onSaved, segnalatore }: Props) {
   const { user } = useAuth()
   const [dati, setDati] = useState(vuoto)
   const [salvataggio, setSalvataggio] = useState(false)
   const [errore, setErrore] = useState('')
+  // In modifica il modulo parte dai dati del segnalatore
+  useEffect(() => {
+    if (isOpen && segnalatore) setDati(Object.fromEntries(Object.keys(vuoto).map(k => [k, segnalatore[k] || ''])) as typeof vuoto)
+    if (isOpen && !segnalatore) setDati(vuoto)
+  }, [isOpen, segnalatore])
   if (!isOpen) return null
 
   const campo = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm'
@@ -28,9 +33,11 @@ export default function NuovoSegnalatoreModal({ isOpen, onClose, onSaved }: Prop
     if (!dati.denominazione.trim()) { setErrore('Indica il nome del segnalatore'); return }
     setSalvataggio(true); setErrore('')
     const pulito = Object.fromEntries(Object.entries(dati).map(([k, v]) => [k, v.trim() || null]))
-    const { data, error } = await supabase.from('scadenze_bandi_clienti')
-      .insert([{ ...pulito, denominazione: dati.denominazione.trim(), categoria_evolvi: 'CONSULENTI', stato_fatturazione: 'Italia', creato_da: user?.id }])
-      .select('id').single()
+    const { data, error } = segnalatore?.id
+      ? await supabase.from('scadenze_bandi_clienti').update({ ...pulito, denominazione: dati.denominazione.trim() }).eq('id', segnalatore.id).select('id').single()
+      : await supabase.from('scadenze_bandi_clienti')
+        .insert([{ ...pulito, denominazione: dati.denominazione.trim(), categoria_evolvi: 'CONSULENTI', stato_fatturazione: 'Italia', creato_da: user?.id }])
+        .select('id').single()
     setSalvataggio(false)
     if (error || !data) { setErrore(error?.message || 'Salvataggio non riuscito'); return }
     setDati(vuoto)
@@ -42,7 +49,7 @@ export default function NuovoSegnalatoreModal({ isOpen, onClose, onSaved }: Prop
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-hard max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <div className="gradient-primary text-white p-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Nuovo segnalatore</h2>
+          <h2 className="text-sm font-semibold">{segnalatore?.id ? `Modifica: ${segnalatore.denominazione || 'segnalatore'}` : 'Nuovo segnalatore'}</h2>
           <button type="button" onClick={onClose} className="p-1.5 hover:bg-white/20 rounded-lg"><X className="w-4 h-4" /></button>
         </div>
         <div className="p-4 overflow-y-auto space-y-3">
