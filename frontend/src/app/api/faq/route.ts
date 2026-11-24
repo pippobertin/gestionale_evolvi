@@ -7,7 +7,8 @@ let faqCache: string | null = null
 
 function loadFAQ(): string {
   if (faqCache) return faqCache
-  const faqPath = path.join(process.cwd(), '..', 'docs', 'chatbot', 'FAQ_GESTIONALE_EVOLVI.md')
+  // La guida sta dentro l'applicazione, così viene inclusa nella pubblicazione
+  const faqPath = path.join(process.cwd(), 'docs', 'guida', 'FAQ_GESTIONALE_EVOLVI.md')
   faqCache = fs.readFileSync(faqPath, 'utf-8')
   return faqCache
 }

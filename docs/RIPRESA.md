@@ -60,7 +60,7 @@ Approvato dall'utente; si fa un pezzo alla volta, ciascuno con prova in anteprim
 5. **"Bandi" e "Catalogo bandi" in un'unica pagina.** Due schede ("Su cui lavoriamo" e "Catalogo"), un pulsante "Lavoriamo su questo bando" che precompila il bando interno, gli stessi nomi di stato nei due elenchi.
 6. **Formazione solo dove serve.** La scheda Formazione si mostra solo per i clienti FPI o per chi ha già dati di formazione; le sotto-schede FPI si nascondono senza adesione.
 7. **Contributo ottenuto in un solo posto.** Oggi si scrive sia nel progetto sia in Contributi ottenuti. Proposta: importo e data si registrano solo in Contributi e il progetto li mostra in sola lettura, con collegamento.
-8. **Guida e assistente aggiornati** (`docs/chatbot/FAQ_GESTIONALE_EVOLVI.md`, da cui l'assistente prende le risposte).
+8. **Guida e assistente aggiornati** (la guida ora sta in `frontend/docs/guida/FAQ_GESTIONALE_EVOLVI.md`, da cui leggono la pagina Aiuto e l'assistente).
    - Togliere "stack tecnologico" ed elenchi di tabelle.
    - Aggiornare menu e impostazioni con i nomi nuovi.
    - Aggiungere Ricerche, Catalogo bandi, Modello 231, Note da assegnare e Segnalatori.

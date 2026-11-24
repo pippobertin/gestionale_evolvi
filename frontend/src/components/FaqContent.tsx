@@ -14,19 +14,20 @@ import {
   FileText,
   Target,
   Calendar,
-  ClipboardCheck,
-  Bell,
   FileSignature,
-  Receipt,
   Mail,
-  Pen,
   HardDrive,
-  FolderOpen,
   BarChart3,
   Settings,
   Wrench,
   BookA,
-  Loader2
+  Loader2,
+  Inbox,
+  Handshake,
+  GraduationCap,
+  Trophy,
+  ShieldCheck,
+  ScrollText
 } from 'lucide-react'
 
 interface FaqSection {
@@ -42,6 +43,7 @@ interface FaqSubsection {
   sectionTitle: string
 }
 
+// Icone delle sezioni della guida, per numero
 const SECTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   '1': BookOpen,
   '2': LogIn,
@@ -52,18 +54,19 @@ const SECTION_ICONS: Record<string, React.ComponentType<{ className?: string }>>
   '7': FileText,
   '8': Target,
   '9': Calendar,
-  '10': ClipboardCheck,
-  '11': Bell,
-  '12': FileSignature,
-  '13': Receipt,
-  '14': Mail,
-  '15': Pen,
+  '10': FileSignature,
+  '11': Mail,
+  '12': Inbox,
+  '13': Handshake,
+  '14': GraduationCap,
+  '15': Trophy,
   '16': HardDrive,
-  '17': FolderOpen,
-  '18': BarChart3,
-  '19': Settings,
-  '20': Wrench,
-  '21': BookA
+  '17': BarChart3,
+  '18': ShieldCheck,
+  '19': ScrollText,
+  '20': Settings,
+  '21': Wrench,
+  '22': BookA
 }
 
 function parseFaqMarkdown(markdown: string): FaqSection[] {
