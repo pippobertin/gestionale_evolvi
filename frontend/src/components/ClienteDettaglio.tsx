@@ -124,6 +124,9 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
   const [riconosciuta, setRiconosciuta] = useState<{ r: DimensioneRiconosciuta; n: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentTab, setCurrentTab] = useState('progetti')
+  // Formazione: la scheda compare solo per i clienti FPI o con dati di formazione
+  const [formazione, setFormazione] = useState<{ presente: boolean; fpi: boolean } | null>(null)
+  const [formazioneAperta, setFormazioneAperta] = useState(false)
   const [collegamenti, setCollegamenti] = useState<CollegamentoAziendale[]>([])
   const [loadingCollegamenti, setLoadingCollegamenti] = useState(false)
 
@@ -132,6 +135,12 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
       setRiconosciuta(null)
       fetchCliente()
       loadCollegamenti()
+      setFormazione(null); setFormazioneAperta(false)
+      fetch(`/api/clienti/${clienteId}/formazione/presenza`)
+        .then(r => (r.ok ? r.json() : null))
+        // Se il controllo non risponde la scheda resta visibile, come prima
+        .then(d => setFormazione(d ? { presente: !!d.presente, fpi: !!d.fpi } : { presente: true, fpi: true }))
+        .catch(() => setFormazione({ presente: true, fpi: true }))
     }
   }, [isOpen, clienteId])
 
@@ -254,6 +263,8 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
 
   const isEvolviClient = cliente.categoria_evolvi === 'EVOLVI'
 
+  const conFormazione = !!formazione?.presente || formazioneAperta || currentTab === 'formazione' || cliente.categoria_evolvi === 'FPI'
+
   const baseTabs = [
     { id: 'progetti', label: 'Progetti e scadenze', icon: IconaProgetti },
     { id: 'anagrafica', label: 'Dati Anagrafici', icon: Building2 },
@@ -265,7 +276,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
     { id: 'email', label: 'Email', icon: Mail },
     { id: 'formazione', label: 'Formazione', icon: GraduationCap },
     { id: 'contributi', label: 'Contributi Ottenuti', icon: Trophy }
-  ]
+  ].filter(t => t.id !== 'formazione' || conFormazione)
 
   const evolviTabs = isEvolviClient ? [
     { id: 'contratti_evolvi', label: 'Contratti Evolvi', icon: ClipboardCheck }
@@ -923,7 +934,7 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
       case 'formazione':
         return (
           <div className="space-y-3">
-            <FormazioneManager clienteId={cliente.id} initialSubTab={currentTab === 'formazione' ? initialSubTab : undefined} />
+            <FormazioneManager clienteId={cliente.id} fpi={formazione ? formazione.fpi : true} initialSubTab={currentTab === 'formazione' ? initialSubTab : undefined} />
           </div>
         )
 
@@ -998,6 +1009,16 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
                 </button>
               )
             })}
+            {formazione && !conFormazione && (
+              <button
+                type="button"
+                onClick={() => { setFormazioneAperta(true); setCurrentTab('formazione') }}
+                className="py-2 px-1.5 text-xs text-gray-400 hover:text-gray-700 flex items-center gap-1 flex-shrink-0"
+                title="Il cliente non ha dati di formazione: apri la scheda per inserirli"
+              >
+                <GraduationCap className="w-3.5 h-3.5" /> + Formazione
+              </button>
+            )}
           </div>
         </div>
 

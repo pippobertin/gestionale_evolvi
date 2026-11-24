@@ -18,6 +18,8 @@ import { supabase } from '@/lib/supabase'
 interface FormazioneManagerProps {
   clienteId: string
   initialSubTab?: string
+  /** Cliente FPI o con un'adesione al fondo: senza, le parti del fondo si nascondono */
+  fpi?: boolean
 }
 
 const subTabs = [
@@ -30,7 +32,7 @@ const subTabs = [
   { id: 'fabbisogno', label: 'Rilevazione Fabbisogno', icon: ClipboardList },
 ]
 
-export default function FormazioneManager({ clienteId, initialSubTab }: FormazioneManagerProps) {
+export default function FormazioneManager({ clienteId, initialSubTab, fpi = true }: FormazioneManagerProps) {
   const [activeSubTab, setActiveSubTab] = useState(initialSubTab || 'panoramica')
   const [hasAdesione, setHasAdesione] = useState<boolean | null>(null)
 
@@ -80,13 +82,24 @@ export default function FormazioneManager({ clienteId, initialSubTab }: Formazio
     }
   }
 
+  // Senza adesione a FPI la sotto-scheda del fondo si nasconde; si apre con il pulsante
+  const conFpi = fpi || activeSubTab === 'adesione_fpi'
+  const schede = subTabs.filter(t => t.id !== 'adesione_fpi' || conFpi)
+
   return (
     <div className="space-y-2">
       <SecondaryTabsBar
-        tabs={subTabs}
+        tabs={schede}
         activeTab={activeSubTab}
         onTabChange={setActiveSubTab}
       />
+      {!conFpi && (
+        <div className="flex justify-end">
+          <button type="button" onClick={() => setActiveSubTab('adesione_fpi')} className="text-xs text-gray-500 hover:text-gray-800 inline-flex items-center gap-1">
+            <Award className="w-3.5 h-3.5" /> Registra un&apos;adesione a FPI
+          </button>
+        </div>
+      )}
       {renderSubTabContent()}
     </div>
   )
