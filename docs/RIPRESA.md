@@ -1,6 +1,6 @@
 # Punto di ripresa del lavoro
 
-Branch di lavoro `claude/stoic-hawking-mf8eph`. Aggiornato il 23/11/2026, per la ripresa del 24/11/2026.
+Branch di lavoro `claude/stoic-hawking-mf8eph`. Aggiornato il 24/11/2026.
 
 ## Dove siamo
 
@@ -39,6 +39,8 @@ I dati di prova (delega "restart" su AAAAPIPPO, utente "Prova Uscita", segnalato
 
 Approvato dall'utente; si fa un pezzo alla volta, ciascuno con prova in anteprima e pubblicazione su main solo dopo il via.
 
+**Già in produzione:** punti 1, 2, 3, 4 e 5 (segnalatori in un solo posto con accordo e compensi nella loro scheda; Modello 231 con la scheda "Da fare" e il contatore nel menu; Analisi; Bandi e Catalogo in un'unica pagina con "Lavoriamo su questo bando"). Restano i punti 6, 7 e 8.
+
 1. **Segnalatori in un solo posto.**
    - Oggi un segnalatore si inserisce due volte: dal menu Segnalatori (anagrafica con categoria Segnalatori e clienti segnalati) e in Modello 231, Segnalatori e compensi.
    - Proposta: aggiungere nella scheda del segnalatore (ConsulenteDettaglio) una scheda "Accordo e compensi" con il componente 231 filtrato su quel segnalatore, sul modello delle deleghe già mostrate nella pratica.
@@ -63,6 +65,16 @@ Approvato dall'utente; si fa un pezzo alla volta, ciascuno con prova in anteprim
    - Aggiornare menu e impostazioni con i nomi nuovi.
    - Aggiungere Ricerche, Catalogo bandi, Modello 231, Note da assegnare e Segnalatori.
    - Spiegare la scelta sulle email (casella personale e promemoria dal calendario).
+
+### Dopo il rilascio 3: controllo automatico delle pagine dei bandi (richiesto il 24/11/2026)
+
+Avviso quando sul sito dell'ente compare una graduatoria. Proposta da confermare con l'utente prima di partire:
+- per ogni bando con progetti in attesa del decreto, uno o più indirizzi da controllare (la pagina del bando e, se serve, la pagina delle notizie o degli esiti dell'ente);
+- controllo una volta al giorno: si confrontano i collegamenti e i documenti della pagina con quelli già visti, si seguono le sottopagine dello stesso sito che parlano di esiti, graduatorie o notizie (al massimo poche per bando);
+- segnalazione quando compare un documento o una notizia con parole come graduatoria, elenco degli ammessi, esiti, decreto di concessione; in una seconda fase, lettura dei PDF nuovi alla ricerca dei clienti (denominazione o partita IVA);
+- avviso coerente con la scelta sulle email: scadenza "Controllare la graduatoria" nello Scadenzario al responsabile del progetto (quindi anche nel calendario) e riquadro nel Cruscotto, con i pulsanti "È la graduatoria" e "Non interessa";
+- limiti da dire chiaramente: siti che caricano i contenuti con JavaScript, portali con accesso riservato, protezioni anti-robot; per questi la pagina risulta "non controllabile" e resta il controllo a mano.
+- Oggi nessuno dei 5 bandi dello studio ha il link compilato: va inserito per quelli in attesa del decreto.
 
 ### Rimasti dall'analisi, più piccoli (da inserire dove capita)
 
