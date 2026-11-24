@@ -464,14 +464,18 @@ export default function ProgettiContent({ initialFilter, onNavigate, openProgett
     }
   }
 
-  // Filtra progetti
-  const progettiFiltrati = progetti.filter(progetto => {
+  // Situazione del progetto: una pratica non ancora inviata è "in preparazione"
+  // (lo stato calcolato direbbe "decreto atteso", ma la domanda non è partita)
+  const situazione = (p: Progetto) => {
+    const fase = (p as any).fase
+    return fase && fase !== 'inviata' ? 'IN_PREPARAZIONE' : p.stato_calcolato
+  }
+
+  // Ricerca ed ente: valgono anche per i contatori
+  const progettiBase = progetti.filter(progetto => {
     if (searchTerm && !progetto.titolo_progetto?.toLowerCase().includes(searchTerm.toLowerCase()) &&
         !progetto.codice_progetto?.toLowerCase().includes(searchTerm.toLowerCase()) &&
         !progetto.cliente_denominazione?.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return false
-    }
-    if (filtroStato !== 'tutti' && progetto.stato_calcolato !== filtroStato) {
       return false
     }
     if (filtroEnte !== 'tutti' && progetto.ente_erogatore !== filtroEnte) {
@@ -480,11 +484,24 @@ export default function ProgettiContent({ initialFilter, onNavigate, openProgett
     return true
   })
 
-  // Raggruppa progetti per stato
-  const progettiDecretoAtteso = progettiFiltrati.filter(p => p.stato_calcolato === 'DECRETO_ATTESO')
-  const progettiDecretoRicevuto = progettiFiltrati.filter(p => p.stato_calcolato === 'DECRETO_RICEVUTO')
-  const progettiInCorso = progettiFiltrati.filter(p => p.stato_calcolato === 'IN_CORSO')
-  const progettiCompletati = progettiFiltrati.filter(p => p.stato_calcolato === 'COMPLETATO')
+  // Il contatore "Decreto ricevuto o accettato" filtra entrambi gli stati
+  const progettiFiltrati = progettiBase.filter(progetto => {
+    if (filtroStato === 'tutti') return true
+    if (filtroStato === 'RICEVUTO_O_ACCETTATO') return ['DECRETO_RICEVUTO', 'ACCETTATO'].includes(situazione(progetto))
+    return situazione(progetto) === filtroStato
+  })
+
+  // Contatori (cliccabili come filtri)
+  const progettiInPreparazione = progettiBase.filter(p => situazione(p) === 'IN_PREPARAZIONE')
+  const progettiDecretoAtteso = progettiBase.filter(p => situazione(p) === 'DECRETO_ATTESO')
+  const progettiDecretoRicevuto = progettiBase.filter(p => ['DECRETO_RICEVUTO', 'ACCETTATO'].includes(situazione(p)))
+  const progettiInCorso = progettiBase.filter(p => situazione(p) === 'IN_CORSO')
+  const progettiCompletati = progettiBase.filter(p => situazione(p) === 'COMPLETATO')
+  const filtraStato = (st: string) => setFiltroStato(filtroStato === st ? 'tutti' : st)
+  const ETICHETTA_STATO: Record<string, string> = {
+    DECRETO_ATTESO: 'In attesa del decreto', DECRETO_RICEVUTO: 'Decreto ricevuto', ACCETTATO: 'Accettato',
+    IN_CORSO: 'In corso', COMPLETATO: 'Chiuso', SOSPESO: 'Sospeso', ANNULLATO: 'Annullato', SCADUTO: 'Scaduto'
+  }
 
   // Enti unici per filtro
   const entiErogatori = [...new Set(progetti.map(p => p.ente_erogatore).filter(Boolean))]
@@ -592,45 +609,56 @@ export default function ProgettiContent({ initialFilter, onNavigate, openProgett
         </div>
       </div>
 
-      {/* Statistiche Rapide */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <div className="bg-gradient-to-br from-amber-500 to-yellow-500 p-4 rounded-xl border border-amber-400 shadow-lg">
+      {/* Contatori: un clic filtra l'elenco, un secondo clic toglie il filtro */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div role="button" tabIndex={0} onClick={() => filtraStato('IN_PREPARAZIONE')} title="Pratiche non ancora inviate. Clic per filtrare l'elenco"
+          className={`bg-gradient-to-br from-slate-500 to-slate-600 p-4 rounded-xl border border-slate-400 shadow-lg cursor-pointer ${filtroStato === 'IN_PREPARAZIONE' ? 'ring-4 ring-offset-1 ring-slate-700' : ''}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-white drop-shadow-sm">Decreto Atteso</p>
+              <p className="text-sm font-bold text-white drop-shadow-sm">In preparazione</p>
+              <p className="text-lg font-black text-white drop-shadow">{progettiInPreparazione.length}</p>
+            </div>
+            <FileText className="w-6 h-6 text-white/80 drop-shadow" />
+          </div>
+        </div>
+        <div role="button" tabIndex={0} onClick={() => filtraStato('DECRETO_ATTESO')} title="Domanda inviata, decreto non ancora arrivato. Clic per filtrare l'elenco"
+          className={`bg-gradient-to-br from-amber-500 to-yellow-500 p-4 rounded-xl border border-amber-400 shadow-lg cursor-pointer ${filtroStato === 'DECRETO_ATTESO' ? 'ring-4 ring-offset-1 ring-slate-700' : ''}`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-white drop-shadow-sm">In attesa del decreto</p>
               <p className="text-lg font-black text-white drop-shadow">{progettiDecretoAtteso.length}</p>
             </div>
-            <Clock className="w-6 h-6 text-white drop-shadow" />
+            <Clock className="w-6 h-6 text-white/80 drop-shadow" />
           </div>
         </div>
-
-        <div className="bg-gradient-to-br from-cyan-500 to-teal-500 p-4 rounded-xl border border-cyan-400 shadow-lg">
+        <div role="button" tabIndex={0} onClick={() => filtraStato('RICEVUTO_O_ACCETTATO')} title="Decreto arrivato, progetto non ancora avviato. Clic per filtrare l'elenco"
+          className={`bg-gradient-to-br from-cyan-500 to-teal-500 p-4 rounded-xl border border-cyan-400 shadow-lg cursor-pointer ${filtroStato === 'RICEVUTO_O_ACCETTATO' ? 'ring-4 ring-offset-1 ring-slate-700' : ''}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-cyan-100 drop-shadow-sm">Decreto Ricevuto</p>
+              <p className="text-sm font-bold text-white drop-shadow-sm">Decreto ricevuto o accettato</p>
               <p className="text-lg font-black text-white drop-shadow">{progettiDecretoRicevuto.length}</p>
             </div>
-            <AlertTriangle className="w-6 h-6 text-cyan-200 drop-shadow" />
+            <AlertTriangle className="w-6 h-6 text-white/80 drop-shadow" />
           </div>
         </div>
-
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-500 p-4 rounded-xl border border-emerald-400 shadow-lg">
+        <div role="button" tabIndex={0} onClick={() => filtraStato('IN_CORSO')} title="Progetto avviato. Clic per filtrare l'elenco"
+          className={`bg-gradient-to-br from-blue-500 to-blue-600 p-4 rounded-xl border border-blue-400 shadow-lg cursor-pointer ${filtroStato === 'IN_CORSO' ? 'ring-4 ring-offset-1 ring-slate-700' : ''}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-emerald-100 drop-shadow-sm">In Corso</p>
+              <p className="text-sm font-bold text-white drop-shadow-sm">In corso</p>
               <p className="text-lg font-black text-white drop-shadow">{progettiInCorso.length}</p>
             </div>
-            <Building className="w-6 h-6 text-emerald-200 drop-shadow" />
+            <Building className="w-6 h-6 text-white/80 drop-shadow" />
           </div>
         </div>
-
-        <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl border border-red-400 shadow-lg">
+        <div role="button" tabIndex={0} onClick={() => filtraStato('COMPLETATO')} title="Progetto chiuso. Clic per filtrare l'elenco"
+          className={`bg-gradient-to-br from-emerald-500 to-green-600 p-4 rounded-xl border border-emerald-400 shadow-lg cursor-pointer ${filtroStato === 'COMPLETATO' ? 'ring-4 ring-offset-1 ring-slate-700' : ''}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-red-100 drop-shadow-sm">Completati</p>
+              <p className="text-sm font-bold text-white drop-shadow-sm">Chiusi</p>
               <p className="text-lg font-black text-white drop-shadow">{progettiCompletati.length}</p>
             </div>
-            <CheckCircle className="w-6 h-6 text-red-200 drop-shadow" />
+            <CheckCircle className="w-6 h-6 text-white/80 drop-shadow" />
           </div>
         </div>
       </div>
@@ -657,11 +685,13 @@ export default function ProgettiContent({ initialFilter, onNavigate, openProgett
               className="border border-gray-300 rounded-md px-3 py-2 text-sm"
             >
               <option value="tutti">Tutti gli stati</option>
-              <option value="DECRETO_ATTESO">Decreto Atteso</option>
-              <option value="DECRETO_RICEVUTO">Decreto Ricevuto</option>
+              <option value="IN_PREPARAZIONE">In preparazione</option>
+              <option value="DECRETO_ATTESO">In attesa del decreto</option>
+              <option value="RICEVUTO_O_ACCETTATO">Decreto ricevuto o accettato</option>
+              <option value="DECRETO_RICEVUTO">Decreto ricevuto</option>
               <option value="ACCETTATO">Accettato</option>
-              <option value="IN_CORSO">In Corso</option>
-              <option value="COMPLETATO">Completato</option>
+              <option value="IN_CORSO">In corso</option>
+              <option value="COMPLETATO">Chiuso</option>
             </select>
           </div>
 
@@ -794,7 +824,7 @@ export default function ProgettiContent({ initialFilter, onNavigate, openProgett
                       </span>
                     ) : (
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getStatoColor(progetto.stato_calcolato)}`}>
-                        {progetto.stato_calcolato.replace('_', ' ')}
+                        {ETICHETTA_STATO[progetto.stato_calcolato] || progetto.stato_calcolato.replace('_', ' ')}
                       </span>
                     )}
                   </td>
