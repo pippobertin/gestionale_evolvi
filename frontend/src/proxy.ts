@@ -30,6 +30,7 @@ const PUBBLICHE: { prefisso: string; motivo: string }[] = [
   { prefisso: '/api/rna/sync', motivo: 'CRON_SECRET / INGEST_SECRET' },
   { prefisso: '/api/backup/cron', motivo: 'cron Vercel: CRON_SECRET' },
   { prefisso: '/api/cron/scadenze-231', motivo: 'cron Vercel: CRON_SECRET' },
+  { prefisso: '/api/cron/controllo-bandi', motivo: 'cron Vercel: CRON_SECRET' },
   { prefisso: '/api/rna/agente', motivo: 'agente RNA sul Mac: header x-rna-agent-secret' },
   { prefisso: '/api/user/gmail/callback', motivo: 'ritorno da Google OAuth' },
 ]

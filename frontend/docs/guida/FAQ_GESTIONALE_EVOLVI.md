@@ -140,6 +140,12 @@ Nella scheda "Catalogo" il secondo menu a tendina filtra per tipologia di invest
 ### Come apro un bando e come creo un progetto da un bando
 Un clic sulla riga apre il bando. L'icona del razzo crea un progetto già collegato al bando: scegli il cliente, controlla il titolo e salva; il progetto si apre sul percorso della pratica.
 
+### Il gestionale mi avvisa quando esce una graduatoria?
+Sì, per i bandi con progetti inviati e in attesa del decreto. Ogni mattina legge la pagina ufficiale del bando (il link nella scheda "Dati Bando") e le altre pagine indicate nella scheda "Controllo della pagina", e confronta i collegamenti con quelli già visti. Se ne compare uno nuovo con parole come graduatoria, esiti o ammessi, i responsabili dei progetti ricevono nello Scadenzario la scadenza "Controllare la graduatoria" e nel Cruscotto compare il riquadro "Novità sui bandi", dove si indica "È la graduatoria" oppure "Non interessa". Un PDF o un foglio nuovo senza quelle parole compare come nuovo documento. Alla prima lettura i collegamenti presenti vengono registrati come già visti, senza avvisi.
+
+### Che cosa trovo nella scheda "Controllo della pagina" del bando
+Le pagine controllate con l'esito dell'ultima lettura, il pulsante "Controlla adesso", la scelta tra controllo automatico, sempre o mai, e lo storico delle novità. Si possono aggiungere altre pagine dell'ente, per esempio Notizie o Esiti, perché spesso la graduatoria esce lì; il gestionale ne aggiunge da solo fino a cinque dello stesso sito. Una pagina "non controllabile" (contenuti caricati con JavaScript, accesso con credenziali, blocchi anti-robot) va controllata a mano.
+
 ### Che cosa succede se elimino un bando
 Si eliminano anche tutti i progetti collegati e le loro scadenze, quindi ha senso solo per bandi creati per errore. Serve il permesso di eliminazione; l'operazione si annulla dal Registro attività.
 

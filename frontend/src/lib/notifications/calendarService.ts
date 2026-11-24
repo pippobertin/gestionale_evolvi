@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
 
 // ID del calendario aziendale BLM Project
-const CALENDAR_ID = 'c_84801bd792d0c8193bcd88e3cdeea8abbd02027491a283188f6fb653cf846920@group.calendar.google.com'
+import { CALENDAR_ID } from '@/lib/calendarioStudio'
 const CALENDAR_ID_ENCODED = encodeURIComponent(CALENDAR_ID)
 
 export interface CalendarEvent {

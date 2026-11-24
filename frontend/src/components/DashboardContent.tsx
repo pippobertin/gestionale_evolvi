@@ -17,6 +17,7 @@ import {
 import CalendarioScadenze from './CalendarioScadenze'
 import { useAuth } from '@/contexts/AuthContext'
 import BottoneChiudi from './shared/BottoneChiudi'
+import NovitaBandi from './NovitaBandi'
 
 interface Scadenza {
   id: string
@@ -353,6 +354,9 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
           Non risultano scadenze assegnate a te. <button type="button" onClick={() => setSoloMie(false)} className="underline">Guarda quelle di tutto lo studio</button>.
         </div>
       )}
+
+      {/* Novità trovate dal controllo automatico delle pagine dei bandi */}
+      <NovitaBandi onNavigate={onNavigate} />
 
       {/* Due soli numeri: quelli che chiedono di fare qualcosa */}
       <div className="grid grid-cols-2 gap-3">

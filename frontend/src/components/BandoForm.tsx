@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   Plus,
   Trash2,
+  Radar,
   Upload,
   ArrowRight,
   Settings,
@@ -24,6 +25,7 @@ import { supabase } from '@/lib/supabase'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import UnifiedMultiResponsableSelector, { Responsabile } from './UnifiedMultiResponsableSelector'
 import NoteCollegateBox from './NoteCollegateBox'
+import ControlloPaginaBando from './ControlloPaginaBando'
 
 interface EventoCatalogo {
   id: string
@@ -85,7 +87,7 @@ interface BandoFormProps {
   onDelete?: (bandoId: string) => void // Eliminazione dalla scheda del bando
 }
 
-type TabType = 'generale' | 'scadenze' | 'documenti'
+type TabType = 'generale' | 'scadenze' | 'documenti' | 'controllo'
 
 export default function BandoForm({ onClose, onBandoCreated, bando, precompila, onDelete }: BandoFormProps) {
   const { data: session, status } = useSession()
@@ -837,7 +839,9 @@ export default function BandoForm({ onClose, onBandoCreated, bando, precompila, 
   const tabs = [
     { id: 'generale', label: 'Dati Bando', icon: Building2 },
     { id: 'scadenze', label: 'Scadenze tipo', icon: Clock },
-    { id: 'documenti', label: 'Documenti', icon: FileText }
+    { id: 'documenti', label: 'Documenti', icon: FileText },
+    // Controllo automatico della pagina del bando (solo per un bando già salvato)
+    ...(bando?.id ? [{ id: 'controllo', label: 'Controllo della pagina', icon: Radar }] : [])
   ]
 
   // Funzione dinamica per gli eventi di riferimento
@@ -966,6 +970,8 @@ export default function BandoForm({ onClose, onBandoCreated, bando, precompila, 
         {/* Content */}
         <div className="flex-1 p-4 overflow-y-auto">
           {/* Tab Generale */}
+          {activeTab === 'controllo' && bando?.id && <ControlloPaginaBando bandoId={bando.id} />}
+
           {activeTab === 'generale' && (
             <div className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
