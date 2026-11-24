@@ -8,7 +8,8 @@ import ProgettoForm from './ProgettoForm'
 /**
  * Prima scheda del cliente: che cosa succede con lui. Progetti con la loro fase
  * e scadenze aperte, più il pulsante per creare un progetto già intestato al
- * cliente. Un clic su un progetto lo apre.
+ * cliente. Un clic su un progetto lo apre sopra la scheda del cliente, così
+ * chiudendolo si torna al cliente.
  */
 type Props = {
   cliente: { id: string; denominazione: string; partita_iva?: string; codice_fiscale?: string }
@@ -30,6 +31,8 @@ export default function ClienteProgettiScadenze({ cliente, onNavigate }: Props) 
   const [scadenze, setScadenze] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [nuovo, setNuovo] = useState(false)
+  // Progetto aperto qui, sopra la scheda del cliente: alla chiusura si torna al cliente
+  const [aperto, setAperto] = useState<any | null>(null)
 
   const carica = useCallback(async () => {
     setLoading(true)
@@ -51,7 +54,11 @@ export default function ClienteProgettiScadenze({ cliente, onNavigate }: Props) 
   const prossima = (progettoId: string) => scadenze.find(s => s.progetto_id === progettoId)
   const oggi = new Date(); oggi.setHours(0, 0, 0, 0)
   const giorni = (d: string) => Math.round((new Date(d).getTime() - oggi.getTime()) / 86400000)
-  const apriProgetto = (id: string) => onNavigate?.('progetti', { openProgettoId: id })
+  const apriProgetto = async (id: string) => {
+    const { data } = await supabase.from('scadenze_bandi_progetti_view').select('*').eq('id', id).single()
+    if (data) setAperto(data)
+    else onNavigate?.('progetti', { openProgettoId: id })
+  }
 
   if (loading) return <div className="p-6 text-sm text-gray-500">Caricamento…</div>
 
@@ -104,7 +111,15 @@ export default function ClienteProgettiScadenze({ cliente, onNavigate }: Props) 
         <ProgettoForm
           cliente={{ id: cliente.id, denominazione: cliente.denominazione, partita_iva: cliente.partita_iva || '', codice_fiscale: cliente.codice_fiscale || '' }}
           onClose={() => setNuovo(false)}
-          onProgettoCreated={(id) => { setNuovo(false); if (id && onNavigate) onNavigate('progetti', { openProgettoId: id }); else carica() }}
+          onProgettoCreated={(id) => { setNuovo(false); carica(); if (id) apriProgetto(id) }}
+        />
+      )}
+
+      {aperto && (
+        <ProgettoForm
+          progetto={aperto}
+          onClose={() => { setAperto(null); carica() }}
+          onProgettoCreated={() => { setAperto(null); carica() }}
         />
       )}
     </div>
