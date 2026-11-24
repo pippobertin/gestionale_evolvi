@@ -317,7 +317,7 @@ export default function EvolviContractCard({ contract, onRefresh }: EvolviContra
           </div>
         </div>
 
-        {/* Tracking e registrazione del contratto firmato */}
+        {/* Stato del contratto e registrazione del contratto firmato */}
         {['inviato', 'firmato', 'attivo'].includes(contract.stato) && (
           <div className="mt-3 pt-3 border-t border-gray-100">
             <ContractTrackingWidget

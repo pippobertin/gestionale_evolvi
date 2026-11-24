@@ -145,7 +145,7 @@ const DEPENDENCY_LABELS: Record<string, string> = {
   corsi: 'Corsi formativi',
   adesioni_fpi: 'Adesioni FPI',
   collegamenti: 'Collegamenti aziendali',
-  contract_tracking: 'Tracking contratti',
+  contract_tracking: 'Stato dei contratti',
   scadenze_contrattuali: 'Scadenze contrattuali',
   progetti: 'Progetti',
 }

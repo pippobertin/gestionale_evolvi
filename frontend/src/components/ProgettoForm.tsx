@@ -1457,7 +1457,19 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
           <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto p-4">
               {activeTab === 'pratica' && progetto && (
-                <PraticaPercorso progettoId={progetto.id} />
+                <PraticaPercorso
+                  progettoId={progetto.id}
+                  statoContratto={(aggiorna) => (
+                    <ContractTrackingWidget
+                      key={versioneTracking}
+                      entityType="PROGETTO"
+                      entityId={progetto.id}
+                      onApprovaBozza={setBozzaDaApprovare}
+                      onAggiornato={aggiorna}
+                      descrizione={`Contratto del progetto ${progetto.codice_progetto || ''} ${progetto.titolo_progetto ? '– ' + progetto.titolo_progetto : ''}`.trim()}
+                    />
+                  )}
+                />
               )}
 
               {activeTab === 'email' && progetto && (
@@ -2065,18 +2077,12 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                       </p>
                     </div>
                   )}
-                  {/* Contract Tracking - solo per progetti esistenti */}
+                  {/* Lo stato del contratto sta nel percorso della pratica, sezione Incarico */}
                   {progetto && (
-                    <div className="mt-6">
-                      <h4 className="font-medium text-gray-900 mb-3">Stato del contratto</h4>
-                      <ContractTrackingWidget
-                        key={versioneTracking}
-                        entityType="PROGETTO"
-                        entityId={progetto.id}
-                        onApprovaBozza={setBozzaDaApprovare}
-                        descrizione={`Contratto del progetto ${progetto.codice_progetto || ''} ${progetto.titolo_progetto ? '– ' + progetto.titolo_progetto : ''}`.trim()}
-                      />
-                    </div>
+                    <p className="mt-6 text-xs text-gray-500">
+                      Lo stato del contratto (approvazione, invio, firma) è nella scheda{' '}
+                      <button type="button" onClick={() => setActiveTab('pratica')} className="text-blue-700 hover:underline">Percorso pratica</button>, sezione Incarico.
+                    </p>
                   )}
                 </div>
               )}

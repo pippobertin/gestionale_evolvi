@@ -178,7 +178,7 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             <div>
-              <h2 className="font-semibold text-base">Genera e Invia Contratto</h2>
+              <h2 className="font-semibold text-base">{bozzaEsistente ? 'Approva e invia il contratto' : puoApprovare ? 'Genera e invia il contratto' : 'Prepara la bozza del contratto'}</h2>
               <p className="text-xs text-white/70">{stepLabels[step - 1]}</p>
             </div>
           </div>
@@ -437,7 +437,7 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
                 onClick={handleGoToPreview}
                 className="btn-primary px-4 py-2 text-sm font-medium rounded-md"
               >
-                Anteprima &rarr;
+                Avanti: controlla i dati &rarr;
               </button>
             )}
             {step === 2 && (

@@ -1,6 +1,6 @@
 # Punto di ripresa del lavoro
 
-Branch di lavoro `claude/stoic-hawking-mf8eph`. Aggiornato il 24/11/2026.
+Branch di lavoro `claude/stoic-hawking-mf8eph`. Aggiornato il 24/11/2026 (sera).
 
 ## Dove siamo
 
@@ -39,7 +39,7 @@ I dati di prova (delega "restart" su AAAAPIPPO, utente "Prova Uscita", segnalato
 
 Approvato dall'utente; si fa un pezzo alla volta, ciascuno con prova in anteprima e pubblicazione su main solo dopo il via.
 
-**Già in produzione:** punti 1, 2, 3, 4 e 5 (segnalatori in un solo posto con accordo e compensi nella loro scheda; Modello 231 con la scheda "Da fare" e il contatore nel menu; Analisi; Bandi e Catalogo in un'unica pagina con "Lavoriamo su questo bando"). Restano i punti 6, 7 e 8.
+**Rilascio 3 completato e in produzione** (tutti gli otto punti qui sotto). Dopo il rilascio 3, in produzione anche: Scadenzario con contatori come filtri e vista "da fare nei prossimi 30 giorni"; ricerca nei menu a tendina di cliente, bando e progetto; elenchi coerenti (eliminazione dentro la scheda, conferme che rimandano al Registro attività); chiusura di tutte le finestre con la X e con il clic fuori; progetto aperto sopra la scheda del cliente; Note da assegnare con cliente proposto, punti da controllare e archivio. In prova: pulizia dei contratti e stato del contratto nella sezione Incarico.
 
 1. **Segnalatori in un solo posto.**
    - Oggi un segnalatore si inserisce due volte: dal menu Segnalatori (anagrafica con categoria Segnalatori e clienti segnalati) e in Modello 231, Segnalatori e compensi.
@@ -76,17 +76,15 @@ Avviso quando sul sito dell'ente compare una graduatoria. Proposta da confermare
 - limiti da dire chiaramente: siti che caricano i contenuti con JavaScript, portali con accesso riservato, protezioni anti-robot; per questi la pagina risulta "non controllabile" e resta il controllo a mano.
 - Oggi nessuno dei 5 bandi dello studio ha il link compilato: va inserito per quelli in attesa del decreto.
 
-### Rimasti dall'analisi, più piccoli (da inserire dove capita)
+### Rimasti dall'analisi, più piccoli
 
+Fatti: Scadenzario, ricerca nei menu a tendina, elenchi coerenti, Note da assegnare, contratti (in prova).
+Restano:
 - Prospect: valutare se unire "In decisione" e "Preso in carico".
 - Cliente: unire davvero dettaglio e modifica in una sola finestra (oggi sono due finestre, ma la modifica torna sul cliente).
 - Progetti: le schede numeriche in alto (decreto atteso, ricevuto, in corso, completati) non contano i progetti non ancora inviati; la scheda "Completati" è rossa.
-- Elenchi coerenti tra clienti, progetti e bandi: clic sulla riga per aprire la scheda (in Bandi oggi non fa nulla), "Nuovo…" in alto a destra, eliminazione solo dentro la scheda.
-- Scadenzario: schede numeriche cliccabili come filtri, vista predefinita "da fare nei prossimi 30 giorni", stessi nomi di stato in elenco e modulo ("Da fare" e "Non iniziata"), "Annullata" anche nel filtro.
-- Cliente e bando con ricerca nel menu a tendina del nuovo progetto.
-- Note da assegnare: dire dove finiscono le note interne, mostrare le verifiche suggerite o togliere il contatore, proporre il cliente in automatico dal titolo.
-- Contratti: eliminare `ContractTrackingPanel` e `SignedContractUploadForm` se non usati, e "tracking" diventa "stato del contratto". ContractModal: titolo diverso per chi prepara solo la bozza, "Anteprima" diventa "Avanti: controlla i dati".
-- Pratica: spostare lo stato del contratto dalla scheda Documenti alla sezione Incarico.
+
+Poi: controllo automatico delle pagine dei bandi (sezione qui sopra).
 
 ## Rinviati, da decidere
 

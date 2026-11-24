@@ -83,7 +83,11 @@ const STATO_CONTRATTO: Record<string, string> = {
   DRAFT: 'bozza da approvare', APPROVED: 'approvato, da inviare', SENT: 'inviato al cliente', SIGNED: 'firmato', REMINDED: 'sollecitato'
 }
 
-export default function PraticaPercorso({ progettoId }: { progettoId: string }) {
+export default function PraticaPercorso({ progettoId, statoContratto }: {
+  progettoId: string
+  /** Riquadro dello stato del contratto, mostrato nella sezione Incarico (riceve la funzione che aggiorna la pratica) */
+  statoContratto?: (aggiorna: () => void) => React.ReactNode
+}) {
   const { isAdmin, haPermesso } = useAuth()
   const [dati, setDati] = useState<Dati | null>(null)
   const [errore, setErrore] = useState('')
@@ -327,6 +331,7 @@ export default function PraticaPercorso({ progettoId }: { progettoId: string }) 
             ? (dati.contratto.signed_contract_received ? <span className="text-green-700 font-medium">firmato e registrato</span> : <span>{STATO_CONTRATTO[dati.contratto.overall_status] || dati.contratto.overall_status}, non ancora firmato</span>)
             : 'nessuno'}. Per i clienti con accordo quadro (Metodo Evolvi) basta l&apos;ordine di lavoro confermato.
         </p>
+        {statoContratto && <div className="mb-3">{statoContratto(carica)}</div>}
         {dati.ordini.length > 0 && (
           <ul className="text-xs space-y-1 mb-2">
             {dati.ordini.map((o: any) => (
