@@ -840,6 +840,7 @@ export default function ProgettiContent({ initialFilter, onNavigate, openProgett
       {progettoInModifica && (
         <ProgettoForm
           onClose={() => setProgettoInModifica(null)}
+          onApriContributi={onNavigate ? (clienteId) => { setProgettoInModifica(null); onNavigate('clienti', { openClientId: clienteId, tab: 'contributi' }) } : undefined}
           onProgettoCreated={() => {
             setProgettoInModifica(null)
             fetchProgetti() // Ricarica la lista

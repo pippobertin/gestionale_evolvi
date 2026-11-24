@@ -29,6 +29,16 @@ export type SyncContributoResult = {
  * Best effort: non lancia mai eccezioni. In caso di errore ritorna
  * { action: 'skip', error } e il chiamante (save progetto) prosegue.
  */
+/**
+ * Lo stato si completa nei Contributi ottenuti (erogazione parziale, revoca,
+ * rinuncia): il progetto lo fa solo avanzare, senza cancellare quanto scelto là.
+ */
+function statoAggiornato(attuale: ContributoStato, calcolato: ContributoStato): ContributoStato {
+  if (attuale === 'REVOCATO' || attuale === 'RINUNCIATO') return attuale
+  const ordine: ContributoStato[] = ['AMMESSO', 'CONCESSO', 'EROGATO_PARZIALE', 'EROGATO_TOTALE']
+  return ordine.indexOf(calcolato) > ordine.indexOf(attuale) ? calcolato : attuale
+}
+
 export async function syncContributoDaProgetto(progettoId: string): Promise<SyncContributoResult> {
   try {
     // 1. Carica progetto
@@ -48,9 +58,9 @@ export async function syncContributoDaProgetto(progettoId: string): Promise<Sync
     // 2. Riga esistente?
     const { data: esistente, error: errE } = await supabase
       .from('scadenze_bandi_contributi_ottenuti')
-      .select('id, bando_denominazione_manuale')
+      .select('id, bando_denominazione_manuale, stato')
       .eq('progetto_id', progettoId)
-      .maybeSingle<{ id: string; bando_denominazione_manuale: string | null }>()
+      .maybeSingle<{ id: string; bando_denominazione_manuale: string | null; stato: ContributoStato }>()
 
     if (errE) {
       return { action: 'skip', contributoId: null, error: errE.message }
@@ -98,7 +108,7 @@ export async function syncContributoDaProgetto(progettoId: string): Promise<Sync
         importo_contributo: importoCalcolato,
         data_concessione: progetto.data_decreto_concessione,
         anno_competenza: annoRef,
-        stato: statoCalcolato,
+        stato: statoAggiornato(esistente.stato, statoCalcolato),
         // NON toccare: forma_contributo, esl, intensita_aiuto_pct,
         // regime_aiuto, rna_*, note, origine (già DA_PROGETTO)
       }

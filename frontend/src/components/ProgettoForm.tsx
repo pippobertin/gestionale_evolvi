@@ -30,6 +30,7 @@ import PraticaPercorso from './PraticaPercorso'
 import EmailCorrelate from './EmailCorrelate'
 import NoteCollegateBox from './NoteCollegateBox'
 import { spostaNelCestino } from '@/lib/cestinoArchivi'
+import { STATO_LABEL as STATO_CONTRIBUTO } from '@/lib/contributi/types'
 
 interface ProgettoFormData {
   bando_id: string
@@ -76,6 +77,8 @@ interface ProgettoFormProps {
   bando?: Bando
   cliente?: Cliente
   progetto?: any // Per modifica esistente
+  /** Apre i Contributi ottenuti del cliente (scheda cliente) */
+  onApriContributi?: (clienteId: string) => void
 }
 
 type TabType = 'pratica' | 'email' | 'dati' | 'generale' | 'importi' | 'scadenze' | 'documenti' | 'avanzate'
@@ -86,7 +89,16 @@ function bucketDocumentoProgetto(doc: { categoria?: string; inherited_from_bando
   return doc.categoria === 'ereditato' || doc.inherited_from_bando ? 'bandi-documenti' : 'progetti-documenti'
 }
 
-export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, bando, cliente, progetto }: ProgettoFormProps) {
+export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, bando, cliente, progetto, onApriContributi }: ProgettoFormProps) {
+  // Riga dei Contributi ottenuti alimentata da questo progetto
+  const [contributo, setContributo] = useState<{ stato: string; importo_contributo: number | null; data_erogazione: string | null } | null>(null)
+  useEffect(() => {
+    if (!progetto?.id) return
+    supabase.from('scadenze_bandi_contributi_ottenuti')
+      .select('stato, importo_contributo, data_erogazione')
+      .eq('progetto_id', progetto.id).maybeSingle()
+      .then(({ data }) => setContributo(data || null))
+  }, [progetto?.id])
   // Pratica non ancora inviata: si apre sul percorso della pratica
   const [activeTab, setActiveTab] = useState<TabType>(progetto ? 'pratica' : 'dati')
   const [erroreDati, setErroreDati] = useState('')
@@ -1673,10 +1685,34 @@ export default function ProgettoForm({ onClose, onProgettoCreated, onDelete, ban
                         placeholder="Inserisci il contributo effettivamente ottenuto"
                       />
                       <p className="mt-2 text-sm text-blue-700">
-                        💡 Il contributo reale può differire da quello ammesso. Inserisci qui l'importo effettivamente erogato.
+                        Il contributo reale può differire da quello ammesso. Inserisci qui l&apos;importo effettivamente erogato.
                       </p>
                     </div>
                   )}
+
+                  {/* Un solo posto per il contributo: importi e decreto qui, il resto nei Contributi ottenuti */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-700 space-y-1">
+                    <div className="font-medium text-gray-900">Contributi ottenuti del cliente</div>
+                    <p className="text-xs text-gray-600">
+                      Contributo ammesso, contributo ottenuto e data del decreto si scrivono solo qui: al salvataggio passano da soli
+                      nei Contributi ottenuti del cliente. Là si completano stato dell&apos;erogazione, regime di aiuto e dati RNA
+                      (il Registro nazionale degli aiuti di Stato).
+                    </p>
+                    {contributo ? (
+                      <div className="text-xs">
+                        Oggi risulta: <strong>{STATO_CONTRIBUTO[contributo.stato as keyof typeof STATO_CONTRIBUTO] || contributo.stato}</strong>
+                        {contributo.importo_contributo != null && <> · {Number(contributo.importo_contributo).toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</>}
+                        {contributo.data_erogazione && <> · erogato il {new Date(contributo.data_erogazione).toLocaleDateString('it-IT')}</>}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-500">Nessun contributo ancora registrato: compare quando indichi il contributo ammesso.</div>
+                    )}
+                    {progetto?.cliente_id && onApriContributi && (
+                      <button type="button" onClick={() => onApriContributi(progetto.cliente_id)} className="text-xs text-blue-700 hover:underline">
+                        Apri i Contributi ottenuti del cliente
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
