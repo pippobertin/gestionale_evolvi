@@ -47,6 +47,9 @@ export default function NoteInboxContent() {
   const [note, setNote] = useState<NotaInbox[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  // Note archiviate (riunioni interne e scartate): si possono riportare tra quelle da assegnare
+  const [archivio, setArchivio] = useState<NotaInbox[]>([])
+  const [mostraArchivio, setMostraArchivio] = useState(false)
 
   const fetchNote = useCallback(async () => {
     setLoading(true)
@@ -60,9 +63,16 @@ export default function NoteInboxContent() {
       console.error('[NoteInbox] Errore fetch:', error)
       setNote([])
     } else {
-      console.log('[NoteInbox] note ricevute:', data?.length ?? 0)
       setNote((data ?? []) as NotaInbox[])
     }
+    const { data: arch } = await supabase
+      .from('scadenze_bandi_clienti_note')
+      .select('*')
+      .is('cliente_id', null)
+      .in('stato', ['archiviata', 'scartata'])
+      .order('created_at', { ascending: false })
+      .limit(100)
+    setArchivio((arch ?? []) as NotaInbox[])
     setLoading(false)
   }, [])
 
@@ -78,6 +88,8 @@ export default function NoteInboxContent() {
         stato: 'pubblicata',
         match_method: 'manuale',
         match_confidence: 1.0,
+        // Una nota riportata dall'archivio delle riunioni interne torna riunione con il cliente
+        ...(note.find((n) => n.id === notaId)?.tipo === 'riunione_interna' ? { tipo: 'riunione_cliente' } : {}),
       })
       .eq('id', notaId)
 
@@ -103,11 +115,27 @@ export default function NoteInboxContent() {
       alert('Errore: ' + error.message)
       return
     }
+    const nota = note.find((n) => n.id === notaId)
     setNote((prev) => prev.filter((n) => n.id !== notaId))
+    if (nota) setArchivio((prev) => [{ ...nota, stato: 'archiviata', tipo: 'riunione_interna' }, ...prev])
+  }
+
+  async function handleRipristina(notaId: string) {
+    const { error } = await supabase
+      .from('scadenze_bandi_clienti_note')
+      .update({ stato: 'in_inbox' })
+      .eq('id', notaId)
+    if (error) {
+      alert('Errore: ' + error.message)
+      return
+    }
+    const nota = archivio.find((n) => n.id === notaId)
+    setArchivio((prev) => prev.filter((n) => n.id !== notaId))
+    if (nota) setNote((prev) => [{ ...nota, stato: 'in_inbox' }, ...prev])
   }
 
   async function handleScarta(notaId: string) {
-    if (!confirm('Vuoi davvero scartare questa nota? Sara archiviata come scartata.')) {
+    if (!confirm('Scartare questa nota? Finisce tra le note archiviate in fondo alla pagina, da dove si può riportare qui.')) {
       return
     }
     const { error } = await supabase
@@ -119,7 +147,9 @@ export default function NoteInboxContent() {
       alert('Errore: ' + error.message)
       return
     }
+    const nota = note.find((n) => n.id === notaId)
     setNote((prev) => prev.filter((n) => n.id !== notaId))
+    if (nota) setArchivio((prev) => [{ ...nota, stato: 'scartata' }, ...prev])
   }
 
   return (
@@ -130,7 +160,8 @@ export default function NoteInboxContent() {
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Note da assegnare</h2>
             <p className="text-sm text-gray-500">
-              Note di riunione non ancora assegnate a un cliente.
+              Verbali delle riunioni registrate, trascritti in automatico, che non sono stati collegati da soli a un cliente.
+              Assegnata a un cliente, la nota compare tra le note della sua scheda.
             </p>
           </div>
         </div>
@@ -144,7 +175,7 @@ export default function NoteInboxContent() {
       </div>
 
       <div className="text-xs text-gray-500">
-        {note.length} {note.length === 1 ? 'nota in inbox' : 'note in inbox'}
+        {note.length} {note.length === 1 ? 'nota da assegnare' : 'note da assegnare'}
       </div>
 
       {loading && note.length === 0 ? (
@@ -153,7 +184,7 @@ export default function NoteInboxContent() {
         </div>
       ) : note.length === 0 ? (
         <div className="text-sm text-gray-500 italic p-6 bg-white rounded-lg border border-dashed border-gray-300 text-center">
-          Inbox vuota. Tutte le note sono assegnate o archiviate.
+          Nessuna nota da assegnare.
         </div>
       ) : (
         <div className="space-y-3">
@@ -170,6 +201,33 @@ export default function NoteInboxContent() {
               onScarta={() => handleScarta(n.id)}
             />
           ))}
+        </div>
+      )}
+
+      {archivio.length > 0 && (
+        <div className="pt-2">
+          <button type="button" onClick={() => setMostraArchivio(!mostraArchivio)} className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1">
+            {mostraArchivio ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            Note archiviate: riunioni interne e note scartate ({archivio.length})
+          </button>
+          {mostraArchivio && (
+            <div className="mt-2 bg-white border border-gray-200 rounded-lg divide-y">
+              {archivio.map((n) => (
+                <div key={n.id} className="px-3 py-2 flex items-center gap-3 text-sm">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-gray-900 truncate">{n.titolo}</div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(n.data_riunione || n.created_at).toLocaleDateString('it-IT')} · {n.stato === 'scartata' ? 'scartata' : 'riunione interna'}
+                      {n.drive_file_url && <> · <a href={n.drive_file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">trascrizione su Drive</a></>}
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => handleRipristina(n.id)} className="text-xs px-2 py-1 border border-gray-300 rounded-md hover:bg-gray-50 text-gray-700">
+                    Riporta tra le note da assegnare
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -230,8 +288,7 @@ function NotaInboxCard({
                 <span className="text-gray-300">·</span>
                 <span className="flex items-center gap-1 text-amber-600">
                   <Sparkles className="w-3 h-3" />
-                  {numVerifiche} verifich
-                  {numVerifiche === 1 ? 'a' : 'e'}
+                  {numVerifiche} {numVerifiche === 1 ? 'punto da controllare' : 'punti da controllare'}
                 </span>
               </>
             )}
@@ -257,6 +314,23 @@ function NotaInboxCard({
       {expanded && (
         <div className="border-t border-gray-200 p-4 bg-gray-50 space-y-4">
           <MarkdownPreview content={nota.contenuto_markdown} />
+
+          {numVerifiche > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+              <div className="text-sm font-medium text-amber-900 flex items-center gap-1 mb-1">
+                <Sparkles className="w-4 h-4" /> Punti da controllare nella trascrizione
+              </div>
+              <ul className="space-y-1.5 text-sm text-amber-900">
+                {(nota.verifiche_suggerite as { estratto?: string; suggerito?: string; motivazione?: string }[]).map((v, i) => (
+                  <li key={i}>
+                    {v.estratto && <span>«{v.estratto}»</span>}
+                    {v.suggerito && <span> → <strong>{v.suggerito}</strong></span>}
+                    {v.motivazione && <div className="text-xs text-amber-800">{v.motivazione}</div>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {nota.drive_file_url && (
             <a
@@ -302,6 +376,13 @@ function ClienteAssignmentBox({
   const [query, setQuery] = useState('')
   const [candidati, setCandidati] = useState<CandidatoCliente[]>([])
   const [searching, setSearching] = useState(false)
+  const [proposti, setProposti] = useState(true)
+
+  // All'apertura cerca i clienti che il titolo della nota suggerisce
+  useEffect(() => {
+    cerca(hint)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hint])
 
   async function cerca(text: string) {
     if (text.trim().length < 2) {
@@ -322,7 +403,8 @@ function ClienteAssignmentBox({
 
   function handleQueryChange(v: string) {
     setQuery(v)
-    cerca(v)
+    setProposti(v.trim().length === 0)
+    cerca(v.trim().length === 0 ? hint : v)
   }
 
   return (
@@ -338,13 +420,20 @@ function ClienteAssignmentBox({
           type="text"
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
-          placeholder={`Cerca cliente (suggerimento dal titolo: ${hint.slice(0, 30)}...)`}
+          placeholder="Cerca un altro cliente per nome o partita IVA"
           className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
       </div>
 
       {searching && (
         <div className="text-xs text-gray-500">Ricerca...</div>
+      )}
+
+      {candidati.length > 0 && proposti && (
+        <div className="text-xs text-gray-500">Clienti proposti in base al titolo della nota: un clic assegna la nota.</div>
+      )}
+      {candidati.length === 0 && proposti && !searching && (
+        <div className="text-xs text-gray-500">Il titolo non suggerisce nessun cliente: cercalo per nome o partita IVA.</div>
       )}
 
       {candidati.length > 0 && (
@@ -374,13 +463,13 @@ function ClienteAssignmentBox({
         </div>
       )}
 
-      {query.trim().length >= 2 && candidati.length === 0 && !searching && (
+      {!proposti && query.trim().length >= 2 && candidati.length === 0 && !searching && (
         <div className="text-xs text-gray-500 italic">
           Nessun cliente trovato per &quot;{query}&quot;.
         </div>
       )}
 
-      <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
+      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-200">
         <button
           onClick={onMarcaInterna}
           className="text-xs px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-100 text-gray-700"
@@ -394,6 +483,7 @@ function ClienteAssignmentBox({
           <X className="w-3 h-3" />
           Scarta
         </button>
+        <span className="basis-full text-xs text-gray-500">Le riunioni interne non vanno in nessun cliente: restano tra le note archiviate, in fondo alla pagina.</span>
       </div>
     </div>
   )
