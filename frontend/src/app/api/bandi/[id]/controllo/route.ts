@@ -26,7 +26,10 @@ async function stato(id: string) {
     modalita: bando.controllo_pagina,
     controllato: attivi.includes(id),
     link_ufficiale: bando.link_bando_ufficiale,
-    pagine: (pagine || []).map(({ link_noti, ...p }: any) => ({ ...p, collegamenti_noti: Array.isArray(link_noti) ? link_noti.length : 0 })),
+    // Le sottopagine tolte (spente) restano registrate ma non si mostrano
+    pagine: (pagine || []).filter((p: any) => p.origine !== 'sottopagina' || p.attiva)
+      .map(({ link_noti, ...p }: any) => ({ ...p, collegamenti_noti: Array.isArray(link_noti) ? link_noti.length : 0 })),
+    sottopagine_tolte: (pagine || []).filter((p: any) => p.origine === 'sottopagina' && !p.attiva).length,
     novita: novita || []
   }
 }
@@ -86,9 +89,15 @@ export async function DELETE(request: NextRequest, { params }: Ctx) {
   const { id } = await params
   const pagina = request.nextUrl.searchParams.get('pagina')
   if (!pagina) return NextResponse.json({ error: 'Pagina non indicata' }, { status: 400 })
-  // La pagina ufficiale segue il link del bando: si spegne, non si toglie
-  const { error } = await supabaseAdmin.from('scadenze_bandi_controllo_pagine').delete()
-    .eq('id', pagina).eq('bando_id', id).neq('origine', 'link_ufficiale')
+  const { data: riga } = await supabaseAdmin.from('scadenze_bandi_controllo_pagine').select('origine').eq('id', pagina).eq('bando_id', id).maybeSingle()
+  if (!riga) return NextResponse.json({ error: 'Pagina non trovata' }, { status: 404 })
+  // La pagina ufficiale segue il link del bando: si spegne, non si toglie.
+  // Una sottopagina trovata in automatico resta registrata spenta, così non ricompare al controllo successivo.
+  const { error } = riga.origine === 'link_ufficiale'
+    ? { error: { message: 'La pagina ufficiale segue il link del bando: per non controllarla togli la spunta "controlla"' } as any }
+    : riga.origine === 'sottopagina'
+      ? await supabaseAdmin.from('scadenze_bandi_controllo_pagine').update({ attiva: false, messaggio: 'tolta dal controllo', updated_at: new Date().toISOString() }).eq('id', pagina)
+      : await supabaseAdmin.from('scadenze_bandi_controllo_pagine').delete().eq('id', pagina)
   if (error) return erroreDatabase(error)
   return NextResponse.json(await stato(id))
 }

@@ -11,7 +11,7 @@ import { Radar, RefreshCw, Plus, Trash2, ExternalLink, CheckCircle2, AlertTriang
  */
 type Pagina = { id: string; url: string; etichetta: string | null; origine: string; attiva: boolean; collegamenti_noti: number; ultimo_controllo: string | null; esito: string | null; messaggio: string | null }
 type Novita = { id: string; url: string; testo: string | null; tipo: string; parole: string[]; trovata_il: string; stato: string; scadenze_create: number }
-type Stato = { modalita: string; controllato: boolean; link_ufficiale: string | null; pagine: Pagina[]; novita: Novita[] }
+type Stato = { modalita: string; controllato: boolean; link_ufficiale: string | null; pagine: Pagina[]; novita: Novita[]; sottopagine_tolte?: number }
 
 const ORIGINE: Record<string, string> = { link_ufficiale: 'pagina ufficiale', aggiunta: 'aggiunta', sottopagina: 'trovata in automatico' }
 const STATO_NOVITA: Record<string, string> = { da_vedere: 'da vedere', graduatoria: 'è la graduatoria', non_interessa: 'non interessa' }
@@ -119,16 +119,21 @@ export default function ControlloPaginaBando({ bandoId, onApriDati }: { bandoId:
                   {ORIGINE[p.origine] || p.origine} · ultima lettura {quando(p.ultimo_controllo)}{p.messaggio ? ` · ${p.messaggio}` : ''}
                 </div>
               </div>
-              <label className="text-xs text-gray-600 flex items-center gap-1 whitespace-nowrap">
-                <input type="checkbox" checked={p.attiva} onChange={e => chiama('PATCH', { paginaId: p.id, attiva: e.target.checked })} /> controlla
-              </label>
+              {p.origine !== 'sottopagina' && (
+                <label className="text-xs text-gray-600 flex items-center gap-1 whitespace-nowrap">
+                  <input type="checkbox" checked={p.attiva} onChange={e => chiama('PATCH', { paginaId: p.id, attiva: e.target.checked })} /> controlla
+                </label>
+              )}
               {p.origine !== 'link_ufficiale' && (
-                <button type="button" title="Togli la pagina" onClick={() => { if (confirm('Togliere questa pagina dal controllo?')) chiama('DELETE', undefined, `?pagina=${p.id}`) }}
+                <button type="button" title="Togli la pagina dal controllo" onClick={() => { if (confirm(p.origine === 'sottopagina' ? 'Togliere questa pagina dal controllo? Non verrà più proposta.' : 'Togliere questa pagina dal controllo?')) chiama('DELETE', undefined, `?pagina=${p.id}`) }}
                   className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
               )}
             </div>
           ))}
         </div>
+        {!!stato.sottopagine_tolte && (
+          <p className="mt-1 text-xs text-gray-500">{stato.sottopagine_tolte} {stato.sottopagine_tolte === 1 ? 'pagina trovata in automatico è stata tolta' : 'pagine trovate in automatico sono state tolte'} e non verranno più proposte.</p>
+        )}
         <div className="mt-2 flex flex-wrap gap-2 items-center">
           <input className={`${campo} flex-1 min-w-[16rem]`} placeholder="Indirizzo di un'altra pagina dell'ente (per esempio Notizie o Esiti)" value={nuova.url} onChange={e => setNuova({ ...nuova, url: e.target.value })} />
           <input className={`${campo} w-48`} placeholder="Nome (facoltativo)" value={nuova.etichetta} onChange={e => setNuova({ ...nuova, etichetta: e.target.value })} />

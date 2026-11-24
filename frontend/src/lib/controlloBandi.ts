@@ -43,8 +43,14 @@ const PAROLE: { etichetta: string; re: RegExp }[] = [
   { etichetta: 'istruttoria', re: /istruttori/ }
 ]
 const DOCUMENTO = /\.(pdf|xlsx?|ods|csv|zip|p7m|docx?|odt)(\?|#|$)/i
-// Sottopagine dello stesso sito che conviene seguire
-const SOTTOPAGINA = /notizi|news|avvis|comunicat|esit|graduator|document|allegat|aggiornament|novita/
+// Sottopagine dello stesso sito che conviene seguire (notizie, avvisi, esiti)
+const SOTTOPAGINA = /notizi|news|avvis|comunicat|esit|graduator|aggiornament|novita/
+// Indirizzi che di solito portano a un file anche senza estensione (archivi documentali dei siti)
+const FILE_SENZA_ESTENSIONE = /\/documents?\/|\/download|[?&](download|attachment|file)=|\/getfile|\/media\/|\/uploads?\/|\/sites\/default\/files\//i
+const NOME_FILE = /\.(pdf|xlsx?|ods|csv|zip|p7m|docx?|odt)\b/i
+/** Il collegamento porta a un file? (estensione in fondo o in mezzo all'indirizzo, archivio documentale, nome del file nel testo) */
+export const eDocumento = (l: Link) =>
+  DOCUMENTO.test(l.url) || /\.(pdf|xlsx?|ods|csv|zip|p7m|docx?|odt)\//i.test(l.url) || FILE_SENZA_ESTENSIONE.test(l.url) || NOME_FILE.test(l.testo)
 
 export function paroleTrovate(link: Link): string[] {
   let percorso = link.url
@@ -175,8 +181,13 @@ async function controllaPagina(p: Pagina): Promise<{ novita: Novita[]; link: Lin
   const lettura = await leggiPagina(p.url)
   const ora = new Date().toISOString()
   if (lettura.esito !== 'ok') {
-    await supabaseAdmin.from('scadenze_bandi_controllo_pagine')
-      .update({ esito: lettura.esito, messaggio: lettura.messaggio, ultimo_controllo: ora, updated_at: ora }).eq('id', p.id)
+    // Una sottopagina che si rivela un documento si spegne da sola e non ricompare
+    const documento = p.origine === 'sottopagina' && lettura.messaggio.startsWith('l\'indirizzo porta a un documento')
+    await supabaseAdmin.from('scadenze_bandi_controllo_pagine').update({
+      esito: lettura.esito, ultimo_controllo: ora, updated_at: ora,
+      messaggio: documento ? 'era un documento, non una pagina: tolta dal controllo' : lettura.messaggio,
+      ...(documento ? { attiva: false } : {})
+    }).eq('id', p.id)
     return { novita: [], link: [] }
   }
   const noti = new Set(p.link_noti || [])
@@ -187,7 +198,7 @@ async function controllaPagina(p: Pagina): Promise<{ novita: Novita[]; link: Lin
       if (noti.has(l.url)) continue
       const parole = paroleTrovate(l)
       if (parole.length) novita.push({ pagina_id: p.id, url: l.url, testo: l.testo, tipo: 'graduatoria', parole })
-      else if (DOCUMENTO.test(l.url)) novita.push({ pagina_id: p.id, url: l.url, testo: l.testo, tipo: 'documento', parole: [] })
+      else if (eDocumento(l)) novita.push({ pagina_id: p.id, url: l.url, testo: l.testo, tipo: 'documento', parole: [] })
     }
   }
   // I collegamenti già visti restano anche se spariscono dalla pagina (al massimo 3000)
@@ -202,14 +213,15 @@ async function controllaPagina(p: Pagina): Promise<{ novita: Novita[]; link: Lin
 
 /** Sottopagine dello stesso sito da seguire (notizie, avvisi, esiti, documenti). */
 async function aggiungiSottopagine(bandoId: string, principale: Pagina, link: Link[]): Promise<void> {
-  const { data: esistenti } = await supabaseAdmin.from('scadenze_bandi_controllo_pagine').select('url, origine').eq('bando_id', bandoId)
+  const { data: esistenti } = await supabaseAdmin.from('scadenze_bandi_controllo_pagine').select('url, origine, attiva').eq('bando_id', bandoId)
   const gia = new Set((esistenti || []).map((e: any) => e.url))
-  let posti = MAX_SOTTOPAGINE - (esistenti || []).filter((e: any) => e.origine === 'sottopagina').length
+  // Le sottopagine tolte restano registrate (spente) per non ricomparire, ma non occupano posto
+  let posti = MAX_SOTTOPAGINE - (esistenti || []).filter((e: any) => e.origine === 'sottopagina' && e.attiva).length
   if (posti <= 0) return
   const host = new URL(principale.url).host
   for (const l of link) {
     if (posti <= 0) break
-    if (gia.has(l.url) || DOCUMENTO.test(l.url)) continue
+    if (gia.has(l.url) || eDocumento(l)) continue
     let u: URL
     try { u = new URL(l.url) } catch { continue }
     if (u.host !== host) continue
