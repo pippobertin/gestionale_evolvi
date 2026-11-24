@@ -1885,7 +1885,7 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
             <Building2 className="w-4 h-4" />
             <div>
               <h2 className="text-sm font-semibold">
-                {cliente ? 'Modifica Cliente' : 'Nuovo Cliente'}
+                {cliente?.id ? 'Modifica cliente' : cliente?.categoria_evolvi === 'CONSULENTI' ? 'Nuovo segnalatore' : 'Nuovo cliente'}
               </h2>
               {cliente?.denominazione && (
                 <span className="text-primary-100 text-xs">

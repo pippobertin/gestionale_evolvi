@@ -1,5 +1,7 @@
 'use client'
 
+import Segnalatori from './modello231/Segnalatori'
+import { Handshake } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
 import {
   X, Building2, Briefcase, Users, TrendingUp,
@@ -85,7 +87,7 @@ const formatDate = (date: string | null) => {
 
 const TIPO_SEGNALAZIONE_CONFIG: Record<string, { label: string; color: string }> = {
   bandi: { label: 'Bandi', color: 'bg-blue-100 text-blue-700' },
-  spot: { label: 'Spot', color: 'bg-yellow-100 text-yellow-700' },
+  spot: { label: 'Cliente spot', color: 'bg-yellow-100 text-yellow-700' },
   formazione: { label: 'Formazione', color: 'bg-green-100 text-green-700' },
 }
 
@@ -340,9 +342,10 @@ export default function ConsulenteDettaglio({ consulenteId, isOpen, onClose, onN
   // ─── Tabs ─────────────────────────────────────────────
 
   const tabs = [
-    { id: 'anagrafica', label: 'Anagrafica Partner', icon: Building2 },
-    { id: 'clienti_segnalati', label: 'Clienti Segnalati', icon: Users },
-    { id: 'riepilogo', label: 'Riepilogo Economico', icon: TrendingUp },
+    { id: 'anagrafica', label: 'Dati del segnalatore', icon: Building2 },
+    { id: 'clienti_segnalati', label: 'Clienti segnalati', icon: Users },
+    { id: 'riepilogo', label: 'Valore dei clienti segnalati', icon: TrendingUp },
+    { id: 'accordo', label: 'Accordo e compensi', icon: Handshake },
   ]
 
   // ─── Tab Renders ──────────────────────────────────────
@@ -530,7 +533,7 @@ export default function ConsulenteDettaglio({ consulenteId, isOpen, onClose, onN
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard label="Clienti Segnalati" value={stats.clienti_segnalati} icon={Users} color="text-purple-700" />
             <KpiCard label="Per Bandi" value={stats.per_tipo_segnalazione.bandi || 0} color="text-blue-700" />
-            <KpiCard label="Per Spot" value={stats.per_tipo_segnalazione.spot || 0} color="text-yellow-700" />
+            <KpiCard label="Clienti spot" value={stats.per_tipo_segnalazione.spot || 0} color="text-yellow-700" />
             <KpiCard label="Per Formazione" value={stats.per_tipo_segnalazione.formazione || 0} color="text-green-700" />
           </div>
         </div>
@@ -590,6 +593,9 @@ export default function ConsulenteDettaglio({ consulenteId, isOpen, onClose, onN
       case 'anagrafica': return renderAnagrafica()
       case 'clienti_segnalati': return renderClientiSegnalati()
       case 'riepilogo': return renderRiepilogo()
+      case 'accordo': return consulente
+        ? <Segnalatori anagrafica={{ id: consulente.id, denominazione: consulente.denominazione, partita_iva: consulente.partita_iva, codice_fiscale: consulente.codice_fiscale, email: consulente.email }} />
+        : null
       default: return null
     }
   }

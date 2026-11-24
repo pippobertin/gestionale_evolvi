@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Users, Search, RefreshCw, ExternalLink } from 'lucide-react'
+import { Users, Search, RefreshCw, ExternalLink, Plus } from 'lucide-react'
 import ConsulenteDettaglio from './ConsulenteDettaglio'
+import ClienteForm from './ClienteForm'
 
 interface Consulente {
   id: string
@@ -25,6 +26,7 @@ export default function ConsulentiContent({ onNavigate }: ConsulentiContentProps
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedConsulenteId, setSelectedConsulenteId] = useState<string | null>(null)
   const [showDettaglio, setShowDettaglio] = useState(false)
+  const [nuovo, setNuovo] = useState(false)
 
   const fetchConsulenti = useCallback(async () => {
     setLoading(true)
@@ -105,12 +107,24 @@ export default function ConsulentiContent({ onNavigate }: ConsulentiContentProps
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
+          <button type="button" onClick={() => setNuovo(true)}
+            className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg inline-flex items-center gap-1 whitespace-nowrap">
+            <Plus className="w-4 h-4" /> Nuovo segnalatore
+          </button>
         </div>
       </div>
 
+      {/* Nuovo segnalatore: è un'anagrafica con la categoria Segnalatori già impostata */}
+      <ClienteForm
+        cliente={nuovo ? ({ denominazione: '', categoria_evolvi: 'CONSULENTI', stato_fatturazione: 'Italia', numero_dipendenti: 0, numero_volontari: 0, numero_collaboratori: 0, tipo_collegamento: 'AUTONOMA', influenza_dominante: false } as any) : undefined}
+        isOpen={nuovo}
+        onClose={() => setNuovo(false)}
+        onSave={fetchConsulenti}
+      />
+
       <p className="text-sm text-gray-600">
-        Chi ci presenta clienti e quali clienti ha segnalato. Se la segnalazione prevede un compenso, il segnalatore va registrato anche in
-        Modello 231, scheda Segnalatori e compensi: qualifica, accordo con clausola 231 approvato dall&apos;AU, attestazione della prestazione e pagamento.
+        Chi ci presenta clienti e quali clienti ha segnalato. Se la segnalazione prevede un compenso, accordo e compensi si gestiscono
+        nella scheda del segnalatore, sezione Accordo e compensi: qualifica, accordo con clausola 231 approvato dall&apos;amministratrice unica, attestazione della prestazione e pagamento.
       </p>
 
       {/* Tabella */}
@@ -168,7 +182,7 @@ export default function ConsulentiContent({ onNavigate }: ConsulentiContentProps
                           handleOpenDettaglio(c.id)
                         }}
                         className="text-gray-400 hover:text-purple-600 transition-colors"
-                        title="Apri dettaglio consulente"
+                        title="Apri la scheda del segnalatore"
                       >
                         <ExternalLink className="w-4 h-4" />
                       </button>

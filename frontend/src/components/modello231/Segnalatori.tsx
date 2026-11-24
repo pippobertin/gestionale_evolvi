@@ -23,7 +23,19 @@ function statoQualifica(q: any): { testo: string; ok: boolean } {
 
 const vuotoSegnalatore = () => ({ nome: '', forma: 'persona', codice_fiscale: '', partita_iva: '', email: '', cliente_id: '', qualifica_id: '', accordo_data: '', accordo_scade_il: '', clausola_231: false, compenso_previsto: '', nota: '' })
 
-export default function Segnalatori({ solaLettura = false }: { solaLettura?: boolean }) {
+type Anagrafica = { id: string; denominazione: string; partita_iva?: string | null; codice_fiscale?: string | null; email?: string | null }
+
+/** Passi di un compenso, in ordine; il primo non fatto è il prossimo passo. */
+const PASSI = [
+  { id: 'attesta', etichetta: 'Prestazione attestata', fatto: (c: any) => !!c.attestata_da },
+  { id: 'fattura', etichetta: 'Fattura registrata', fatto: (c: any) => !!c.fattura_numero },
+  { id: 'autorizza', etichetta: 'Pagamento autorizzato', fatto: (c: any) => !!c.autorizzato_da },
+  { id: 'pagato', etichetta: 'Pagato', fatto: (c: any) => !!c.pagato_il }
+]
+const prossimoPasso = (c: any) => PASSI.find(x => !x.fatto(c))?.id || null
+const stileBottone = (primario: boolean) => primario ? 'px-2 py-0.5 bg-blue-600 text-white rounded disabled:opacity-40' : 'px-2 py-0.5 border border-gray-300 rounded disabled:opacity-40'
+
+export default function Segnalatori({ solaLettura = false, anagrafica }: { solaLettura?: boolean; anagrafica?: Anagrafica }) {
   const { dati, errore, messaggio, inCorso, invia } = useRegistro<any>('/api/231/segnalatori')
   const [nuovo, setNuovo] = useState<any>(null)
   const [modifica, setModifica] = useState<any>(null)
@@ -34,6 +46,7 @@ export default function Segnalatori({ solaLettura = false }: { solaLettura?: boo
   if (!dati && !errore) return <div className="p-6"><LoadingSpinner /></div>
   if (!dati) return <Avvisi errore={errore} messaggio="" />
   const gestisce = !solaLettura && dati.puoGestire
+  const elencoSegnalatori: any[] = anagrafica ? (dati.segnalatori as any[]).filter(s => s.cliente_id === anagrafica.id) : dati.segnalatori
   const adminNonAu = dati.vedeTutto && !dati.solaLettura && dati.io !== dati.auId
   const puoAutorizzare = (c: any) => !solaLettura && c.attestata_da && dati.io !== c.attestata_da && (c.attestata_da === dati.auId ? adminNonAu : dati.puoDecidere)
 
@@ -94,11 +107,19 @@ export default function Segnalatori({ solaLettura = false }: { solaLettura?: boo
     <div className="space-y-3">
       <Avvisi errore={errore} messaggio={messaggio} />
       <p className="text-sm text-gray-600">
-        Chi presenta clienti in cambio di un compenso: prima la qualifica e l&apos;accordo scritto con la clausola 231, approvato dall&apos;amministratrice unica.
-        Ogni compenso si paga solo dopo che qualcuno ha attestato la prestazione e l&apos;amministratrice unica ha autorizzato il pagamento (se ha attestato l&apos;amministratrice unica,
-        autorizza un altro amministratore). Il pagamento avviene con bonifico tracciabile e si registra qui.
+        Per pagare un compenso servono la qualifica e l&apos;accordo con clausola 231 approvato dall&apos;amministratrice unica; poi, per ogni compenso:
+        prestazione attestata, fattura, pagamento autorizzato, pagamento.
+        {!anagrafica && ' I segnalatori si gestiscono anche dalla loro scheda, nel menu Segnalatori.'}
       </p>
-      {gestisce && !nuovo && (
+      {anagrafica && elencoSegnalatori.length === 0 && !nuovo && (
+        <div className="bg-white border rounded-lg p-3 text-sm text-gray-600">
+          Per questo segnalatore non c&apos;è ancora un accordo con compenso.
+          {gestisce && <> <button type="button" className="ml-1 px-2 py-1 text-xs bg-blue-600 text-white rounded"
+            onClick={() => { setFile(null); setNuovo({ ...vuotoSegnalatore(), nome: anagrafica.denominazione, partita_iva: anagrafica.partita_iva || '', codice_fiscale: anagrafica.codice_fiscale || '', email: anagrafica.email || '', cliente_id: anagrafica.id, forma: 'societa' }) }}>
+            Registra accordo e compensi</button></>}
+        </div>
+      )}
+      {gestisce && !nuovo && !anagrafica && (
         <button type="button" onClick={() => { setNuovo(vuotoSegnalatore()); setFile(null) }}
           className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded inline-flex items-center gap-1"><Plus className="w-4 h-4" /> Nuovo segnalatore</button>
       )}
@@ -114,8 +135,8 @@ export default function Segnalatori({ solaLettura = false }: { solaLettura?: boo
         </div>
       )}
 
-      {(dati.segnalatori as any[]).length === 0 && <div className="bg-white border rounded-lg p-4 text-sm text-gray-500">Nessun segnalatore registrato.</div>}
-      {(dati.segnalatori as any[]).map(s => {
+      {!anagrafica && elencoSegnalatori.length === 0 && <div className="bg-white border rounded-lg p-4 text-sm text-gray-500">Nessun segnalatore registrato.</div>}
+      {elencoSegnalatori.map(s => {
         const q = statoQualifica(s.scadenze_bandi_qualifiche)
         const approvato = !!s.accordo_approvato_da
         const scaduto = s.accordo_scade_il && s.accordo_scade_il < oggi()
@@ -148,7 +169,7 @@ export default function Segnalatori({ solaLettura = false }: { solaLettura?: boo
                   )}
                   {gestisce && <button type="button" className="px-2 py-1 text-xs border rounded" onClick={() => { setFile(null); setModifica({ id: s.id, qualifica_id: s.qualifica_id || '', accordo_data: s.accordo_data || '', accordo_scade_il: s.accordo_scade_il || '', clausola_231: s.clausola_231, compenso_previsto: s.compenso_previsto || '', nota: s.nota || '' }) }}>Qualifica e accordo</button>}
                   {gestisce && <button type="button" className="px-2 py-1 text-xs border rounded" onClick={() => setSegnalazione({ segnalatore_id: s.id, cliente_id: '', progetto_id: '', data_segnalazione: oggi(), descrizione: '', importo: '', base_calcolo: '' })}>+ Segnalazione</button>}
-                  {gestisce && <button type="button" className="px-2 py-1 text-xs border border-red-300 text-red-700 rounded" onClick={() => { if (confirm('Registrare la cessazione del rapporto con il segnalatore?')) { const f = new FormData(); f.append('azione', 'cessa'); invia(`/api/231/segnalatori/${s.id}`, 'PATCH', f, 'Cessazione registrata') } }}>Cessa</button>}
+                  {gestisce && <button type="button" className="px-2 py-1 text-xs border border-red-300 text-red-700 rounded" onClick={() => { if (confirm('Registrare la chiusura del rapporto con il segnalatore?')) { const f = new FormData(); f.append('azione', 'cessa'); invia(`/api/231/segnalatori/${s.id}`, 'PATCH', f, 'Cessazione registrata') } }}>Chiudi il rapporto</button>}
                 </div>
               )}
             </div>
@@ -204,9 +225,14 @@ export default function Segnalatori({ solaLettura = false }: { solaLettura?: boo
                     {compensi.map(c => {
                       const p = passo?.id === c.id ? passo : null
                       const bloccato = !!c.autorizzato_da
+                      const prossimo = prossimoPasso(c)
                       return (
                         <tr key={c.id} className="align-top">
                           <td className="py-1 pr-2">
+                            <div className="flex items-center gap-1 mb-0.5" title={PASSI.map(x => `${x.fatto(c) ? '✓' : '·'} ${x.etichetta}`).join('\n')}>
+                              {PASSI.map(x => <span key={x.id} className={`w-2 h-2 rounded-full ${x.fatto(c) ? 'bg-green-500' : x.id === prossimo ? 'bg-blue-500' : 'bg-gray-300'}`} />)}
+                              <span className="ml-1 text-[11px] text-gray-500">{prossimo ? `prossimo: ${PASSI.find(x => x.id === prossimo)?.etichetta.toLowerCase()}` : 'concluso'}</span>
+                            </div>
                             <div>{dataIt(c.data_segnalazione)} · {c.scadenze_bandi_clienti?.denominazione || 'cliente non indicato'}</div>
                             {c.scadenze_bandi_progetti?.titolo_progetto && <div className="text-gray-500">{c.scadenze_bandi_progetti.titolo_progetto}</div>}
                             <div className="text-gray-700">{c.descrizione}</div>
@@ -223,7 +249,7 @@ export default function Segnalatori({ solaLettura = false }: { solaLettura?: boo
                                     <button type="button" disabled={inCorso || !p.attestazione.trim()} className="px-2 py-0.5 bg-gray-800 text-white rounded disabled:opacity-40"
                                       onClick={() => inviaPasso(c, 'attesta', { attestazione: p.attestazione }, file, 'Prestazione attestata')}>Attesta</button>
                                   </div>
-                                : gestisce ? <button type="button" className="px-2 py-0.5 border rounded" onClick={() => { setFile(null); setPasso({ id: c.id, azione: 'attesta', attestazione: '' }) }}>Attesta la prestazione</button>
+                                : gestisce ? <button type="button" className={stileBottone(prossimo === 'attesta')} onClick={() => { setFile(null); setPasso({ id: c.id, azione: 'attesta', attestazione: '' }) }}>Attesta la prestazione</button>
                                 : <span className="text-amber-700">da attestare</span>}
                           </td>
                           <td className="py-1 pr-2 whitespace-nowrap">
@@ -237,13 +263,13 @@ export default function Segnalatori({ solaLettura = false }: { solaLettura?: boo
                                   <button type="button" disabled={inCorso || !p.importo || !p.fattura_numero.trim()} className="px-2 py-0.5 bg-gray-800 text-white rounded disabled:opacity-40"
                                     onClick={() => inviaPasso(c, 'fattura', { importo: p.importo, fattura_numero: p.fattura_numero, fattura_data: p.fattura_data }, null, 'Fattura registrata')}>Salva</button>
                                 </div>
-                              : <button type="button" className="text-blue-600 hover:underline" onClick={() => setPasso({ id: c.id, azione: 'fattura', importo: c.importo ?? '', fattura_numero: c.fattura_numero || '', fattura_data: c.fattura_data || oggi() })}>{c.fattura_numero ? 'modifica' : 'registra la fattura'}</button>)}
+                              : <button type="button" className={stileBottone(prossimo === 'fattura')} onClick={() => setPasso({ id: c.id, azione: 'fattura', importo: c.importo ?? '', fattura_numero: c.fattura_numero || '', fattura_data: c.fattura_data || oggi() })}>{c.fattura_numero ? 'Modifica la fattura' : 'Registra la fattura'}</button>)}
                           </td>
                           <td className="py-1 pr-2">
                             {c.autorizzato_da
                               ? <span className="text-green-700">Autorizzato da {dati.nomi[c.autorizzato_da] || ''}, {dataIt(c.autorizzato_il)}</span>
                               : puoAutorizzare(c)
-                                ? <button type="button" disabled={inCorso || !c.fattura_numero} title={c.fattura_numero ? '' : 'Manca la fattura'} className="px-2 py-0.5 bg-gray-800 text-white rounded disabled:opacity-40"
+                                ? <button type="button" disabled={inCorso || !c.fattura_numero} title={c.fattura_numero ? '' : 'Manca la fattura'} className={stileBottone(prossimo === 'autorizza')}
                                     onClick={() => { if (confirm(`Autorizzare il pagamento di ${euro(c.importo)} a ${s.nome}?`)) inviaPasso(c, 'autorizza', {}, null, 'Pagamento autorizzato') }}>Autorizza il pagamento</button>
                                 : <span className="text-amber-700">{c.attestata_da ? 'in attesa dell\'amministratrice unica' : 'dopo l\'attestazione'}</span>}
                           </td>
@@ -258,7 +284,7 @@ export default function Segnalatori({ solaLettura = false }: { solaLettura?: boo
                                       <button type="button" disabled={inCorso || !p.pagato_il} className="px-2 py-0.5 bg-gray-800 text-white rounded disabled:opacity-40"
                                         onClick={() => inviaPasso(c, 'pagato', { pagato_il: p.pagato_il, pagamento_riferimento: p.pagamento_riferimento }, null, 'Pagamento registrato')}>Registra</button>
                                     </div>
-                                  : <button type="button" className="px-2 py-0.5 border rounded" onClick={() => setPasso({ id: c.id, azione: 'pagato', pagato_il: oggi(), pagamento_riferimento: '' })}>Registra il pagamento</button>
+                                  : <button type="button" className={stileBottone(prossimo === 'pagato')} onClick={() => setPasso({ id: c.id, azione: 'pagato', pagato_il: oggi(), pagamento_riferimento: '' })}>Registra il pagamento</button>
                                 : <span className="text-gray-400">non ancora</span>}
                           </td>
                         </tr>
