@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import CalendarioScadenze from './CalendarioScadenze'
 import CalendarioSettimana from './CalendarioSettimana'
 import ScadenzaForm from './ScadenzaForm'
+import BottoneChiudi from './shared/BottoneChiudi'
 
 interface Scadenza {
   id: string
@@ -822,7 +823,8 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
       {/* Modal Completamento Scadenza */}
       {showCompletaModal && scadenzaDaCompletare && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
-          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
+          <div className="relative bg-white rounded-lg p-4 max-w-md w-full mx-4">
+            <BottoneChiudi onClick={() => setShowCompletaModal(false)} />
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium text-gray-900">Completa Scadenza</h3>
               <button
@@ -877,7 +879,8 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
       {/* Modal Conferma Eliminazione */}
       {showDeleteModal && scadenzaDaEliminare && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
-          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
+          <div className="relative bg-white rounded-lg p-4 max-w-md w-full mx-4">
+            <BottoneChiudi onClick={cancelDeleteScadenza} />
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium text-gray-900 text-red-600">
                 🗑️ Elimina Scadenza
@@ -936,7 +939,8 @@ export default function ScadenzeContent({ navigationParams }: { navigationParams
       {/* Modal Scadenze del Giorno */}
       {showDayModal && selectedDate && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
+          <div className="relative bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
+            <BottoneChiudi onClick={closeDayModal} />
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="text-sm font-medium text-gray-900">
                 Scadenze del {new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', {

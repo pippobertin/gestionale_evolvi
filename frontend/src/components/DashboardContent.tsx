@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import CalendarioScadenze from './CalendarioScadenze'
 import { useAuth } from '@/contexts/AuthContext'
+import BottoneChiudi from './shared/BottoneChiudi'
 
 interface Scadenza {
   id: string
@@ -403,7 +404,8 @@ export default function DashboardContent({ onNavigate }: DashboardContentProps) 
       {/* Modal dettaglio giorno */}
       {showDayModal && selectedDate && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
+          <div className="relative bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
+            <BottoneChiudi onClick={() => setShowDayModal(false)} />
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="text-sm font-medium text-gray-900">
                 Scadenze del {new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', {

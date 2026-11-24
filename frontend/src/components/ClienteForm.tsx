@@ -31,6 +31,7 @@ import NuovaAziendaCollegataModal from './NuovaAziendaCollegataModal'
 import NuovoCollegamentoModal from './NuovoCollegamentoModal'
 import ReferentiManager from './ReferentiManager'
 import DocumentiAmministrativiManager from './DocumentiAmministrativiManager'
+import BottoneChiudi from './shared/BottoneChiudi'
 
 interface Cliente {
   id?: string
@@ -1991,7 +1992,8 @@ export default function ClienteForm({ cliente, isOpen, onClose, onSave, onNaviga
       {/* Modal conferma eliminazione */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full">
+            <BottoneChiudi onClick={() => setShowDeleteConfirm(false)} disabled={loading} />
             <div className="p-4">
               <div className="flex items-center mb-3">
                 <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mr-3">

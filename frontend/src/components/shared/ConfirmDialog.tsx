@@ -1,4 +1,5 @@
 import { Trash2, AlertTriangle } from 'lucide-react'
+import BottoneChiudi from './BottoneChiudi'
 
 interface ConfirmDialogProps {
   isOpen: boolean
@@ -40,7 +41,8 @@ export default function ConfirmDialog({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg max-w-md w-full mx-4">
+      <div className="relative bg-white rounded-lg max-w-md w-full mx-4">
+        <BottoneChiudi onClick={onCancel} disabled={isLoading} />
         <div className="p-4">
           <div className="flex items-center gap-3 mb-4">
             <div className={`w-6 h-6 rounded-full flex items-center justify-center ${colors[variant].icon}`}>

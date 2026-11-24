@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import SessionProvider from '@/components/SessionProvider'
 import DisableNumberInputScroll from '@/components/DisableNumberInputScroll'
+import ChiusuraFinestre from '@/components/ChiusuraFinestre'
 
 export const metadata: Metadata = {
   title: 'Gestionale Evolvi',
@@ -22,6 +23,8 @@ export default function RootLayout({
     <html lang="it">
       <body className="antialiased">
         <DisableNumberInputScroll />
+        {/* Tutte le finestre si chiudono anche con un clic fuori dal riquadro */}
+        <ChiusuraFinestre />
         <SessionProvider>
           {/* Niente avvisi via email dal gestionale: i promemoria arrivano dal calendario Google */}
           {children}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { FileText, Loader2, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react'
+import { FileText, Loader2, CheckCircle, AlertCircle, ExternalLink, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
 /** Lunghezza minima della motivazione di una deroga alla separazione tra chi genera e chi approva. */
@@ -191,6 +191,10 @@ export default function ContractModal({ isOpen, onClose, progettoData, onSuccess
                 }`}
               />
             ))}
+            <button type="button" data-chiudi onClick={onClose} disabled={sendingEmail || step === 3} title="Chiudi" aria-label="Chiudi"
+              className="ml-3 p-1 rounded hover:bg-white/20 disabled:opacity-40">
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
 

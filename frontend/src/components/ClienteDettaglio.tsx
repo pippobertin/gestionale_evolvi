@@ -35,6 +35,7 @@ import NoteTimeline from './NoteTimeline'
 import ListaSpesa from './ListaSpesa'
 import StoricoDimensione from './StoricoDimensione'
 import type { DimensioneRiconosciuta } from '@/lib/dimensioneImpresa'
+import BottoneChiudi from './shared/BottoneChiudi'
 
 interface CollegamentoAziendale {
   id: string
@@ -251,7 +252,8 @@ export default function ClienteDettaglio({ clienteId, isOpen, onClose, onEdit, o
   if (!cliente) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl p-8">
+        <div className="relative bg-white rounded-xl p-8">
+          <BottoneChiudi onClick={onClose} />
           <p className="text-center text-red-600">Errore nel caricamento del cliente</p>
           <button onClick={onClose} className="mt-4 btn-primary mx-auto block">
             Chiudi

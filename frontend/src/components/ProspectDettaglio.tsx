@@ -43,6 +43,7 @@ import {
 import { isGruppo2Complete, isGruppo3Complete, isGruppo4Complete } from '@/lib/prospectValidation'
 import ProspectConversionModal from './ProspectConversionModal'
 import PrequalificaForm from './PrequalificaForm'
+import BottoneChiudi from './shared/BottoneChiudi'
 
 interface ProspectDettaglioProps {
   prospectId: string
@@ -347,7 +348,8 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
   if (!prospect) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl p-8">
+        <div className="relative bg-white rounded-xl p-8">
+          <BottoneChiudi onClick={onClose} />
           <p className="text-center text-red-600">Errore nel caricamento del prospect</p>
           <button onClick={onClose} className="mt-4 btn-primary mx-auto block">
             Chiudi
@@ -1119,7 +1121,8 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
       {/* Congela Modal */}
       {showCongelaModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full">
+            <BottoneChiudi onClick={() => { setShowCongelaModal(false); setCongelaMotivo(''); setCongelaDurata(30); setCongelaDataCustom('') }} disabled={actionLoading} />
             <div className="p-4">
               <div className="flex items-center mb-4">
                 <div className="w-12 h-12 bg-cyan-100 rounded-full flex items-center justify-center mr-4">
@@ -1194,7 +1197,8 @@ export default function ProspectDettaglio({ prospectId, isOpen, onClose, onEdit,
       {/* Archivia Modal */}
       {showArchiviaModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full">
+            <BottoneChiudi onClick={() => { setShowArchiviaModal(false); setArchiviaMotivo('') }} disabled={actionLoading} />
             <div className="p-4">
               <div className="flex items-center mb-4">
                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">

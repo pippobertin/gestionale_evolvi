@@ -18,6 +18,7 @@ import { fetchAllRows, countByKey } from '@/lib/supabaseQueries'
 import ClienteForm from './ClienteForm'
 import ClienteDettaglio from './ClienteDettaglio'
 import ClientiMappingCSV from './ClientiMappingCSV'
+import BottoneChiudi from './shared/BottoneChiudi'
 
 interface Cliente {
   id: string
@@ -818,7 +819,8 @@ export default function ClientiContent({ onNavigate, navigationParams }: { onNav
       {/* Modal Conferma Eliminazione */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg max-w-md w-full mx-4">
+          <div className="relative bg-white rounded-lg max-w-md w-full mx-4">
+            <BottoneChiudi onClick={() => { setShowDeleteConfirm(false); setClienteToDelete(null) }} disabled={deleting} />
             <div className="p-4">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">

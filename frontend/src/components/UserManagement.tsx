@@ -30,6 +30,7 @@ const COLORI_RUOLO: Record<Ruolo, string> = {
 import { LoadingSpinner } from './shared'
 import { useAuth } from '@/contexts/AuthContext'
 import { CalendarService } from '@/lib/notifications/calendarService'
+import BottoneChiudi from './shared/BottoneChiudi'
 
 interface User {
   id: string
@@ -472,7 +473,8 @@ export default function UserManagement() {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
+          <div className="relative bg-white rounded-lg p-4 max-w-md w-full mx-4">
+            <BottoneChiudi onClick={() => setShowDeleteModal(null)} />
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
                 <AlertTriangle className="w-4 h-4 text-red-600" />
@@ -514,7 +516,8 @@ export default function UserManagement() {
       {/* Fine accesso */}
       {utenteScadenza && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
+          <div className="relative bg-white rounded-lg p-4 max-w-md w-full mx-4">
+            <BottoneChiudi onClick={() => setUtenteScadenza(null)} />
             <div className="flex items-center space-x-3 mb-3">
               <div className="w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center">
                 <CalendarClock className="w-4 h-4 text-amber-600" />
@@ -566,7 +569,8 @@ export default function UserManagement() {
       {/* Add User Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
+          <div className="relative bg-white rounded-lg p-4 max-w-md w-full mx-4">
+            <BottoneChiudi onClick={() => { setShowAddModal(false); setNewUserData({ nome: '', cognome: '', email: '', livello_permessi: 'collaboratore', accesso_fino_al: '' }); setError('') }} />
             <div className="flex items-center space-x-3 mb-3">
               <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
                 <UserPlus className="w-4 h-4 text-blue-600" />
@@ -683,10 +687,11 @@ export default function UserManagement() {
         </div>
       )}
 
-      {/* Password Display Modal */}
+      {/* Password mostrata una volta sola: la finestra non si chiude con il clic fuori, solo con la X o "Ho Preso Nota" */}
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
+        <div data-senza-clic-fuori className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="relative bg-white rounded-lg p-4 max-w-md w-full mx-4">
+            <BottoneChiudi onClick={() => { setShowPasswordModal(false); setTemporaryPassword(''); setCreatedUserEmail('') }} />
             <div className="flex items-center space-x-3 mb-3">
               <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
                 <CheckCircle className="w-4 h-4 text-green-600" />
@@ -736,7 +741,8 @@ export default function UserManagement() {
       {/* Conferma reimpostazione password */}
       {utenteDaReimpostare && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 max-w-md w-full mx-4">
+          <div className="relative bg-white rounded-lg p-4 max-w-md w-full mx-4">
+            <BottoneChiudi onClick={() => setUtenteDaReimpostare(null)} />
             <h3 className="text-sm font-semibold text-gray-900 mb-2">Reimposta password</h3>
             <p className="text-sm text-gray-600 mb-4">
               Verrà generata una nuova password temporanea per {utenteDaReimpostare.nome} {utenteDaReimpostare.cognome}
