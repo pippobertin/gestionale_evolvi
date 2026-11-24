@@ -8,9 +8,13 @@ import { erroreDatabase } from '@/lib/praticaForm'
 export async function GET(request: NextRequest) {
   const sessione = await verifyJWT(request)
   if (!sessione) return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
+  const ctxBase = await contesto231(sessione.userId, sessione.livello_permessi)
+  // I collaboratori vedono solo i conflitti che li riguardano o che hanno annotato
+  let qConflitti = supabaseAdmin.from('scadenze_bandi_conflitti').select('*, scadenze_bandi_progetti(titolo_progetto), scadenze_bandi_clienti(denominazione)').order('data', { ascending: false })
+  if (!ctxBase.vedeTutto && !ctxBase.puoDecidere) qConflitti = qConflitti.or(`persona_id.eq.${sessione.userId},registrato_da.eq.${sessione.userId}`)
   const [ctx, { data, error }, { data: progetti }] = await Promise.all([
-    contesto231(sessione.userId, sessione.livello_permessi),
-    supabaseAdmin.from('scadenze_bandi_conflitti').select('*, scadenze_bandi_progetti(titolo_progetto), scadenze_bandi_clienti(denominazione)').order('data', { ascending: false }),
+    Promise.resolve(ctxBase),
+    qConflitti,
     supabaseAdmin.from('scadenze_bandi_progetti').select('id, titolo_progetto, scadenze_bandi_clienti(denominazione)').order('created_at', { ascending: false })
   ])
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

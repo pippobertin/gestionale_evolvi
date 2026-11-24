@@ -17,9 +17,14 @@ const AMBITI = ['contratto', 'pagamento', 'procedura', 'altro']
 export async function GET(request: NextRequest) {
   const sessione = await verifyJWT(request)
   if (!sessione) return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
+  const ctxBase = await contesto231(sessione.userId, sessione.livello_permessi)
+  // I collaboratori vedono solo le deroghe che hanno chiesto loro
+  const tutte = ctxBase.vedeTutto || ctxBase.puoDecidere
+  let qDeroghe = supabaseAdmin.from('scadenze_bandi_deroghe').select('*, scadenze_bandi_clienti(denominazione), scadenze_bandi_progetti(titolo_progetto)').order('data', { ascending: false })
+  if (!tutte) qDeroghe = qDeroghe.eq('richiesta_da', sessione.userId)
   const [ctx, deroghe, contratti, passaggi, integrazioni, rendiconti] = await Promise.all([
-    contesto231(sessione.userId, sessione.livello_permessi),
-    supabaseAdmin.from('scadenze_bandi_deroghe').select('*, scadenze_bandi_clienti(denominazione), scadenze_bandi_progetti(titolo_progetto)').order('data', { ascending: false }),
+    Promise.resolve(ctxBase),
+    qDeroghe,
     supabaseAdmin.from('scadenze_bandi_contract_tracking').select('id, entity_type, approvato_da, approvato_il, deroga_approvazione, scadenze_bandi_clienti(denominazione)').not('deroga_approvazione', 'is', null),
     supabaseAdmin.from('scadenze_bandi_pratica_passaggi').select('id, da_fase, a_fase, utente_id, deroga, mancanti, quando, scadenze_bandi_progetti(titolo_progetto)').not('deroga', 'is', null),
     supabaseAdmin.from('scadenze_bandi_integrazioni').select('id, oggetto, data_invio, deroga, scadenze_bandi_progetti(titolo_progetto)').not('deroga', 'is', null),
@@ -47,7 +52,7 @@ export async function GET(request: NextRequest) {
       id: `r-${r.id}`, data: r.data_invio, fonte: 'Rendiconto inviato',
       oggetto: r.descrizione || 'Rendiconto', riferimento: nome(r.scadenze_bandi_progetti).titolo_progetto || '', motivazione: r.deroga, chi: ''
     }))
-  ].sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')))
+  ].filter(() => tutte).sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')))
 
   let clienti: unknown[] = [], progetti: unknown[] = []
   if (!ctx.solaLettura) {

@@ -38,6 +38,7 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
   const [isPinned, setIsPinned] = useState(true)
   const [isHovered, setIsHovered] = useState(false)
   const [inboxNoteCount, setInboxNoteCount] = useState(0)
+  const [daFare231, setDaFare231] = useState(0)
   const { user } = useAuth()
 
   useEffect(() => {
@@ -54,9 +55,20 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
       }
     }
 
-    fetchInboxCount()
+    // Cose da fare nel Modello 231 per chi è collegato
+    async function fetchDaFare231() {
+      try {
+        const r = await fetch('/api/231/da-fare?solo=conteggio')
+        if (!r.ok) return
+        const d = await r.json()
+        if (!cancelled && typeof d.conteggio === 'number') setDaFare231(d.conteggio)
+      } catch { /* il contatore non è essenziale */ }
+    }
+
+    const aggiorna = () => { fetchInboxCount(); fetchDaFare231() }
+    aggiorna()
     // Ogni 3 minuti (prima ogni 30 secondi, e di nuovo a ogni cambio di pagina)
-    const interval = window.setInterval(fetchInboxCount, 180000)
+    const interval = window.setInterval(aggiorna, 180000)
 
     return () => {
       cancelled = true
@@ -70,7 +82,7 @@ export default function Sidebar({ activeItem, setActiveItem, onSidebarStateChang
     reports: BarChart3, modello231: ShieldCheck, settings: Settings, faq: HelpCircle
   }
   const menuItems = vociVisibili(user?.livello_permessi).map(v => ({
-    ...v, icon: ICONE[v.id] || FileText, badge: v.id === 'note-inbox' ? inboxNoteCount : 0
+    ...v, icon: ICONE[v.id] || FileText, badge: v.id === 'note-inbox' ? inboxNoteCount : v.id === 'modello231' ? daFare231 : 0
   }))
 
   const shouldShowExpanded = isPinned || isHovered
